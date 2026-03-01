@@ -48,7 +48,16 @@ Legend:
     - `mama/cmd/mama/main.go`
     - `mama/internal/runtime/backoff.go`
     - `mama/internal/runtime/backoff_test.go`
-- [ ] `TODO` Add runtime metrics/counters (parse errors, dropped events, reconnect count, backend failures).
+- [x] `DONE` Add runtime metrics/counters (parse errors, dropped events, reconnect count, backend failures).
+  - Implemented:
+    - Added `internal/runtime` metrics collector with atomic counters and deterministic snapshot formatting.
+    - Wired counters into host reconnect/session code paths for parse errors, dropped events, reconnect attempts, and backend failures.
+    - Added runtime metrics summary log output on reconnect and session close.
+  - Changed files/tests:
+    - `mama/internal/runtime/metrics.go`
+    - `mama/internal/runtime/metrics_test.go`
+    - `mama/cmd/mama/main.go`
+    - `docs/TROUBLESHOOTING.md`
 - [ ] `TODO` Add deterministic structured logs for troubleshooting.
 - [ ] `TODO` Add long-run soak test plan and scripted verification artifacts.
 
@@ -102,6 +111,7 @@ Legend:
 - 2026-03-01: Tracker created from roadmap gaps; all items initialized as `TODO`.
 - 2026-03-01: Implemented protocol versioning handshake (`V:1`) and host compatibility checks. Updated firmware boot output, host parser/runtime gating, setup UI event labeling, and parser tests. Verified with `go test ./...`.
 - 2026-03-01: Implemented serial reconnect strategy with bounded exponential backoff and clear runtime state logs in host runtime. Added dedicated backoff unit tests and verified with `go test ./...`.
+- 2026-03-01: Implemented host runtime metrics counters (parse errors, dropped events, reconnect count, backend failures), integrated counter updates into reconnect/session paths, and added metrics snapshot logging plus unit tests. Verified with `go test ./...`.
 
 ---
 
