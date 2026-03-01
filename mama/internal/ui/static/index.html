@@ -253,6 +253,10 @@
           <input id="debugInput" type="checkbox">
           Debug logs enabled
         </label>
+        <div class="actions">
+          <button type="button" id="testConnection">Test Connection</button>
+        </div>
+        <p class="status" id="connectionStatus"></p>
       </div>
 
       <div>
@@ -472,6 +476,24 @@
       if (ports.includes(previous)) select.value = previous;
     }
 
+    async function testConnection() {
+      try {
+        const port = effectivePort();
+        const baud = parseInt($("baudInput").value, 10) || 115200;
+        if (!port) {
+          throw new Error("Select or type a serial port first");
+        }
+        const body = await fetchJSON("/api/port-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ port, baud })
+        });
+        setStatus("connectionStatus", body.message || "Connection successful", "ok");
+      } catch (err) {
+        setStatus("connectionStatus", err.message, "error");
+      }
+    }
+
     async function loadConfig() {
       const cfg = await fetchJSON("/api/config");
       state.config = cfg;
@@ -545,6 +567,7 @@
 
     function bindEvents() {
       $("refreshPorts").addEventListener("click", () => loadPorts().catch(err => setStatus("saveStatus", err.message, "error")));
+      $("testConnection").addEventListener("click", testConnection);
       $("addMapping").addEventListener("click", () => $("mappings").appendChild(mappingRow()));
       $("saveConfig").addEventListener("click", saveConfig);
       $("startIdentify").addEventListener("click", startIdentify);

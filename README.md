@@ -22,6 +22,7 @@ This repository now includes:
   - serial protocol parsing and config validation
   - `master_out` adjust + mute toggle on supported platforms
   - setup UI (`mama-ui`) to edit serial settings/mappings and save config
+  - setup UI serial connection test button for validating port + baud before saving
   - setup UI live identify mode (rotate/press a knob and the matching indicator flashes)
 - Planned / not yet implemented in audio backend:
   - `mic_in`
