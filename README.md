@@ -69,13 +69,20 @@ This repository now includes:
 ## Serial Event Protocol
 
 Master emits newline-terminated events:
+- `V:1` protocol hello emitted on boot
 - `E1:+1` encoder 1 clockwise
 - `E1:-1` encoder 1 counterclockwise
 - `B1:1` encoder 1 button pressed
 
 Parser accepts:
+- protocol hello `V:<n>` with positive integer versions
 - encoder IDs `1..32`
 - button press value only `1` (release/noise values are rejected)
+
+Compatibility rule:
+- host currently supports protocol version `1` only
+- if firmware announces an incompatible version, host logs mismatch and drops control events
+- if no hello is present (older firmware), host keeps legacy behavior for backward compatibility
 
 ## Quick Start (Developer)
 

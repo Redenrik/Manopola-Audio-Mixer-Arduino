@@ -34,7 +34,11 @@ Legend:
 
 ## 2) Reliability / Protocol / Runtime Hardening
 
-- [ ] `TODO` Add protocol versioning and compatibility checks between firmware and host.
+- [x] `DONE` Add protocol versioning and compatibility checks between firmware and host.
+  - Implemented:
+    - Added `V:<version>` protocol hello event support in firmware and host parser.
+    - Added host compatibility gating to drop control events when firmware announces an unsupported protocol version, with clear logs.
+    - Added parser/compatibility tests and updated protocol docs.
 - [ ] `TODO` Implement reconnect strategy with bounded backoff and clear state transitions.
 - [ ] `TODO` Add runtime metrics/counters (parse errors, dropped events, reconnect count, backend failures).
 - [ ] `TODO` Add deterministic structured logs for troubleshooting.
@@ -88,6 +92,7 @@ Legend:
 ## Execution Log
 
 - 2026-03-01: Tracker created from roadmap gaps; all items initialized as `TODO`.
+- 2026-03-01: Implemented protocol versioning handshake (`V:1`) and host compatibility checks. Updated firmware boot output, host parser/runtime gating, setup UI event labeling, and parser tests. Verified with `go test ./...`.
 
 ---
 

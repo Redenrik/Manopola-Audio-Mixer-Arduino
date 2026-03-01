@@ -13,9 +13,10 @@ MAMA is split into 3 runtime components:
 1. User rotates/presses encoder.
 2. Master/slave firmware debounces and accumulates quadrature transitions.
 3. Master emits serial lines:
+   - `V:<version>` once on boot for protocol negotiation
    - `E<id>:+/-<n>`
    - `B<id>:1`
-4. Host parser converts line -> typed event.
+4. Host parser converts line -> typed event and enforces protocol compatibility if version is announced.
 5. Mapping table resolves knob ID -> target/action config.
 6. Audio backend applies volume change or mute toggle.
 
