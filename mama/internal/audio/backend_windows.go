@@ -3,7 +3,6 @@
 package audio
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/itchyny/volume-go"
@@ -53,4 +52,4 @@ func (b *windowsBackend) ListTargets() ([]string, error) {
 	return []string{"system:master_out"}, nil
 }
 
-func (b *windowsBackend) String() string { return fmt.Sprintf("windowsBackend") }
+func (b *windowsBackend) String() string { return "windowsBackend" }
