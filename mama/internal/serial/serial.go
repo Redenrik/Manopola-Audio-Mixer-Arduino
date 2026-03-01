@@ -33,6 +33,15 @@ func Open(portName string, baud int) (*Reader, error) {
 	return &Reader{port: p, sc: sc}, nil
 }
 
+func Probe(portName string, baud int) error {
+	mode := &serial.Mode{BaudRate: baud}
+	p, err := serial.Open(portName, mode)
+	if err != nil {
+		return err
+	}
+	return p.Close()
+}
+
 func (r *Reader) Close() error { return r.port.Close() }
 
 func (r *Reader) ReadLines(ctx context.Context, out chan<- string) error {

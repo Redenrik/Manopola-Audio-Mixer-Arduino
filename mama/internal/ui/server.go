@@ -43,9 +43,15 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/status", s.handleStatus)
 	mux.HandleFunc("/api/config", s.handleConfig)
 	mux.HandleFunc("/api/ports", s.handlePorts)
+	mux.HandleFunc("/api/port-test", s.handlePortTest)
 	mux.HandleFunc("/api/targets", s.handleTargets)
 	mux.HandleFunc("/api/identify", s.handleIdentify)
 	return mux
+}
+
+type portTestRequest struct {
+	Port string `json:"port"`
+	Baud int    `json:"baud"`
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -117,6 +123,42 @@ func (s *Server) handlePorts(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ports": ports,
+	})
+}
+
+func (s *Server) handlePortTest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	var in portTestRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("invalid json: %v", err)})
+		return
+	}
+
+	in.Port = strings.TrimSpace(in.Port)
+	if in.Port == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "port is required"})
+		return
+	}
+	if in.Baud <= 0 {
+		in.Baud = config.DefaultBaud
+	}
+
+	if err := serialx.Probe(in.Port, in.Baud); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":      true,
+		"port":    in.Port,
+		"baud":    in.Baud,
+		"message": "serial port is reachable",
 	})
 }
 
