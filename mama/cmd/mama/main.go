@@ -8,12 +8,13 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
+	"time"
 
 	"mama/internal/audio"
 	"mama/internal/config"
 	"mama/internal/proto"
+	"mama/internal/runtime"
 	serialx "mama/internal/serial"
 )
 
@@ -38,16 +39,6 @@ func main() {
 
 	fmt.Printf("MAMA started. Serial=%s @ %d\n", cfg.Serial.Port, cfg.Serial.Baud)
 
-	r, err := serialx.Open(cfg.Serial.Port, cfg.Serial.Baud)
-	if err != nil {
-		log.Fatalf("serial open error: %v", err)
-	}
-	var closeOnce sync.Once
-	closeReader := func() {
-		closeOnce.Do(func() { _ = r.Close() })
-	}
-	defer closeReader()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -59,68 +50,126 @@ func main() {
 		<-sigC
 		fmt.Println("\nStopping...")
 		cancel()
-		// Closing the serial port unblocks a pending read so shutdown can complete.
-		closeReader()
 	}()
 
-	lines := make(chan string, 128)
-	go func() {
-		if err := r.ReadLines(ctx, lines); err != nil && cfg.Debug && !errors.Is(err, context.Canceled) {
-			log.Printf("serial read ended: %v", err)
+	backoff := runtime.NewBackoff(500*time.Millisecond, 10*time.Second)
+
+	for {
+		if err := ctx.Err(); err != nil {
+			return
 		}
+
+		log.Printf("serial state: connecting port=%s baud=%d", cfg.Serial.Port, cfg.Serial.Baud)
+		r, err := serialx.Open(cfg.Serial.Port, cfg.Serial.Baud)
+		if err != nil {
+			delay := backoff.Next()
+			log.Printf("serial state: reconnecting open_failed=%v retry_in=%s", err, delay)
+			if !sleepWithContext(ctx, delay) {
+				return
+			}
+			continue
+		}
+
+		backoff.Reset()
+		log.Printf("serial state: connected port=%s", cfg.Serial.Port)
+		if err := runSession(ctx, r, &cfg, b); err != nil && !errors.Is(err, context.Canceled) {
+			delay := backoff.Next()
+			log.Printf("serial state: disconnected err=%v", err)
+			log.Printf("serial state: reconnecting retry_in=%s", delay)
+			if !sleepWithContext(ctx, delay) {
+				return
+			}
+			continue
+		}
+		return
+	}
+}
+
+func runSession(ctx context.Context, r *serialx.Reader, cfg *config.Config, b audio.Backend) error {
+	lines := make(chan string, 128)
+	readErrC := make(chan error, 1)
+	go func() {
+		readErrC <- r.ReadLines(ctx, lines)
 	}()
+
+	defer func() { _ = r.Close() }()
 
 	protocolAnnounced := false
 	protocolCompatible := true
 
-	for line := range lines {
-		if cfg.Debug {
-			log.Printf("RX: %s", line)
-		}
-
-		ev, err := proto.ParseLine(line)
-		if err != nil {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case err := <-readErrC:
+			if err != nil {
+				return err
+			}
+			return nil
+		case line, ok := <-lines:
+			if !ok {
+				return fmt.Errorf("serial reader stopped")
+			}
 			if cfg.Debug {
-				log.Printf("parse error: %v", err)
+				log.Printf("RX: %s", line)
 			}
-			continue
-		}
 
-		if ev.Kind == proto.EventProtocolHello {
-			protocolAnnounced = true
-			protocolCompatible = proto.IsProtocolCompatible(ev.ProtocolVersion)
-			if protocolCompatible {
-				log.Printf("protocol version negotiated: firmware=%d host=%d", ev.ProtocolVersion, proto.HostProtocolVersion)
-			} else {
-				log.Printf("protocol mismatch: firmware=%d host=%d (dropping control events)", ev.ProtocolVersion, proto.HostProtocolVersion)
+			ev, err := proto.ParseLine(line)
+			if err != nil {
+				if cfg.Debug {
+					log.Printf("parse error: %v", err)
+				}
+				continue
 			}
-			continue
-		}
 
-		if protocolAnnounced && !protocolCompatible {
-			if cfg.Debug {
-				log.Printf("dropping event due to incompatible protocol: %q", line)
+			if ev.Kind == proto.EventProtocolHello {
+				protocolAnnounced = true
+				protocolCompatible = proto.IsProtocolCompatible(ev.ProtocolVersion)
+				if protocolCompatible {
+					log.Printf("protocol version negotiated: firmware=%d host=%d", ev.ProtocolVersion, proto.HostProtocolVersion)
+				} else {
+					log.Printf("protocol mismatch: firmware=%d host=%d (dropping control events)", ev.ProtocolVersion, proto.HostProtocolVersion)
+				}
+				continue
 			}
-			continue
-		}
 
-		m, ok := cfg.MappingForKnob(ev.KnobID)
-		if !ok {
-			if cfg.Debug {
-				log.Printf("unmapped knob: %d", ev.KnobID)
+			if protocolAnnounced && !protocolCompatible {
+				if cfg.Debug {
+					log.Printf("dropping event due to incompatible protocol: %q", line)
+				}
+				continue
 			}
-			continue
-		}
 
-		switch ev.Kind {
-		case proto.EventEncoderDelta:
-			if err := b.Adjust(m.Target, m.Name, m.Step, ev.Delta); err != nil && cfg.Debug {
-				log.Printf("adjust error knob %d: %v", ev.KnobID, err)
+			m, ok := cfg.MappingForKnob(ev.KnobID)
+			if !ok {
+				if cfg.Debug {
+					log.Printf("unmapped knob: %d", ev.KnobID)
+				}
+				continue
 			}
-		case proto.EventButtonPress:
-			if err := b.ToggleMute(m.Target, m.Name); err != nil && cfg.Debug {
-				log.Printf("mute error knob %d: %v", ev.KnobID, err)
+
+			switch ev.Kind {
+			case proto.EventEncoderDelta:
+				if err := b.Adjust(m.Target, m.Name, m.Step, ev.Delta); err != nil && cfg.Debug {
+					log.Printf("adjust error knob %d: %v", ev.KnobID, err)
+				}
+			case proto.EventButtonPress:
+				if err := b.ToggleMute(m.Target, m.Name); err != nil && cfg.Debug {
+					log.Printf("mute error knob %d: %v", ev.KnobID, err)
+				}
 			}
 		}
+	}
+}
+
+func sleepWithContext(ctx context.Context, d time.Duration) bool {
+	t := time.NewTimer(d)
+	defer t.Stop()
+
+	select {
+	case <-ctx.Done():
+		return false
+	case <-t.C:
+		return true
 	}
 }

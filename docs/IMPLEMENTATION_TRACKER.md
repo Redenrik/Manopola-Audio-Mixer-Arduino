@@ -39,7 +39,15 @@ Legend:
     - Added `V:<version>` protocol hello event support in firmware and host parser.
     - Added host compatibility gating to drop control events when firmware announces an unsupported protocol version, with clear logs.
     - Added parser/compatibility tests and updated protocol docs.
-- [ ] `TODO` Implement reconnect strategy with bounded backoff and clear state transitions.
+- [x] `DONE` Implement reconnect strategy with bounded backoff and clear state transitions.
+  - Implemented:
+    - Added reusable bounded exponential backoff helper with unit tests for capping/reset/default behavior.
+    - Refactored host serial runtime to continuously reconnect after open/read failures until shutdown signal/context cancellation.
+    - Added explicit serial state transition logs (`connecting`, `connected`, `disconnected`, `reconnecting`) with retry delay details.
+  - Changed files/tests:
+    - `mama/cmd/mama/main.go`
+    - `mama/internal/runtime/backoff.go`
+    - `mama/internal/runtime/backoff_test.go`
 - [ ] `TODO` Add runtime metrics/counters (parse errors, dropped events, reconnect count, backend failures).
 - [ ] `TODO` Add deterministic structured logs for troubleshooting.
 - [ ] `TODO` Add long-run soak test plan and scripted verification artifacts.
@@ -93,6 +101,7 @@ Legend:
 
 - 2026-03-01: Tracker created from roadmap gaps; all items initialized as `TODO`.
 - 2026-03-01: Implemented protocol versioning handshake (`V:1`) and host compatibility checks. Updated firmware boot output, host parser/runtime gating, setup UI event labeling, and parser tests. Verified with `go test ./...`.
+- 2026-03-01: Implemented serial reconnect strategy with bounded exponential backoff and clear runtime state logs in host runtime. Added dedicated backoff unit tests and verified with `go test ./...`.
 
 ---
 
