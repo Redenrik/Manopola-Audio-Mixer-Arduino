@@ -1,13 +1,60 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
+
+const (
+	DefaultBaud = 115200
+)
+
+var defaultMappings = []Mapping{
+	{Knob: 1, Target: TargetMasterOut, Step: 0.02},
+	{Knob: 2, Target: TargetMasterOut, Step: 0.02},
+	{Knob: 3, Target: TargetMasterOut, Step: 0.02},
+	{Knob: 4, Target: TargetMasterOut, Step: 0.02},
+	{Knob: 5, Target: TargetMasterOut, Step: 0.02},
+}
+
+const DefaultYAML = `serial:
+  port: "COM3"     # Windows example. On Linux: /dev/ttyACM0 or /dev/ttyUSB0
+  baud: 115200
+
+debug: true
+
+# Current backend support:
+# - implemented: master_out
+# - placeholders for future releases: mic_in, line_in, app, group
+# Keep default mappings on master_out so first run works end-to-end.
+# step = volume change per encoder "click" (0.01 = 1%, 0.02 = 2%, etc.)
+mappings:
+  - knob: 1
+    target: master_out
+    step: 0.02
+
+  - knob: 2
+    target: master_out
+    step: 0.02
+
+  - knob: 3
+    target: master_out
+    step: 0.02
+
+  - knob: 4
+    target: master_out
+    step: 0.02
+
+  - knob: 5
+    target: master_out
+    step: 0.02
+`
 
 type TargetType string
 
@@ -20,21 +67,21 @@ const (
 )
 
 type Mapping struct {
-	Knob   int        `yaml:"knob"`
-	Target TargetType `yaml:"target"`
-	Name   string     `yaml:"name,omitempty"` // for app/group identification
-	Step   float64    `yaml:"step"`           // e.g. 0.02 = 2% per detent
+	Knob   int        `yaml:"knob" json:"knob"`
+	Target TargetType `yaml:"target" json:"target"`
+	Name   string     `yaml:"name,omitempty" json:"name,omitempty"` // for app/group identification
+	Step   float64    `yaml:"step" json:"step"`                     // e.g. 0.02 = 2% per detent
 }
 
 type SerialCfg struct {
-	Port string `yaml:"port"`
-	Baud int    `yaml:"baud"`
+	Port string `yaml:"port" json:"port"`
+	Baud int    `yaml:"baud" json:"baud"`
 }
 
 type Config struct {
-	Serial   SerialCfg `yaml:"serial"`
-	Mappings []Mapping `yaml:"mappings"`
-	Debug    bool      `yaml:"debug"`
+	Serial   SerialCfg `yaml:"serial" json:"serial"`
+	Mappings []Mapping `yaml:"mappings" json:"mappings"`
+	Debug    bool      `yaml:"debug" json:"debug"`
 }
 
 func Load(path string) (Config, error) {
@@ -42,14 +89,23 @@ func Load(path string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+
+	return ParseYAML(b)
+}
+
+func ParseYAML(b []byte) (Config, error) {
 	var c Config
 	if err := yaml.Unmarshal(b, &c); err != nil {
 		return Config{}, err
 	}
 
+	return Validate(c)
+}
+
+func Validate(c Config) (Config, error) {
 	c.Serial.Port = strings.TrimSpace(c.Serial.Port)
 	if c.Serial.Baud == 0 {
-		c.Serial.Baud = 115200
+		c.Serial.Baud = DefaultBaud
 	}
 	if c.Serial.Baud < 0 {
 		return Config{}, fmt.Errorf("serial.baud must be > 0")
@@ -97,7 +153,82 @@ func Load(path string) (Config, error) {
 			return Config{}, fmt.Errorf("invalid step for knob %d: %f", m.Knob, m.Step)
 		}
 	}
+
 	return c, nil
+}
+
+func Save(path string, c Config) error {
+	c, err := Validate(c)
+	if err != nil {
+		return err
+	}
+
+	b, err := yaml.Marshal(&c)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, b, 0o644)
+}
+
+func EnsureDefaultFile(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return false, nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return false, err
+	}
+
+	if dir := filepath.Dir(path); dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return false, err
+		}
+	}
+
+	if err := os.WriteFile(path, []byte(DefaultYAML), 0o644); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func Default() Config {
+	mappings := make([]Mapping, len(defaultMappings))
+	copy(mappings, defaultMappings)
+
+	return Config{
+		Serial: SerialCfg{
+			Port: "COM3",
+			Baud: DefaultBaud,
+		},
+		Debug:    true,
+		Mappings: mappings,
+	}
+}
+
+func KnownTargets() []TargetType {
+	return []TargetType{
+		TargetMasterOut,
+		TargetMicIn,
+		TargetLineIn,
+		TargetApp,
+		TargetGroup,
+	}
+}
+
+func ResolveDefaultPath() string {
+	const localDefault = "config.yaml"
+	if _, err := os.Stat(localDefault); err == nil {
+		return localDefault
+	}
+
+	const sourceDefault = "internal/config/default.yaml"
+	if _, err := os.Stat(sourceDefault); err == nil {
+		return sourceDefault
+	}
+
+	// Release artifacts can run portable with a side-by-side config.
+	return localDefault
 }
 
 func (c Config) MappingForKnob(knob int) (Mapping, bool) {

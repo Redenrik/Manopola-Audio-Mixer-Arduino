@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MAMA Setup</title>
+  <style>
+    :root {
+      --bg: #f2f7f5;
+      --ink: #12332a;
+      --ink-dim: #3f5d53;
+      --panel: #ffffff;
+      --accent: #ff7d00;
+      --accent-2: #028090;
+      --ok: #2a9d8f;
+      --warn: #e76f51;
+      --line: #d3e0db;
+      --radius: 14px;
+      --shadow: 0 12px 30px rgba(18, 51, 42, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 20%, rgba(255, 125, 0, 0.18), transparent 32%),
+        radial-gradient(circle at 80% 10%, rgba(2, 128, 144, 0.16), transparent 28%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    .shell {
+      width: min(1080px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.5rem, 4vw, 2.1rem);
+      line-height: 1.1;
+      letter-spacing: 0.02em;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 1.1rem;
+    }
+
+    p {
+      margin: 0;
+      color: var(--ink-dim);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+    }
+
+    .row {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: 80px 1fr 1fr 120px 42px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .row.header {
+      font-size: 0.82rem;
+      color: var(--ink-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 4px;
+    }
+
+    .split {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    @media (max-width: 900px) {
+      .split { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+      .row.header { display: none; }
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 0.9rem;
+    }
+
+    input, select, button {
+      border-radius: 10px;
+      border: 1px solid #b8ccc5;
+      padding: 9px 10px;
+      font-size: 0.95rem;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    button {
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+      font-weight: 600;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent-2);
+      box-shadow: 0 8px 16px rgba(2, 128, 144, 0.16);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(140deg, var(--accent), #f4a261);
+      border-color: #e38b2f;
+      color: #24180e;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(140deg, var(--accent-2), #4da6b2);
+      border-color: #2b8a96;
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: #fdf0ed;
+      border-color: #f2bfaf;
+      color: #7f2f1f;
+    }
+
+    .knobs {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      margin-top: 8px;
+    }
+
+    .knob {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      background: linear-gradient(180deg, #f9fdfc, #eef5f2);
+      transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+    }
+
+    .knob .dial {
+      width: 58px;
+      height: 58px;
+      margin: 0 auto 8px;
+      border-radius: 50%;
+      border: 4px solid #87a89d;
+      position: relative;
+      background: #fff;
+    }
+
+    .knob .dial::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 8px;
+      width: 4px;
+      height: 16px;
+      margin-left: -2px;
+      border-radius: 4px;
+      background: #56796d;
+    }
+
+    .knob.active-rotate {
+      transform: translateY(-2px);
+      border-color: #f4a261;
+      box-shadow: 0 10px 24px rgba(244, 162, 97, 0.28);
+    }
+
+    .knob.active-press {
+      transform: translateY(-2px);
+      border-color: #2a9d8f;
+      box-shadow: 0 10px 24px rgba(42, 157, 143, 0.28);
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 0.92rem;
+      color: var(--ink-dim);
+      min-height: 1.3em;
+    }
+
+    .status.error { color: #8d2d17; }
+    .status.ok { color: #1c6f64; }
+
+    .hint {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: var(--ink-dim);
+    }
+
+    .mono {
+      font-family: Consolas, "SFMono-Regular", Menlo, monospace;
+      font-size: 0.9rem;
+      color: #35594d;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="panel">
+      <h1>Manopola Audio Mixer Setup</h1>
+      <p>Configure serial connection, assign each knob target, and visually identify knob numbers in real time.</p>
+      <p class="hint">Config path: <span class="mono" id="configPath">loading...</span></p>
+    </section>
+
+    <section class="panel split">
+      <div>
+        <h2>Connection</h2>
+        <label>
+          Serial Port
+          <div class="split" style="grid-template-columns: 1fr auto;">
+            <select id="portSelect"></select>
+            <button type="button" id="refreshPorts">Refresh</button>
+          </div>
+        </label>
+        <label>
+          Or type port manually
+          <input id="portInput" placeholder="COM3 or /dev/ttyACM0">
+        </label>
+        <label>
+          Baud
+          <input id="baudInput" type="number" min="1" step="1" value="115200">
+        </label>
+        <label style="display:flex; gap:8px; align-items:center; margin-top:10px;">
+          <input id="debugInput" type="checkbox">
+          Debug logs enabled
+        </label>
+      </div>
+
+      <div>
+        <h2>Knob Identification</h2>
+        <p>Click <strong>Start Identify</strong> then rotate or press any physical knob. Matching indicator flashes below.</p>
+        <div class="actions">
+          <button class="btn-secondary" id="startIdentify" type="button">Start Identify</button>
+          <button id="stopIdentify" type="button">Stop</button>
+        </div>
+        <div class="knobs" id="knobGrid"></div>
+        <p class="status" id="identifyStatus"></p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Mappings</h2>
+      <div class="row header">
+        <div>Knob</div>
+        <div>Target</div>
+        <div>Name (app/group)</div>
+        <div>Step (0..1)</div>
+        <div></div>
+      </div>
+      <div id="mappings"></div>
+      <div class="actions">
+        <button id="addMapping" type="button">Add Mapping</button>
+        <button class="btn-primary" id="saveConfig" type="button">Save Config</button>
+      </div>
+      <p class="status" id="saveStatus"></p>
+    </section>
+  </div>
+
+  <script>
+    const state = {
+      cfgPath: "",
+      config: null,
+      knownTargets: ["master_out", "mic_in", "line_in", "app", "group"],
+      identifyES: null
+    };
+
+    const knobCount = 5;
+    const knobTimers = new Map();
+
+    function $(id) {
+      return document.getElementById(id);
+    }
+
+    function setStatus(id, text, cls = "") {
+      const el = $(id);
+      el.textContent = text || "";
+      el.className = "status" + (cls ? " " + cls : "");
+    }
+
+    async function fetchJSON(url, opts = {}) {
+      const res = await fetch(url, opts);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body.error || ("HTTP " + res.status));
+      }
+      return body;
+    }
+
+    function effectivePort() {
+      const manual = $("portInput").value.trim();
+      if (manual) return manual;
+      return $("portSelect").value.trim();
+    }
+
+    function createKnobCards() {
+      const grid = $("knobGrid");
+      grid.innerHTML = "";
+      for (let i = 1; i <= knobCount; i++) {
+        const card = document.createElement("div");
+        card.className = "knob";
+        card.id = "knob-" + i;
+        card.innerHTML = `
+          <div class="dial"></div>
+          <div><strong>Knob ${i}</strong></div>
+          <div class="hint" id="knob-${i}-meta">waiting...</div>
+        `;
+        grid.appendChild(card);
+      }
+    }
+
+    function flashKnob(knobId, kind, delta) {
+      const card = $("knob-" + knobId);
+      if (!card) return;
+      card.classList.remove("active-rotate", "active-press");
+      if (kind === "button_press") {
+        card.classList.add("active-press");
+      } else {
+        card.classList.add("active-rotate");
+      }
+      const meta = $("knob-" + knobId + "-meta");
+      if (meta) {
+        if (kind === "button_press") meta.textContent = "button press";
+        else meta.textContent = "delta " + delta;
+      }
+
+      if (knobTimers.has(knobId)) clearTimeout(knobTimers.get(knobId));
+      knobTimers.set(knobId, setTimeout(() => {
+        card.classList.remove("active-rotate", "active-press");
+      }, 420));
+    }
+
+    function mappingRow(mapping = { knob: 1, target: "master_out", step: 0.02, name: "" }) {
+      const row = document.createElement("div");
+      row.className = "row";
+
+      const knob = document.createElement("select");
+      for (let i = 1; i <= knobCount; i++) {
+        const o = document.createElement("option");
+        o.value = String(i);
+        o.textContent = "Knob " + i;
+        knob.appendChild(o);
+      }
+      knob.value = String(mapping.knob || 1);
+
+      const target = document.createElement("select");
+      for (const t of state.knownTargets) {
+        const o = document.createElement("option");
+        o.value = t;
+        o.textContent = t;
+        target.appendChild(o);
+      }
+      target.value = mapping.target || "master_out";
+
+      const name = document.createElement("input");
+      name.placeholder = "discord.exe / music-group";
+      name.value = mapping.name || "";
+
+      const step = document.createElement("input");
+      step.type = "number";
+      step.min = "0.001";
+      step.max = "1";
+      step.step = "0.001";
+      step.value = String(mapping.step || 0.02);
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "btn-danger";
+      remove.textContent = "X";
+      remove.addEventListener("click", () => row.remove());
+
+      function syncNameState() {
+        const requiresName = target.value === "app" || target.value === "group";
+        name.disabled = !requiresName;
+        if (!requiresName) name.value = "";
+      }
+      target.addEventListener("change", syncNameState);
+      syncNameState();
+
+      row.appendChild(knob);
+      row.appendChild(target);
+      row.appendChild(name);
+      row.appendChild(step);
+      row.appendChild(remove);
+      return row;
+    }
+
+    function renderMappings(list) {
+      const host = $("mappings");
+      host.innerHTML = "";
+      if (!Array.isArray(list) || list.length === 0) {
+        host.appendChild(mappingRow());
+        return;
+      }
+      for (const m of list) host.appendChild(mappingRow(m));
+    }
+
+    function collectMappings() {
+      const rows = Array.from($("mappings").querySelectorAll(".row"));
+      return rows.map((row) => {
+        const [knob, target, name, step] = row.querySelectorAll("select,input");
+        return {
+          knob: parseInt(knob.value, 10),
+          target: target.value,
+          name: name.value.trim(),
+          step: parseFloat(step.value)
+        };
+      });
+    }
+
+    async function loadStatus() {
+      const status = await fetchJSON("/api/status");
+      state.cfgPath = status.configPath;
+      $("configPath").textContent = status.configPath;
+    }
+
+    async function loadTargets() {
+      const body = await fetchJSON("/api/targets");
+      if (Array.isArray(body.known) && body.known.length > 0) {
+        state.knownTargets = body.known;
+      }
+    }
+
+    async function loadPorts() {
+      const body = await fetchJSON("/api/ports");
+      const select = $("portSelect");
+      const previous = select.value;
+      select.innerHTML = "";
+      const ports = Array.isArray(body.ports) ? body.ports : [];
+
+      if (ports.length === 0) {
+        const o = document.createElement("option");
+        o.value = "";
+        o.textContent = "No ports detected";
+        select.appendChild(o);
+        return;
+      }
+      for (const p of ports) {
+        const o = document.createElement("option");
+        o.value = p;
+        o.textContent = p;
+        select.appendChild(o);
+      }
+      if (ports.includes(previous)) select.value = previous;
+    }
+
+    async function loadConfig() {
+      const cfg = await fetchJSON("/api/config");
+      state.config = cfg;
+      $("debugInput").checked = !!cfg.debug;
+      $("baudInput").value = String((cfg.serial && cfg.serial.baud) || 115200);
+      $("portInput").value = (cfg.serial && cfg.serial.port) || "";
+      renderMappings(cfg.mappings || []);
+      setStatus("saveStatus", "Config loaded", "ok");
+    }
+
+    async function saveConfig() {
+      try {
+        const payload = {
+          serial: {
+            port: effectivePort(),
+            baud: parseInt($("baudInput").value, 10) || 115200
+          },
+          debug: $("debugInput").checked,
+          mappings: collectMappings()
+        };
+        const saved = await fetchJSON("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        state.config = saved;
+        setStatus("saveStatus", "Config saved", "ok");
+      } catch (err) {
+        setStatus("saveStatus", err.message, "error");
+      }
+    }
+
+    function stopIdentify() {
+      if (state.identifyES) {
+        state.identifyES.close();
+        state.identifyES = null;
+      }
+      setStatus("identifyStatus", "Identify stopped");
+    }
+
+    function startIdentify() {
+      const port = effectivePort();
+      const baud = parseInt($("baudInput").value, 10) || 115200;
+      if (!port) {
+        setStatus("identifyStatus", "Select or type a serial port first", "error");
+        return;
+      }
+      stopIdentify();
+      const url = "/api/identify?port=" + encodeURIComponent(port) + "&baud=" + encodeURIComponent(String(baud));
+      const es = new EventSource(url);
+      state.identifyES = es;
+      setStatus("identifyStatus", "Listening on " + port + " @ " + baud, "ok");
+
+      es.onmessage = (msg) => {
+        try {
+          const ev = JSON.parse(msg.data);
+          if (ev.type === "event") {
+            flashKnob(ev.knobId, ev.kind, ev.delta);
+          } else if (ev.type === "error") {
+            setStatus("identifyStatus", ev.message || "stream error", "error");
+          }
+        } catch (err) {
+          setStatus("identifyStatus", "Invalid stream payload", "error");
+        }
+      };
+
+      es.onerror = () => {
+        setStatus("identifyStatus", "Identify stream disconnected", "error");
+      };
+    }
+
+    function bindEvents() {
+      $("refreshPorts").addEventListener("click", () => loadPorts().catch(err => setStatus("saveStatus", err.message, "error")));
+      $("addMapping").addEventListener("click", () => $("mappings").appendChild(mappingRow()));
+      $("saveConfig").addEventListener("click", saveConfig);
+      $("startIdentify").addEventListener("click", startIdentify);
+      $("stopIdentify").addEventListener("click", stopIdentify);
+      window.addEventListener("beforeunload", stopIdentify);
+    }
+
+    async function main() {
+      createKnobCards();
+      bindEvents();
+      try {
+        await loadStatus();
+        await loadTargets();
+        await Promise.all([loadPorts(), loadConfig()]);
+      } catch (err) {
+        setStatus("saveStatus", err.message, "error");
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>

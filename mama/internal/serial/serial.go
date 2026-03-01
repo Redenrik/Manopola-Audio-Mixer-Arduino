@@ -14,6 +14,10 @@ type Reader struct {
 	sc   *bufio.Scanner
 }
 
+func ListPorts() ([]string, error) {
+	return serial.GetPortsList()
+}
+
 func Open(portName string, baud int) (*Reader, error) {
 	mode := &serial.Mode{BaudRate: baud}
 	p, err := serial.Open(portName, mode)

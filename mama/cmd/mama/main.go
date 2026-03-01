@@ -19,8 +19,15 @@ import (
 
 func main() {
 	var cfgPath string
-	flag.StringVar(&cfgPath, "config", "internal/config/default.yaml", "path to config yaml")
+	flag.StringVar(&cfgPath, "config", "", "path to config yaml (default: auto)")
 	flag.Parse()
+
+	if cfgPath == "" {
+		cfgPath = config.ResolveDefaultPath()
+	}
+	if _, err := config.EnsureDefaultFile(cfgPath); err != nil {
+		log.Fatalf("failed to ensure config file: %v", err)
+	}
 
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
