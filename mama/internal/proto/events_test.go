@@ -22,6 +22,31 @@ func TestParseLineButtonPress(t *testing.T) {
 	}
 }
 
+func TestParseLineProtocolHello(t *testing.T) {
+	ev, err := ParseLine("V:1")
+	if err != nil {
+		t.Fatalf("ParseLine returned error: %v", err)
+	}
+	if ev.Kind != EventProtocolHello || ev.ProtocolVersion != 1 {
+		t.Fatalf("unexpected event: %+v", ev)
+	}
+}
+
+func TestParseLineProtocolHelloInvalid(t *testing.T) {
+	if _, err := ParseLine("V:0"); err == nil {
+		t.Fatal("expected error for invalid protocol version")
+	}
+}
+
+func TestIsProtocolCompatible(t *testing.T) {
+	if !IsProtocolCompatible(HostProtocolVersion) {
+		t.Fatal("expected host protocol version to be compatible")
+	}
+	if IsProtocolCompatible(HostProtocolVersion + 1) {
+		t.Fatal("expected different version to be incompatible")
+	}
+}
+
 func TestParseLineButtonReleaseRejected(t *testing.T) {
 	if _, err := ParseLine("B5:0"); err == nil {
 		t.Fatal("expected error for unsupported button value")

@@ -70,6 +70,9 @@ func main() {
 		}
 	}()
 
+	protocolAnnounced := false
+	protocolCompatible := true
+
 	for line := range lines {
 		if cfg.Debug {
 			log.Printf("RX: %s", line)
@@ -79,6 +82,24 @@ func main() {
 		if err != nil {
 			if cfg.Debug {
 				log.Printf("parse error: %v", err)
+			}
+			continue
+		}
+
+		if ev.Kind == proto.EventProtocolHello {
+			protocolAnnounced = true
+			protocolCompatible = proto.IsProtocolCompatible(ev.ProtocolVersion)
+			if protocolCompatible {
+				log.Printf("protocol version negotiated: firmware=%d host=%d", ev.ProtocolVersion, proto.HostProtocolVersion)
+			} else {
+				log.Printf("protocol mismatch: firmware=%d host=%d (dropping control events)", ev.ProtocolVersion, proto.HostProtocolVersion)
+			}
+			continue
+		}
+
+		if protocolAnnounced && !protocolCompatible {
+			if cfg.Debug {
+				log.Printf("dropping event due to incompatible protocol: %q", line)
 			}
 			continue
 		}

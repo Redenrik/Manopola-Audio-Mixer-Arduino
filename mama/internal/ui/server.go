@@ -263,6 +263,9 @@ func (s *Server) handleIdentify(w http.ResponseWriter, r *http.Request) {
 					resp["kind"] = "encoder_delta"
 				case proto.EventButtonPress:
 					resp["kind"] = "button_press"
+				case proto.EventProtocolHello:
+					resp["kind"] = "protocol_hello"
+					resp["protocolVersion"] = ev.ProtocolVersion
 				default:
 					resp["kind"] = "unknown"
 				}

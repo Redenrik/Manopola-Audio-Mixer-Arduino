@@ -7,23 +7,40 @@ import (
 	"strings"
 )
 
+const HostProtocolVersion = 1
+
 type EventKind int
 
 const (
 	EventEncoderDelta EventKind = iota
 	EventButtonPress
+	EventProtocolHello
 )
 
 type Event struct {
-	Kind   EventKind
-	KnobID int // 1..5
-	Delta  int // encoder delta steps (can be >1 or < -1)
+	Kind            EventKind
+	KnobID          int // 1..5
+	Delta           int // encoder delta steps (can be >1 or < -1)
+	ProtocolVersion int // populated for EventProtocolHello
+}
+
+func IsProtocolCompatible(version int) bool {
+	return version == HostProtocolVersion
 }
 
 func ParseLine(line string) (Event, error) {
 	line = strings.TrimSpace(line)
 	if line == "" {
 		return Event{}, errors.New("empty line")
+	}
+
+	// Protocol hello: V:<version>
+	if strings.HasPrefix(line, "V:") {
+		version, err := strconv.Atoi(strings.TrimPrefix(line, "V:"))
+		if err != nil || version <= 0 {
+			return Event{}, fmt.Errorf("bad protocol version: %q", line)
+		}
+		return Event{Kind: EventProtocolHello, ProtocolVersion: version}, nil
 	}
 
 	// Encoder: E<id>:+<n> or E<id>:-<n>
