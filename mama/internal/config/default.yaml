@@ -1,0 +1,31 @@
+serial:
+  port: "COM3"     # Windows example. On Linux: /dev/ttyACM0 or /dev/ttyUSB0
+  baud: 115200
+
+debug: true
+
+# Current backend support:
+# - implemented: master_out
+# - placeholders for future releases: mic_in, line_in, app, group
+# Keep default mappings on master_out so first run works end-to-end.
+# step = volume change per encoder "click" (0.01 = 1%, 0.02 = 2%, etc.)
+mappings:
+  - knob: 1
+    target: master_out
+    step: 0.02
+
+  - knob: 2
+    target: master_out
+    step: 0.02
+
+  - knob: 3
+    target: master_out
+    step: 0.02
+
+  - knob: 4
+    target: master_out
+    step: 0.02
+
+  - knob: 5
+    target: master_out
+    step: 0.02

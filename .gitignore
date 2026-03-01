@@ -1,0 +1,40 @@
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- IDE ----
+.vscode/
+.idea/
+*.code-workspace
+
+# ---- Arduino ----
+*.ino.cpp
+*.hex
+*.elf
+*.bin
+
+# ---- Logs ----
+*.log
+
+# ---- Environment files ----
+.env
+.env.local
+
+# ---- Build folders ----
+build/
+dist/
+target/
+bin/
+out/
+
+# ---- Python (if used) ----
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# ---- Node (if UI uses it) ----
+node_modules/
+
+# ---- Config overrides ----
+config.local.yaml
