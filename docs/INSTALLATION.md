@@ -36,6 +36,23 @@ Contents:
 - `Open Setup UI.cmd`
 - `Start Mixer.cmd`
 
+## Release Integrity (Maintainers)
+
+After generating `dist\mama-portable`, create a checksum manifest:
+
+```bash
+scripts/release/generate-checksums.sh dist/mama-portable
+```
+
+Publish `SHA256SUMS.txt` with release artifacts and verify it before publishing:
+
+```bash
+cd dist/mama-portable
+sha256sum -c SHA256SUMS.txt
+```
+
+For the full reproducible-build checklist, see [`RELEASE_REPRODUCIBLE_BUILDS.md`](RELEASE_REPRODUCIBLE_BUILDS.md).
+
 ## Non-Pollution Principles
 
 Default package behavior:
