@@ -63,6 +63,12 @@ func TestHandleIndex_IncludesWizard(t *testing.T) {
 	if !strings.Contains(body, "templateSelect") {
 		t.Fatalf("expected template selector in index html")
 	}
+	if !strings.Contains(body, "languageSelect") {
+		t.Fatalf("expected language selector in index html")
+	}
+	if !strings.Contains(body, "const i18n =") {
+		t.Fatalf("expected localization dictionary in index html")
+	}
 	if !strings.Contains(body, "applyTemplate") {
 		t.Fatalf("expected template apply control in index html")
 	}
