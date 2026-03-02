@@ -84,6 +84,26 @@ type Config struct {
 	Debug    bool      `yaml:"debug" json:"debug"`
 }
 
+type rawConfig struct {
+	Serial      SerialCfg    `yaml:"serial"`
+	Mappings    []rawMapping `yaml:"mappings"`
+	Debug       *bool        `yaml:"debug"`
+	LegacyPort  string       `yaml:"port"`
+	LegacyBaud  int          `yaml:"baud"`
+	LegacyKnobs []rawMapping `yaml:"knobs"`
+}
+
+type rawMapping struct {
+	Knob       int        `yaml:"knob"`
+	Target     TargetType `yaml:"target"`
+	Name       string     `yaml:"name"`
+	Step       float64    `yaml:"step"`
+	LegacyID   int        `yaml:"id"`
+	LegacyType TargetType `yaml:"type"`
+	LegacyApp  string     `yaml:"app"`
+	LegacyStep float64    `yaml:"volume_step"`
+}
+
 func Load(path string) (Config, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -94,12 +114,60 @@ func Load(path string) (Config, error) {
 }
 
 func ParseYAML(b []byte) (Config, error) {
-	var c Config
-	if err := yaml.Unmarshal(b, &c); err != nil {
+	var raw rawConfig
+	if err := yaml.Unmarshal(b, &raw); err != nil {
 		return Config{}, err
 	}
 
+	c := migrateRawConfig(raw)
+
 	return Validate(c)
+}
+
+func migrateRawConfig(raw rawConfig) Config {
+	c := Config{
+		Serial: raw.Serial,
+		Debug:  raw.Debug != nil && *raw.Debug,
+	}
+
+	if c.Serial.Port == "" {
+		c.Serial.Port = raw.LegacyPort
+	}
+	if c.Serial.Baud == 0 {
+		c.Serial.Baud = raw.LegacyBaud
+	}
+
+	mappings := raw.Mappings
+	if len(mappings) == 0 {
+		mappings = raw.LegacyKnobs
+	}
+
+	c.Mappings = make([]Mapping, 0, len(mappings))
+	for _, rm := range mappings {
+		m := Mapping{
+			Knob:   rm.Knob,
+			Target: rm.Target,
+			Name:   rm.Name,
+			Step:   rm.Step,
+		}
+
+		if m.Knob == 0 {
+			m.Knob = rm.LegacyID
+		}
+		if m.Target == "" {
+			m.Target = rm.LegacyType
+		}
+		if m.Name == "" {
+			m.Name = rm.LegacyApp
+		}
+		if m.Step == 0 {
+			m.Step = rm.LegacyStep
+		}
+
+		c.Mappings = append(c.Mappings, m)
+	}
+
+	return c
 }
 
 func Validate(c Config) (Config, error) {

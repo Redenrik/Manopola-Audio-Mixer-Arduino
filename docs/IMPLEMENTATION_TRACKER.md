@@ -101,7 +101,15 @@ Legend:
     - `mama/internal/audio/backend_unix.go`
     - `mama/internal/audio/backend_windows.go`
     - `mama/internal/audio/backend_contract_test.go`
-- [ ] `TODO` Add config migration/compatibility tests for future schema evolution.
+- [x] `DONE` Add config migration/compatibility tests for future schema evolution.
+  - Implemented:
+    - Added config parsing compatibility shims for legacy aliases (`port`/`baud`, `knobs`, `id`, `type`, `app`, `volume_step`).
+    - Added migration/precedence tests to ensure legacy configs load while current schema keys remain authoritative when both are present.
+    - Documented accepted compatibility aliases in README config docs.
+  - Changed files/tests:
+    - `mama/internal/config/config.go`
+    - `mama/internal/config/config_test.go`
+    - `README.md`
 
 ### B. Firmware-side validation
 - [ ] `TODO` Add stress tests for fast encoder spin handling and button debounce edge cases.
@@ -149,6 +157,7 @@ Legend:
 - 2026-03-02: Added long-run soak verification plan and scripted artifacts (`scripts/soak/run_host_soak.sh`) with timestamped outputs under `artifacts/soak/`. Verified with `go test ./...` and `scripts/soak/run_host_soak.sh 3`.
 - 2026-03-02: Added host integration tests with recorded serial fixtures for mixed valid/malformed bursts and disconnect handling. Refactored session loop to support fixture-driven channel replay while preserving runtime behavior. Verified with `go test ./...`.
 - 2026-03-02: Added audio backend contract coverage for all currently supported/declared target types by extracting shared backend logic behind a mockable volume controller and adding deterministic tests for `master_out` semantics, unsupported target rejection, and error propagation. Verified with `go test ./...`.
+- 2026-03-02: Added config schema migration compatibility for legacy aliases (top-level `port`/`baud`, `knobs`, and mapping alias keys), plus tests covering migration and current-schema precedence; documented aliases in README. Verified with `go test ./...`.
 
 ---
 
