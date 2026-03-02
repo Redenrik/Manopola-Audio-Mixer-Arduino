@@ -259,7 +259,16 @@ Legend:
     - `mama/internal/ui/server_test.go`
     - `README.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
-- [ ] `TODO` Add mapping templates (streaming/conferencing/music/gaming).
+- [x] `DONE` Add mapping templates (streaming/conferencing/music/gaming).
+  - Implemented:
+    - Added four built-in mapping template presets in setup UI (streaming, conferencing, music, gaming) with one-click apply behavior that hydrates the editable mappings grid.
+    - Added template selector + apply controls to the mappings panel while preserving existing manual mapping edits and save flow.
+    - Extended setup UI server index coverage and README feature/setup docs to include the new template workflow.
+  - Changed files/tests:
+    - `mama/internal/ui/static/index.html`
+    - `mama/internal/ui/server_test.go`
+    - `README.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 - [ ] `TODO` Add config backup/restore/import/export from UI.
 - [ ] `TODO` Add localization framework and initial EN/IT coverage.
 - [ ] `TODO` Add accessibility pass (keyboard navigation, labels, contrast, status clarity).
@@ -376,6 +385,7 @@ Legend:
 
 - 2026-03-02: Shipped setup UI first-run guided wizard (detect board -> test port -> map knobs -> save -> verify), including step state/status wiring to existing port refresh/test/identify/save actions, added server test coverage for wizard controls in the embedded page, and updated README setup guidance. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
 
+- 2026-03-02: Added setup UI mapping templates for streaming/conferencing/music/gaming presets with one-click apply into the existing mapping editor, extended index-page server test assertions for template controls, and documented template usage in README setup/feature sections. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
 
 ---
 

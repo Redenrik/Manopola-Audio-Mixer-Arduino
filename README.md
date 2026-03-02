@@ -26,6 +26,7 @@ This repository now includes:
   - setup UI serial connection test button for validating port + baud before saving
   - setup UI first-run guided wizard (detect board -> test port -> map knobs -> save -> verify)
   - setup UI live identify mode (rotate/press a knob and the matching indicator flashes)
+  - setup UI mapping templates for streaming/conferencing/music/gaming presets
   - setup API `/api/targets` now returns discovered backend targets (`discovered`) alongside compatibility fields (`known`, `supported`)
 - Additional target support:
   - `app` per-session volume + mute on Unix hosts with `pactl` sink-input controls
@@ -104,7 +105,7 @@ scripts/firmware/run_i2c_robustness_test.sh
 - `run_encoder_stress_test.sh`: validates fast encoder spin + button debounce edge cases.
 - `run_i2c_robustness_test.sh`: validates slave I2C packet integrity under burst-load accumulator and button-edge churn.
 
-Then open the shown local URL and use the first-run wizard (or manual controls) to detect the board, test connection, map knobs, save, and verify.
+Then open the shown local URL and use the first-run wizard (or manual controls) to detect the board, test connection, optionally apply a mapping template (streaming/conferencing/music/gaming), map knobs, save, and verify.
 
 Start runtime daemon:
 
