@@ -1,6 +1,7 @@
 package audio
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
@@ -35,6 +36,8 @@ type baseBackend struct {
 type appSessionController interface {
 	Adjust(selectorToken string, step float64, deltaSteps int) error
 	ToggleMute(selectorToken string) error
+	AdjustGroup(selectors []config.Selector, step float64, deltaSteps int) error
+	ToggleMuteGroup(selectors []config.Selector) error
 	ListTargets() ([]DiscoveredTarget, error)
 }
 
@@ -58,6 +61,16 @@ func (b *baseBackend) Adjust(target config.TargetType, name string, step float64
 		}
 		return b.app.Adjust(name, step, deltaSteps)
 	}
+	if target == config.TargetGroup {
+		if b.app == nil {
+			return Unsupported(target)
+		}
+		selectors, err := parseGroupSelectorsToken(name)
+		if err != nil {
+			return err
+		}
+		return b.app.AdjustGroup(selectors, step, deltaSteps)
+	}
 
 	controller := b.controllerFor(target)
 	if controller == nil {
@@ -79,6 +92,16 @@ func (b *baseBackend) ToggleMute(target config.TargetType, name string) error {
 			return Unsupported(target)
 		}
 		return b.app.ToggleMute(name)
+	}
+	if target == config.TargetGroup {
+		if b.app == nil {
+			return Unsupported(target)
+		}
+		selectors, err := parseGroupSelectorsToken(name)
+		if err != nil {
+			return err
+		}
+		return b.app.ToggleMuteGroup(selectors)
 	}
 
 	controller := b.controllerFor(target)
@@ -127,4 +150,19 @@ func parseSelectorToken(token string) config.Selector {
 		}
 	}
 	return config.Selector{Kind: kind, Value: value}
+}
+
+func parseGroupSelectorsToken(token string) ([]config.Selector, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return nil, fmt.Errorf("group target requires selectors token")
+	}
+	var selectors []config.Selector
+	if err := json.Unmarshal([]byte(token), &selectors); err != nil {
+		return nil, fmt.Errorf("decode group selectors token: %w", err)
+	}
+	if len(selectors) == 0 {
+		return nil, fmt.Errorf("group target requires at least one selector")
+	}
+	return selectors, nil
 }

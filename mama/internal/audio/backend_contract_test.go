@@ -64,12 +64,14 @@ func (f *fakeVolumeController) Unmute() error {
 }
 
 type fakeAppSessionController struct {
-	adjustCalls []string
-	toggleCalls []string
-	targets     []DiscoveredTarget
-	adjustErr   error
-	toggleErr   error
-	listErr     error
+	adjustCalls      []string
+	toggleCalls      []string
+	adjustGroupCalls [][]config.Selector
+	toggleGroupCalls [][]config.Selector
+	targets          []DiscoveredTarget
+	adjustErr        error
+	toggleErr        error
+	listErr          error
 }
 
 func (f *fakeAppSessionController) Adjust(selectorToken string, step float64, deltaSteps int) error {
@@ -87,6 +89,18 @@ func (f *fakeAppSessionController) ListTargets() ([]DiscoveredTarget, error) {
 		return nil, f.listErr
 	}
 	return f.targets, nil
+}
+
+func (f *fakeAppSessionController) AdjustGroup(selectors []config.Selector, step float64, deltaSteps int) error {
+	dup := append([]config.Selector(nil), selectors...)
+	f.adjustGroupCalls = append(f.adjustGroupCalls, dup)
+	return f.adjustErr
+}
+
+func (f *fakeAppSessionController) ToggleMuteGroup(selectors []config.Selector) error {
+	dup := append([]config.Selector(nil), selectors...)
+	f.toggleGroupCalls = append(f.toggleGroupCalls, dup)
+	return f.toggleErr
 }
 func TestBackendAdjustMasterOutContract(t *testing.T) {
 	fake := &fakeVolumeController{curVolume: 50}
@@ -154,7 +168,7 @@ func TestBackendToggleMuteMasterOutContract(t *testing.T) {
 func TestBackendUnsupportedTargetsContract(t *testing.T) {
 	fake := &fakeVolumeController{curVolume: 50}
 	b := &baseBackend{master: fake}
-	unsupported := []config.TargetType{config.TargetGroup}
+	unsupported := []config.TargetType{}
 
 	for _, target := range unsupported {
 		t.Run(string(target), func(t *testing.T) {
@@ -310,6 +324,33 @@ func TestBackendAppUnsupportedWithoutController(t *testing.T) {
 	}
 }
 
+func TestBackendGroupContract(t *testing.T) {
+	app := &fakeAppSessionController{}
+	b := &baseBackend{master: &fakeVolumeController{}, app: app}
+
+	token := `[{"kind":"exact","value":"Discord"},{"kind":"exe","value":"spotify"}]`
+	if err := b.Adjust(config.TargetGroup, token, 0.02, 1); err != nil {
+		t.Fatalf("Adjust(group) error = %v", err)
+	}
+	if len(app.adjustGroupCalls) != 1 || len(app.adjustGroupCalls[0]) != 2 {
+		t.Fatalf("adjustGroupCalls = %#v, want one call with two selectors", app.adjustGroupCalls)
+	}
+
+	if err := b.ToggleMute(config.TargetGroup, token); err != nil {
+		t.Fatalf("ToggleMute(group) error = %v", err)
+	}
+	if len(app.toggleGroupCalls) != 1 || len(app.toggleGroupCalls[0]) != 2 {
+		t.Fatalf("toggleGroupCalls = %#v, want one call with two selectors", app.toggleGroupCalls)
+	}
+}
+
+func TestBackendGroupUnsupportedWithoutController(t *testing.T) {
+	b := &baseBackend{master: &fakeVolumeController{}, app: nil}
+	if err := b.Adjust(config.TargetGroup, `[{"kind":"exact","value":"Discord"}]`, 0.02, 1); err == nil {
+		t.Fatal("Adjust(group) expected unsupported error")
+	}
+}
+
 func TestParseSelectorToken(t *testing.T) {
 	sel := parseSelectorToken("exe:discord")
 	if sel.Kind != config.SelectorExe || sel.Value != "discord" {
@@ -318,5 +359,15 @@ func TestParseSelectorToken(t *testing.T) {
 	fallback := parseSelectorToken("Discord")
 	if fallback.Kind != config.SelectorExact || fallback.Value != "Discord" {
 		t.Fatalf("unexpected fallback selector: %#v", fallback)
+	}
+}
+
+func TestParseGroupSelectorsToken(t *testing.T) {
+	selectors, err := parseGroupSelectorsToken(`[{"kind":"exact","value":"Discord"}]`)
+	if err != nil {
+		t.Fatalf("parseGroupSelectorsToken() error = %v", err)
+	}
+	if len(selectors) != 1 || selectors[0].Kind != config.SelectorExact {
+		t.Fatalf("unexpected selectors: %#v", selectors)
 	}
 }

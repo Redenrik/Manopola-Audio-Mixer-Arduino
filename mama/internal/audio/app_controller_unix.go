@@ -76,6 +76,43 @@ func (u *unixAppSessionController) ToggleMute(selectorToken string) error {
 	return err
 }
 
+func (u *unixAppSessionController) AdjustGroup(selectors []config.Selector, step float64, deltaSteps int) error {
+	targets, err := u.selectSessions(selectors)
+	if err != nil {
+		return err
+	}
+	for _, target := range targets {
+		next := target.volume + int(step*100*float64(deltaSteps))
+		if next < 0 {
+			next = 0
+		}
+		if next > 100 {
+			next = 100
+		}
+		if _, err := u.run("pactl", "set-sink-input-volume", target.id, fmt.Sprintf("%d%%", next)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (u *unixAppSessionController) ToggleMuteGroup(selectors []config.Selector) error {
+	targets, err := u.selectSessions(selectors)
+	if err != nil {
+		return err
+	}
+	for _, target := range targets {
+		next := "1"
+		if target.isMuted {
+			next = "0"
+		}
+		if _, err := u.run("pactl", "set-sink-input-mute", target.id, next); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (u *unixAppSessionController) ListTargets() ([]DiscoveredTarget, error) {
 	sessions, err := u.listSessions()
 	if err != nil {
@@ -104,6 +141,31 @@ func (u *unixAppSessionController) selectSession(selectorToken string) (appSessi
 		}
 	}
 	return appSession{}, fmt.Errorf("no app session matched selector %q", selectorToken)
+}
+
+func (u *unixAppSessionController) selectSessions(selectors []config.Selector) ([]appSession, error) {
+	sessions, err := u.listSessions()
+	if err != nil {
+		return nil, err
+	}
+	matched := make([]appSession, 0, len(sessions))
+	seen := make(map[string]struct{}, len(sessions))
+	for _, selector := range selectors {
+		for _, s := range sessions {
+			if !sessionMatchesSelector(s, selector) {
+				continue
+			}
+			if _, exists := seen[s.id]; exists {
+				continue
+			}
+			seen[s.id] = struct{}{}
+			matched = append(matched, s)
+		}
+	}
+	if len(matched) == 0 {
+		return nil, fmt.Errorf("no app sessions matched group selectors")
+	}
+	return matched, nil
 }
 
 func (u *unixAppSessionController) listSessions() ([]appSession, error) {

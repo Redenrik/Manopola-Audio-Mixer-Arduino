@@ -29,7 +29,7 @@ This document defines what MAMA versions are supported, what environments are ex
 | `mic_in` | Supported on Windows + Unix hosts with capture endpoint tooling available |
 | `line_in` | Supported on Windows + Unix hosts with capture endpoint tooling available |
 | `app` | Supported on Unix hosts with PulseAudio (`pactl`) session controls available |
-| `group` | Planned (not yet implemented) |
+| `group` | Supported on Unix hosts with `pactl` sink-input control; unsupported on Windows (pending implementation). |
 
 ## 2) Versioning Policy
 

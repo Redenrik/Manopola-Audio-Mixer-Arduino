@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -195,6 +196,11 @@ func runSessionFromChannels(ctx context.Context, cfg *config.Config, b audio.Bac
 func backendTargetName(m config.Mapping) string {
 	if m.Target == config.TargetApp && m.Selector != nil {
 		return string(m.Selector.Kind) + ":" + m.Selector.Value
+	}
+	if m.Target == config.TargetGroup && len(m.Selectors) > 0 {
+		if b, err := json.Marshal(m.Selectors); err == nil {
+			return string(b)
+		}
 	}
 	return m.Name
 }

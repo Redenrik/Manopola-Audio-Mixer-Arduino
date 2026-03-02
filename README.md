@@ -28,8 +28,7 @@ This repository now includes:
   - setup API `/api/targets` now returns discovered backend targets (`discovered`) alongside compatibility fields (`known`, `supported`)
 - Additional target support:
   - `app` per-session volume + mute on Unix hosts with `pactl` sink-input controls
-- Planned / not yet implemented in audio backend:
-  - app groups (`group`)
+  - `group` grouped app/session volume + mute on Unix hosts with `pactl` sink-input controls
 
 ## Repository Layout
 
@@ -151,7 +150,7 @@ profiles:
 - `mic_in` (implemented on Windows and Unix hosts with `pactl` or `amixer` available)
 - `line_in` (implemented on Windows and Unix hosts with capture tooling available; routed via capture endpoint controls)
 - `app` (implemented on Unix hosts with `pactl`; requires `selector`)
-- `group` (planned, requires `selectors`)
+- `group` (implemented on Unix hosts with `pactl`; requires `selectors`)
 
 `selector.kind` / `selectors[].kind` values:
 - `exact` (exact app/session label match)
