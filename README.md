@@ -227,9 +227,17 @@ Optional update metadata manifests can be generated with:
 scripts/release/generate-update-manifest.sh <archive-path> <tag> <download-url>
 ```
 
+Automated release-note markdown can be generated with:
+
+```bash
+scripts/release/generate-release-notes.sh <tag> [previous-tag]
+```
+
 Reproducible build guidance is documented in [docs/RELEASE_REPRODUCIBLE_BUILDS.md](docs/RELEASE_REPRODUCIBLE_BUILDS.md).
 
 Release packaging automation (portable + optional installer/update artifacts) is implemented in `.github/workflows/release-artifacts.yml`.
+
+Release note automation is implemented in `.github/workflows/release-notes.yml` (generates markdown, updates release notes body, and uploads a `release-notes-<tag>.md` asset).
 
 Release signing/notarization automation and maintainer setup details are documented in [docs/SIGNING_AND_NOTARIZATION.md](docs/SIGNING_AND_NOTARIZATION.md) and implemented in `.github/workflows/release-signing.yml`.
 

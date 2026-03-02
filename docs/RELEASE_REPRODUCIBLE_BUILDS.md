@@ -20,6 +20,8 @@ This document defines the minimum repeatable release flow for MAMA artifacts.
 
 Use `.github/workflows/release-artifacts.yml` for tagged releases. It builds portable archives for Linux/macOS/Windows and optionally emits Windows installer + update manifest assets.
 
+Use `.github/workflows/release-notes.yml` to generate deterministic release-note markdown from git history and publish it back to the GitHub release.
+
 For local Windows-only packaging from repository root:
 
 ```powershell
@@ -49,6 +51,19 @@ This writes:
 
 - `dist/SHA256SUMS.txt`
 
+### Generate release notes
+
+```bash
+scripts/release/generate-release-notes.sh v1.0.0
+```
+
+Optionally provide an explicit previous tag to pin the comparison range:
+
+```bash
+scripts/release/generate-release-notes.sh v1.0.0 v0.9.0
+```
+
+This writes `release-notes-v1.0.0.md` by default, grouped by conventional-commit prefixes when available.
 
 ### Sign release artifacts
 

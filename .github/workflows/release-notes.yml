@@ -1,0 +1,79 @@
+name: Release Notes
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag (for manual runs)
+        required: true
+        type: string
+      previous_tag:
+        description: Optional previous tag override
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tags
+        id: tags
+        shell: bash
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+          INPUT_PREVIOUS_TAG: ${{ inputs.previous_tag }}
+          EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          release_tag="$EVENT_RELEASE_TAG"
+          if [ -z "$release_tag" ]; then
+            release_tag="$INPUT_RELEASE_TAG"
+          fi
+          if [ -z "$release_tag" ]; then
+            echo "release tag not provided" >&2
+            exit 1
+          fi
+
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "previous_tag=$INPUT_PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes markdown
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          if [ -n "${{ steps.tags.outputs.previous_tag }}" ]; then
+            scripts/release/generate-release-notes.sh "${{ steps.tags.outputs.release_tag }}" "${{ steps.tags.outputs.previous_tag }}" "dist/release-notes-${{ steps.tags.outputs.release_tag }}.md"
+          else
+            scripts/release/generate-release-notes.sh "${{ steps.tags.outputs.release_tag }}" "" "dist/release-notes-${{ steps.tags.outputs.release_tag }}.md"
+          fi
+
+      - name: Upload release notes to GitHub release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.tags.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          notes_file="dist/release-notes-${RELEASE_TAG}.md"
+          gh release edit "$RELEASE_TAG" --notes-file "$notes_file"
+          gh release upload "$RELEASE_TAG" "$notes_file" --clobber
+
+      - name: Upload workflow artifact
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-${{ steps.tags.outputs.release_tag }}
+          path: dist/release-notes-${{ steps.tags.outputs.release_tag }}.md
+          if-no-files-found: error
