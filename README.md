@@ -93,6 +93,12 @@ go test ./...
 go run ./cmd/mama-ui
 ```
 
+Firmware stress validation (fast encoder spin + button debounce edge cases):
+
+```bash
+scripts/firmware/run_encoder_stress_test.sh
+```
+
 Then open the shown local URL, set serial port/baud, map knobs, and save.
 
 Start runtime daemon:
