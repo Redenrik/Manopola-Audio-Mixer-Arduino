@@ -280,7 +280,16 @@ Legend:
     - `README.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 - [ ] `TODO` Add localization framework and initial EN/IT coverage.
-- [ ] `TODO` Add accessibility pass (keyboard navigation, labels, contrast, status clarity).
+- [x] `DONE` Add accessibility pass (keyboard navigation, labels, contrast, status clarity).
+  - Implemented:
+    - Improved setup UI keyboard accessibility with explicit `:focus-visible` styles for all form controls/buttons and updated status contrast tokens for clearer state visibility.
+    - Added accessibility metadata in the setup page: ARIA labels on key controls, `role="status"` live regions for dynamic status messages, and assertive error announcement behavior.
+    - Updated mapping-row controls to expose accessible remove semantics and expanded setup UI server tests to assert accessibility markers in the embedded HTML.
+  - Changed files/tests:
+    - `mama/internal/ui/static/index.html`
+    - `mama/internal/ui/server_test.go`
+    - `README.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 
 ---
 
@@ -397,6 +406,8 @@ Legend:
 - 2026-03-02: Added setup UI mapping templates for streaming/conferencing/music/gaming presets with one-click apply into the existing mapping editor, extended index-page server test assertions for template controls, and documented template usage in README setup/feature sections. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
 
 - 2026-03-02: Added setup UI config backup/restore/import/export workflow with browser-local snapshot controls and JSON file import/export support; reused shared form serialization for save compatibility, expanded setup UI index-page assertions, and updated README usage docs. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
+
+- 2026-03-02: Completed setup UI accessibility pass with keyboard focus-visible styling, ARIA labels + status live regions (including assertive error announcements), and accessible mapping-row remove semantics; expanded setup UI server assertions and README feature docs. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
 
 ---
 
