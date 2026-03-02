@@ -407,7 +407,16 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `README.md`
     - `CONTRIBUTING.md`
-- [ ] `TODO` Run v1.0 readiness review and publish acceptance criteria.
+- [x] `DONE` Run v1.0 readiness review and publish acceptance criteria.
+  - Implemented:
+    - Added a dedicated `v1.0` readiness review document with explicit acceptance criteria and evidence requirements across functionality, reliability, release quality gates, and governance checks.
+    - Linked readiness criteria into maintainer workflows via the release QA checklist and documentation index to keep release sign-off consistent.
+    - Verified repository checks remain green after documentation updates.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `README.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 
 ---
 
@@ -462,6 +471,10 @@ Legend:
 - 2026-03-02: Added setup UI localization framework with initial English/Italian coverage (persisted language selector, localized wizard/template/status copy, and dynamic re-rendering of key UI text), expanded setup UI index-page assertions, and documented language toggle behavior in README. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui ./...`.
 
 - 2026-03-02: Added automated changelog/release-note generation by shipping `scripts/release/generate-release-notes.sh` (deterministic tag-range markdown), plus `.github/workflows/release-notes.yml` to publish generated notes into GitHub releases and upload a markdown asset. Updated README/release docs/checklist for maintainer usage. Verified with `bash -n scripts/release/generate-release-notes.sh`, `bash -n scripts/release/generate-checksums.sh`, and manual script execution against a temporary tagged git repo fixture.
+
+---
+
+- 2026-03-02: Published `v1.0` readiness acceptance criteria in `docs/V1_READINESS_REVIEW.md` (including GO/NO-GO decision template and evidence expectations), linked it from the release QA checklist and README documentation index, and completed the tracker governance item. Verified with `cd mama && go test ./...`.
 
 ---
 
