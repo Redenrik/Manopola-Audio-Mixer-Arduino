@@ -32,6 +32,7 @@ Common causes:
 - `app` mapping missing `selector` (or invalid selector kind/value)
 - `group` mapping missing `selectors`
 - overlapping `app/group` mappings with identical precedence (set distinct `priority` values)
+- group selector set matched no active app sessions (ensure target apps are running and selector kinds/values match)
 - negative mapping `priority`
 
 ## Press action does not mute

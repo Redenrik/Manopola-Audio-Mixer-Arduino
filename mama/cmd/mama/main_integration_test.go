@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -114,5 +115,17 @@ func TestBackendTargetName_AppSelector(t *testing.T) {
 	m := config.Mapping{Target: config.TargetApp, Selector: &config.Selector{Kind: config.SelectorExe, Value: "discord"}}
 	if got := backendTargetName(m); got != "exe:discord" {
 		t.Fatalf("backendTargetName()=%q want %q", got, "exe:discord")
+	}
+}
+
+func TestBackendTargetName_GroupSelectors(t *testing.T) {
+	m := config.Mapping{Target: config.TargetGroup, Selectors: []config.Selector{{Kind: config.SelectorExact, Value: "Discord"}, {Kind: config.SelectorExe, Value: "spotify"}}}
+	got := backendTargetName(m)
+	var selectors []config.Selector
+	if err := json.Unmarshal([]byte(got), &selectors); err != nil {
+		t.Fatalf("backendTargetName() produced invalid json: %v", err)
+	}
+	if len(selectors) != 2 || selectors[1].Kind != config.SelectorExe {
+		t.Fatalf("unexpected selectors payload: %#v", selectors)
 	}
 }

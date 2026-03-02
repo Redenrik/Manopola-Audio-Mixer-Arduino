@@ -32,7 +32,7 @@ debug: true
 # Current backend support:
 # - implemented: master_out
 # - implemented: app (Unix hosts with pactl sink-input control)
-# - placeholder for future releases: group
+# - implemented: group (Unix hosts with pactl sink-input control)
 # Keep default mappings on master_out so first run works end-to-end.
 # step = volume change per encoder "click" (0.01 = 1%, 0.02 = 2%, etc.)
 mappings:

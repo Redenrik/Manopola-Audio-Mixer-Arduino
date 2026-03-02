@@ -88,3 +88,44 @@ func TestUnixAppControllerAdjustAndToggle(t *testing.T) {
 		t.Fatalf("unexpected mute call: %s", calls[3])
 	}
 }
+
+func TestUnixAppControllerGroupAdjustAndToggle(t *testing.T) {
+	var calls []string
+	controller := &unixAppSessionController{run: func(name string, args ...string) (string, error) {
+		cmd := name + " " + strings.Join(args, " ")
+		calls = append(calls, cmd)
+		if len(args) >= 2 && args[0] == "list" && args[1] == "sink-inputs" {
+			return `Sink Input #7
+    Volume: front-left: 65536 / 100% / 0.00 dB
+    Mute: no
+    Properties:
+        application.name = "Discord"
+        application.process.binary = "discord"
+Sink Input #9
+    Volume: front-left: 32768 / 50% / -18.06 dB
+    Mute: yes
+    Properties:
+        application.name = "Spotify"
+        application.process.binary = "spotify"`, nil
+		}
+		return "", nil
+	}}
+
+	selectors := []config.Selector{{Kind: config.SelectorExact, Value: "Discord"}, {Kind: config.SelectorExe, Value: "spotify"}}
+	if err := controller.AdjustGroup(selectors, 0.02, -2); err != nil {
+		t.Fatalf("AdjustGroup error: %v", err)
+	}
+	if err := controller.ToggleMuteGroup(selectors); err != nil {
+		t.Fatalf("ToggleMuteGroup error: %v", err)
+	}
+
+	if len(calls) < 6 {
+		t.Fatalf("calls=%v", calls)
+	}
+	if calls[1] != "pactl set-sink-input-volume 7 96%" || calls[2] != "pactl set-sink-input-volume 9 46%" {
+		t.Fatalf("unexpected group volume calls: %v", calls)
+	}
+	if calls[4] != "pactl set-sink-input-mute 7 1" || calls[5] != "pactl set-sink-input-mute 9 0" {
+		t.Fatalf("unexpected group mute calls: %v", calls)
+	}
+}

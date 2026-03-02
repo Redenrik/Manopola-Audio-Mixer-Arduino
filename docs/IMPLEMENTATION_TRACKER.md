@@ -75,7 +75,24 @@ Legend:
     - `docs/TROUBLESHOOTING.md`
     - `docs/SUPPORT_POLICY.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
-- [ ] `TODO` Implement `group` target for grouped app/session controls.
+- [x] `DONE` Implement `group` target for grouped app/session controls.
+  - Implemented:
+    - Extended backend routing so `group` mappings dispatch to dedicated grouped session operations while preserving backward-compatible behavior for existing targets.
+    - Added Unix grouped app/session volume + mute control using `pactl` sink-input discovery, multi-selector matching, and de-duplicated per-session command application.
+    - Wired runtime mapping token serialization for `group` selectors, expanded backend/controller/runtime tests, and updated support/config/troubleshooting documentation for shipped scope.
+  - Changed files/tests:
+    - `mama/internal/audio/backend_core.go`
+    - `mama/internal/audio/backend_contract_test.go`
+    - `mama/internal/audio/app_controller_unix.go`
+    - `mama/internal/audio/app_controller_unix_test.go`
+    - `mama/internal/audio/app_controller_windows.go`
+    - `mama/cmd/mama/main.go`
+    - `mama/cmd/mama/main_integration_test.go`
+    - `mama/internal/config/config.go`
+    - `mama/internal/config/default.yaml`
+    - `README.md`
+    - `docs/SUPPORT_POLICY.md`
+    - `docs/TROUBLESHOOTING.md`
 - [x] `DONE` Extend `/api/targets` to expose real discoverable targets (not placeholders).
   - Implemented:
     - Introduced a typed audio discovery model (`audio.DiscoveredTarget`) and migrated backend target listing to return structured metadata (`id`, `type`, `name`).
@@ -323,6 +340,7 @@ Legend:
 - 2026-03-02: Implemented `line_in` backend support by adding dedicated backend routing/controller wiring (Unix + Windows capture tooling path), extending audio backend contract tests for `line_in` adjust/mute/discovery behavior, and updating user-facing docs/support matrix to mark `line_in` as supported where capture controls are available. Verified with `cd mama && go test ./internal/audio ./...`.
 
 - 2026-03-02: Implemented `app` per-process/session backend support on Unix hosts via `pactl` sink-input controls, including selector-token runtime wiring, backend discovery updates, and contract/parser tests for app adjust/mute/list behavior; updated README/troubleshooting/support docs with current scope. Verified with `cd mama && go test ./...`.
+- 2026-03-02: Implemented `group` target backend support via grouped app/session selector routing (Unix `pactl` sink-input control), including runtime selector token serialization, backend/controller contract tests, and documentation/support-matrix updates. Verified with `cd mama && go test ./...`.
 
 
 ---
