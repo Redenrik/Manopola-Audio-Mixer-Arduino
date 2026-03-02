@@ -150,7 +150,16 @@ Legend:
   - Changed files/tests:
     - `.github/workflows/ci.yml`
     - `README.md`
-- [ ] `TODO` Add release artifact checksums and reproducible-build notes.
+- [x] `DONE` Add release artifact checksums and reproducible-build notes.
+  - Implemented:
+    - Added a reusable release checksum script that generates deterministic SHA-256 manifests for packaged artifacts with `sha256sum`/`shasum` fallback support.
+    - Added a reproducible-build guidance document covering release prerequisites, deterministic build flow, checksum generation, and verification commands.
+    - Updated maintainer-facing installation and repository docs to include checksum generation and reproducible-build references.
+  - Changed files/tests:
+    - `scripts/release/generate-checksums.sh`
+    - `docs/RELEASE_REPRODUCIBLE_BUILDS.md`
+    - `docs/INSTALLATION.md`
+    - `README.md`
 - [ ] `TODO` Add signing/notarization workflow docs and automation.
 - [ ] `TODO` Add optional installer/update path while preserving portable mode.
 - [ ] `TODO` Add automated changelog/release-notes generation.
@@ -192,6 +201,8 @@ Legend:
 - 2026-03-02: Added CI security scanning workflow (`.github/workflows/security-scan.yml`) covering dependency verification (`go mod verify` + tidy drift) and vulnerability scanning (`govulncheck ./...`), plus README CI documentation updates. Verified locally with `cd mama && go test ./...` and `cd mama && go mod verify`.
 
 - 2026-03-02: Remediated CI vulnerability-scan false failures caused by scanning with an out-of-date Go stdlib baseline by upgrading CI/security workflows from Go `1.22.x` to `1.24.x`; this aligns `govulncheck` with patched standard-library fixes while preserving module compatibility checks. Verified locally with `cd mama && go test ./...` and `cd mama && go mod verify` (network-limited environment prevented local `govulncheck` install).
+
+- 2026-03-02: Added release checksum generation (`scripts/release/generate-checksums.sh`) and reproducible-build guidance (`docs/RELEASE_REPRODUCIBLE_BUILDS.md`), then documented maintainer checksum steps in installation/README docs. Verified with `scripts/release/generate-checksums.sh <temp_artifacts>` + `sha256sum -c`, and `cd mama && go test ./...`.
 
 ---
 

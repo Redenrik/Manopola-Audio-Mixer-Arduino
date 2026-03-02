@@ -40,6 +40,7 @@ This repository now includes:
 - `mama/internal/*`: config, protocol parser, serial I/O, audio backend, setup UI server.
 - `docs/`: architecture, installation, roadmap, operations.
 - `scripts/windows/`: release packaging helper scripts.
+- `scripts/release/`: release checksum generation utilities.
 
 ## Hardware Wiring
 
@@ -158,6 +159,16 @@ Security workflow:
 - operating system: `ubuntu-latest`
 - commands: `cd mama && go mod verify`, `cd mama && go mod tidy && git diff --exit-code -- go.mod go.sum`, and `cd mama && govulncheck ./...`
 
+## Release Integrity
+
+Maintainers can generate SHA-256 checksum manifests for packaged artifacts with:
+
+```bash
+scripts/release/generate-checksums.sh dist/mama-portable
+```
+
+Reproducible build guidance is documented in [docs/RELEASE_REPRODUCIBLE_BUILDS.md](docs/RELEASE_REPRODUCIBLE_BUILDS.md).
+
 ## Non-Terminal User Flow
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for packaging and release instructions.
@@ -176,6 +187,7 @@ This keeps configuration and binaries in one folder and avoids installing system
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/INSTALLATION.md](docs/INSTALLATION.md)
 - [docs/ROADMAP.md](docs/ROADMAP.md)
+- [docs/RELEASE_REPRODUCIBLE_BUILDS.md](docs/RELEASE_REPRODUCIBLE_BUILDS.md)
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 
