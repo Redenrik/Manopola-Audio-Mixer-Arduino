@@ -29,7 +29,8 @@ Common causes:
 - missing `serial.port`
 - duplicate knob IDs
 - invalid `step` (must be `> 0` and `<= 1`)
-- `app/group` mapping missing `name`
+- `app` mapping missing `selector` (or invalid selector kind/value)
+- `group` mapping missing `selectors`
 
 ## Press action does not mute
 

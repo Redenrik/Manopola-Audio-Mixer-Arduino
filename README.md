@@ -123,14 +123,38 @@ mappings:
   - knob: 1
     target: master_out
     step: 0.02
+
+  - knob: 2
+    target: app
+    selector:
+      kind: exe
+      value: "discord.exe"
+    step: 0.02
+
+  - knob: 3
+    target: group
+    selectors:
+      - kind: contains
+        value: "Game"
+      - kind: prefix
+        value: "Spotify"
+    step: 0.02
 ```
 
 `target` values:
 - `master_out` (implemented)
 - `mic_in` (planned)
 - `line_in` (planned)
-- `app` (planned, requires `name`)
-- `group` (planned, requires `name`)
+- `app` (planned, requires `selector`)
+- `group` (planned, requires `selectors`)
+
+`selector.kind` / `selectors[].kind` values:
+- `exact` (exact app/session label match)
+- `contains` (substring match)
+- `prefix` (prefix match)
+- `suffix` (suffix match)
+- `glob` (shell-style wildcard, e.g. `*game*`)
+- `exe` (executable name match, e.g. `discord.exe`)
 
 Validation rules:
 - `serial.port` required
@@ -138,12 +162,16 @@ Validation rules:
 - at least one mapping required
 - unique `knob` IDs and `knob > 0`
 - `step` in `(0, 1]`
-- `name` required for `app/group`, forbidden otherwise
+- `app` must define `selector` and must not define `selectors`
+- `group` must define `selectors` and must not define `selector`
+- selector values must be non-empty strings
+- non-`app/group` targets must not define `name`, `selector`, or `selectors`
 
 Compatibility aliases accepted for older configs:
 - top-level `port`/`baud` (migrated to `serial.port`/`serial.baud`)
 - top-level `knobs` (migrated to `mappings`)
 - mapping keys: `id` -> `knob`, `type` -> `target`, `app` -> `name`, `volume_step` -> `step`
+- `name` remains accepted for `app/group` mappings as a legacy alias and is migrated to exact-match selector entries
 
 ## Continuous Integration
 

@@ -39,7 +39,16 @@ Legend:
     - `README.md`
 
 ### B. Config and mapping model maturity
-- [ ] `TODO` Define and validate robust schema for `app/group` selectors (exact match, wildcard, executable name, etc.).
+- [x] `DONE` Define and validate robust schema for `app/group` selectors (exact match, wildcard, executable name, etc.).
+  - Implemented:
+    - Added explicit mapping selector schema (`selector` for `app`, `selectors` for `group`) with normalized selector kinds: `exact`, `contains`, `prefix`, `suffix`, `glob`, and `exe`.
+    - Added validation enforcing per-target selector shape, non-empty selector values, and selector-kind allowlist while preserving backward compatibility via legacy `name` migration to exact selectors.
+    - Expanded config/docs coverage with schema examples and troubleshooting updates.
+  - Changed files/tests:
+    - `mama/internal/config/config.go`
+    - `mama/internal/config/config_test.go`
+    - `README.md`
+    - `docs/TROUBLESHOOTING.md`
 - [ ] `TODO` Add conflict/precedence rules for overlapping mappings.
 - [ ] `TODO` Add profile support (multiple mapping sets with active profile selection).
 
@@ -235,6 +244,7 @@ Legend:
 - 2026-03-02: Defined and published a formal support matrix + deprecation/versioning policy in `docs/SUPPORT_POLICY.md`, linked it from README and CONTRIBUTING for discoverability, and completed governance tracker item updates. Verified with `cd mama && go test ./...`.
 
 - 2026-03-02: Added issue and PR templates for standardized triage/review, published a release QA checklist for pre-tag validation, and linked the new governance assets from README/CONTRIBUTING. Verified with `cd mama && go test ./...`.
+- 2026-03-02: Implemented robust `app/group` selector schema validation (`selector`/`selectors` with exact/contains/prefix/suffix/glob/exe kinds), added backward-compatible legacy `name` migration behavior, expanded config tests for valid/invalid selector paths, and updated README + troubleshooting docs. Verified with `cd mama && go test ./...`.
 
 ---
 
