@@ -425,16 +425,17 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 - [x] `DONE` Reconcile readiness/checklist docs with objective gate mapping and fresh run evidence.
+- [x] `DONE` Resolve remaining readiness/checklist reviewer gaps (objective evidence blocks + section ownership matrix).
   - Status history: `IN_PROGRESS` (2026-03-02) -> `DONE` (2026-03-02).
   - Implementation plan (executed this iteration):
-    1. Add an explicit gate-to-checklist mapping so each checklist section item can be traced to readiness blockers/non-blockers.
-    2. Re-run automatable in-repo checks (`go test`, `go mod verify`, checksum script preflight/smoke) and refresh dated evidence blocks with this run's output.
-    3. Tighten manual checklist/readiness wording to require owner placeholders and specific evidence payload formats per item.
-    4. Recompute GO/NO-GO snapshot from refreshed evidence and log exactly what remains manual.
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` as the source of truth and isolate the highest-impact remaining in-repo gap: ambiguous verification/evidence wording that blocked deterministic sign-off.
+    2. Convert gate/checklist wording into explicit pass/fail criteria with evidence IDs so each automatable item maps to a concrete command result and each manual item maps to a required owner artifact payload.
+    3. Add explicit section-level automation ownership summary in the checklist and refresh evidence blocks from a new command run, keeping all manual/hardware/release approvals pending.
+    4. Recompute readiness GO/NO-GO snapshot from refreshed evidence and document exactly what shipped versus what remains maintainer-only.
   - Implemented:
-    - Added explicit readiness gate mapping in the release checklist and objective pass conditions so checklist progress is traceable to `GO/NO-GO` blockers.
-    - Refreshed automatable evidence blocks in both readiness and checklist docs with current dated command snippets from this run.
-    - Standardized manual item evidence requirements into owner + artifact template fields to remove ambiguous sign-off wording.
+    - Added evidence-ID based acceptance criteria in `docs/V1_READINESS_REVIEW.md`, including automatable/manual completion summaries and objective blocker list tied to current run outputs.
+    - Added a section ownership matrix in `docs/RELEASE_QA_CHECKLIST.md` and tightened checklist item wording so each row specifies command/reference plus mandatory evidence payload format.
+    - Refreshed both documents with this run's command evidence (`go test`, `go mod verify`, checksum preflight/smoke) while preserving pending status for manual release/hardware approvals.
   - Changed files/tests:
     - `docs/V1_READINESS_REVIEW.md`
     - `docs/RELEASE_QA_CHECKLIST.md`
@@ -506,6 +507,8 @@ Legend:
 
 - 2026-03-02: Reconciled readiness/release QA docs with explicit readiness-gate mapping per checklist item, refreshed evidence-driven automatable outputs from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum syntax/smoke/verify), and standardized manual owner/evidence templates. GO/NO-GO remains `NO-GO` strictly due to pending manual maintainer/hardware/workflow gates.
 
+- 2026-03-02: Resolved remaining readiness/checklist reviewer gaps by converting readiness/checklist rows to objective evidence IDs, adding explicit section-level automation ownership in the QA checklist, and refreshing inline command evidence from this run while keeping all manual/hardware/release approvals pending. Verified with `cd mama && go test ./...`, `cd mama && go mod verify`, and `bash -n scripts/release/generate-checksums.sh` plus smoke checksum validation.
+
 ---
 
 ## Copy/Paste Prompt for Codex (No Modification Needed)
@@ -529,3 +532,4 @@ Constraints:
 - If you discover prerequisites, add them as new checklist entries before continuing.
 - Preserve backward compatibility unless the tracker item explicitly says otherwise.
 ```
+
