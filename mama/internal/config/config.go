@@ -67,10 +67,28 @@ const (
 )
 
 type Mapping struct {
-	Knob   int        `yaml:"knob" json:"knob"`
-	Target TargetType `yaml:"target" json:"target"`
-	Name   string     `yaml:"name,omitempty" json:"name,omitempty"` // for app/group identification
-	Step   float64    `yaml:"step" json:"step"`                     // e.g. 0.02 = 2% per detent
+	Knob      int        `yaml:"knob" json:"knob"`
+	Target    TargetType `yaml:"target" json:"target"`
+	Name      string     `yaml:"name,omitempty" json:"name,omitempty"` // legacy alias; migrated to selector(s) for app/group
+	Selector  *Selector  `yaml:"selector,omitempty" json:"selector,omitempty"`
+	Selectors []Selector `yaml:"selectors,omitempty" json:"selectors,omitempty"`
+	Step      float64    `yaml:"step" json:"step"` // e.g. 0.02 = 2% per detent
+}
+
+type SelectorKind string
+
+const (
+	SelectorExact    SelectorKind = "exact"
+	SelectorContains SelectorKind = "contains"
+	SelectorPrefix   SelectorKind = "prefix"
+	SelectorSuffix   SelectorKind = "suffix"
+	SelectorGlob     SelectorKind = "glob"
+	SelectorExe      SelectorKind = "exe"
+)
+
+type Selector struct {
+	Kind  SelectorKind `yaml:"kind" json:"kind"`
+	Value string       `yaml:"value" json:"value"`
 }
 
 type SerialCfg struct {
@@ -97,6 +115,8 @@ type rawMapping struct {
 	Knob       int        `yaml:"knob"`
 	Target     TargetType `yaml:"target"`
 	Name       string     `yaml:"name"`
+	Selector   *Selector  `yaml:"selector"`
+	Selectors  []Selector `yaml:"selectors"`
 	Step       float64    `yaml:"step"`
 	LegacyID   int        `yaml:"id"`
 	LegacyType TargetType `yaml:"type"`
@@ -145,10 +165,12 @@ func migrateRawConfig(raw rawConfig) Config {
 	c.Mappings = make([]Mapping, 0, len(mappings))
 	for _, rm := range mappings {
 		m := Mapping{
-			Knob:   rm.Knob,
-			Target: rm.Target,
-			Name:   rm.Name,
-			Step:   rm.Step,
+			Knob:      rm.Knob,
+			Target:    rm.Target,
+			Name:      rm.Name,
+			Selector:  rm.Selector,
+			Selectors: rm.Selectors,
+			Step:      rm.Step,
 		}
 
 		if m.Knob == 0 {
@@ -190,6 +212,12 @@ func Validate(c Config) (Config, error) {
 		m := &c.Mappings[i]
 
 		m.Name = strings.TrimSpace(m.Name)
+		if m.Selector != nil {
+			m.Selector.Value = strings.TrimSpace(m.Selector.Value)
+		}
+		for j := range m.Selectors {
+			m.Selectors[j].Value = strings.TrimSpace(m.Selectors[j].Value)
+		}
 
 		if m.Knob <= 0 {
 			return Config{}, fmt.Errorf("invalid knob id: %d", m.Knob)
@@ -206,15 +234,8 @@ func Validate(c Config) (Config, error) {
 			return Config{}, fmt.Errorf("invalid target for knob %d: %q", m.Knob, m.Target)
 		}
 
-		switch m.Target {
-		case TargetApp, TargetGroup:
-			if m.Name == "" {
-				return Config{}, fmt.Errorf("target %q for knob %d requires name", m.Target, m.Knob)
-			}
-		default:
-			if m.Name != "" {
-				return Config{}, fmt.Errorf("target %q for knob %d must not set name", m.Target, m.Knob)
-			}
+		if err := validateMappingSelectors(m); err != nil {
+			return Config{}, fmt.Errorf("knob %d: %w", m.Knob, err)
 		}
 
 		if math.IsNaN(m.Step) || math.IsInf(m.Step, 0) || m.Step <= 0 || m.Step > 1 {
@@ -223,6 +244,63 @@ func Validate(c Config) (Config, error) {
 	}
 
 	return c, nil
+}
+
+func validateMappingSelectors(m *Mapping) error {
+	switch m.Target {
+	case TargetApp:
+		if len(m.Selectors) > 0 {
+			return fmt.Errorf("target %q must use selector, not selectors", m.Target)
+		}
+		if m.Selector == nil {
+			if m.Name == "" {
+				return fmt.Errorf("target %q requires selector (or legacy name)", m.Target)
+			}
+			m.Selector = &Selector{Kind: SelectorExact, Value: m.Name}
+		}
+		if m.Name != "" {
+			m.Name = ""
+		}
+		return validateSelector(*m.Selector)
+	case TargetGroup:
+		if m.Selector != nil {
+			return fmt.Errorf("target %q must use selectors array", m.Target)
+		}
+		if len(m.Selectors) == 0 {
+			if m.Name == "" {
+				return fmt.Errorf("target %q requires selectors (or legacy name)", m.Target)
+			}
+			m.Selectors = []Selector{{Kind: SelectorExact, Value: m.Name}}
+		}
+		if m.Name != "" {
+			m.Name = ""
+		}
+		for _, selector := range m.Selectors {
+			if err := validateSelector(selector); err != nil {
+				return err
+			}
+		}
+		return nil
+	default:
+		if m.Name != "" || m.Selector != nil || len(m.Selectors) > 0 {
+			return fmt.Errorf("target %q must not set name/selector(s)", m.Target)
+		}
+		return nil
+	}
+}
+
+func validateSelector(selector Selector) error {
+	selector.Value = strings.TrimSpace(selector.Value)
+	if selector.Value == "" {
+		return fmt.Errorf("selector value must not be empty")
+	}
+
+	switch selector.Kind {
+	case SelectorExact, SelectorContains, SelectorPrefix, SelectorSuffix, SelectorGlob, SelectorExe:
+		return nil
+	default:
+		return fmt.Errorf("invalid selector kind %q", selector.Kind)
+	}
 }
 
 func Save(path string, c Config) error {

@@ -62,6 +62,98 @@ mappings:
 	}
 }
 
+func TestLoadAcceptsAppSelectorSchema(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 1
+    target: app
+    selector:
+      kind: exe
+      value: "discord.exe"
+    step: 0.02
+`)
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Mappings[0].Selector == nil {
+		t.Fatal("expected selector to be present")
+	}
+	if cfg.Mappings[0].Selector.Kind != SelectorExe {
+		t.Fatalf("expected selector kind %q, got %q", SelectorExe, cfg.Mappings[0].Selector.Kind)
+	}
+}
+
+func TestLoadAcceptsGroupSelectorsSchema(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 1
+    target: group
+    selectors:
+      - kind: prefix
+        value: "Spotify"
+      - kind: glob
+        value: "*Game*"
+    step: 0.02
+`)
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if got := len(cfg.Mappings[0].Selectors); got != 2 {
+		t.Fatalf("expected 2 selectors, got %d", got)
+	}
+}
+
+func TestLoadRejectsInvalidSelectorKind(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 1
+    target: app
+    selector:
+      kind: regex
+      value: ".*discord.*"
+    step: 0.02
+`)
+	if _, err := Load(cfgPath); err == nil {
+		t.Fatal("expected error for invalid selector kind")
+	}
+}
+
+func TestLoadMigratesLegacyNameToSelector(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 1
+    target: app
+    name: "Discord"
+    step: 0.02
+`)
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Mappings[0].Name != "" {
+		t.Fatalf("expected legacy name to be cleared after migration, got %q", cfg.Mappings[0].Name)
+	}
+	if cfg.Mappings[0].Selector == nil {
+		t.Fatal("expected selector migrated from legacy name")
+	}
+	if cfg.Mappings[0].Selector.Kind != SelectorExact || cfg.Mappings[0].Selector.Value != "Discord" {
+		t.Fatalf("unexpected migrated selector: %#v", cfg.Mappings[0].Selector)
+	}
+}
+
 func TestLoadRejectsNegativeBaud(t *testing.T) {
 	cfgPath := writeConfig(t, `
 serial:
@@ -108,8 +200,11 @@ mappings:
 	if cfg.Serial.Port != "COM3" {
 		t.Fatalf("expected trimmed serial port, got %q", cfg.Serial.Port)
 	}
-	if cfg.Mappings[0].Name != "Discord" {
-		t.Fatalf("expected trimmed mapping name, got %q", cfg.Mappings[0].Name)
+	if cfg.Mappings[0].Selector == nil {
+		t.Fatal("expected selector migrated from name")
+	}
+	if cfg.Mappings[0].Selector.Value != "Discord" {
+		t.Fatalf("expected trimmed selector value Discord, got %q", cfg.Mappings[0].Selector.Value)
 	}
 }
 
@@ -146,8 +241,11 @@ func TestSaveAndReload(t *testing.T) {
 	if out.Serial.Port != "COM7" {
 		t.Fatalf("expected trimmed port COM7, got %q", out.Serial.Port)
 	}
-	if out.Mappings[0].Name != "Discord" {
-		t.Fatalf("expected trimmed name Discord, got %q", out.Mappings[0].Name)
+	if out.Mappings[0].Selector == nil {
+		t.Fatal("expected selector migrated from name")
+	}
+	if out.Mappings[0].Selector.Value != "Discord" {
+		t.Fatalf("expected trimmed selector value Discord, got %q", out.Mappings[0].Selector.Value)
 	}
 }
 
@@ -210,8 +308,11 @@ knobs:
 	if got := len(cfg.Mappings); got != 2 {
 		t.Fatalf("expected 2 migrated mappings, got %d", got)
 	}
-	if cfg.Mappings[1].Name != "Discord" {
-		t.Fatalf("expected migrated app alias to name, got %q", cfg.Mappings[1].Name)
+	if cfg.Mappings[1].Selector == nil {
+		t.Fatal("expected migrated app alias to selector")
+	}
+	if cfg.Mappings[1].Selector.Value != "Discord" {
+		t.Fatalf("expected migrated app alias to selector value Discord, got %q", cfg.Mappings[1].Selector.Value)
 	}
 }
 
