@@ -20,7 +20,8 @@
 - Ensure mapping `step` is greater than 0.
 - For now, use `master_out` target only (other targets are planned).
 - Enable `debug: true` and read daemon logs for parse/mapping errors.
-- Check `runtime metrics:` log lines for aggregate counters (`parse_errors`, `dropped_events`, `reconnect_count`, `backend_failures`) while troubleshooting noisy serial links or backend issues.
+- Runtime logs are now structured as deterministic `event=<name> key=value ...` entries (for example: `event=serial_state port="COM3" state="connected"`).
+- Check `event=runtime_metrics` log lines for aggregate counters (`parse_errors`, `dropped_events`, `reconnect_count`, `backend_failures`) while troubleshooting noisy serial links or backend issues.
 
 ## Runtime exits with config error
 

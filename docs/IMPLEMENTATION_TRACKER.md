@@ -58,7 +58,16 @@ Legend:
     - `mama/internal/runtime/metrics_test.go`
     - `mama/cmd/mama/main.go`
     - `docs/TROUBLESHOOTING.md`
-- [ ] `TODO` Add deterministic structured logs for troubleshooting.
+- [x] `DONE` Add deterministic structured logs for troubleshooting.
+  - Implemented:
+    - Added a shared structured logging helper that emits deterministic `event=<name> key=value` entries with stable sorted field ordering.
+    - Converted host runtime startup/serial/protocol/debug log points to structured events while preserving runtime signal and metrics visibility.
+    - Added formatter unit tests and updated troubleshooting guidance with the new log format and metrics event name.
+  - Changed files/tests:
+    - `mama/internal/runtime/structured_log.go`
+    - `mama/internal/runtime/structured_log_test.go`
+    - `mama/cmd/mama/main.go`
+    - `docs/TROUBLESHOOTING.md`
 - [ ] `TODO` Add long-run soak test plan and scripted verification artifacts.
 
 ---
@@ -112,6 +121,7 @@ Legend:
 - 2026-03-01: Implemented protocol versioning handshake (`V:1`) and host compatibility checks. Updated firmware boot output, host parser/runtime gating, setup UI event labeling, and parser tests. Verified with `go test ./...`.
 - 2026-03-01: Implemented serial reconnect strategy with bounded exponential backoff and clear runtime state logs in host runtime. Added dedicated backoff unit tests and verified with `go test ./...`.
 - 2026-03-01: Implemented host runtime metrics counters (parse errors, dropped events, reconnect count, backend failures), integrated counter updates into reconnect/session paths, and added metrics snapshot logging plus unit tests. Verified with `go test ./...`.
+- 2026-03-02: Implemented deterministic structured runtime logging (`event=<name> key=value`), migrated host runtime log emitters to structured events, added formatter unit tests, and updated troubleshooting docs. Verified with `go test ./...`.
 
 ---
 
