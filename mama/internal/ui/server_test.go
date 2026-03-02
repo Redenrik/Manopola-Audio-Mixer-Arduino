@@ -66,4 +66,16 @@ func TestHandleIndex_IncludesWizard(t *testing.T) {
 	if !strings.Contains(body, "applyTemplate") {
 		t.Fatalf("expected template apply control in index html")
 	}
+	if !strings.Contains(body, "backupConfig") {
+		t.Fatalf("expected backup config control in index html")
+	}
+	if !strings.Contains(body, "restoreConfig") {
+		t.Fatalf("expected restore config control in index html")
+	}
+	if !strings.Contains(body, "exportConfig") {
+		t.Fatalf("expected export config control in index html")
+	}
+	if !strings.Contains(body, "importConfig") {
+		t.Fatalf("expected import config control in index html")
+	}
 }
