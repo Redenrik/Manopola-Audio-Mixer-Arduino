@@ -91,7 +91,16 @@ Legend:
     - `mama/cmd/mama/main_integration_test.go`
     - `mama/cmd/mama/testdata/serial_fixtures/mixed_burst.txt`
     - `mama/cmd/mama/testdata/serial_fixtures/disconnect_after_events.txt`
-- [ ] `TODO` Add backend contract tests for each supported target type.
+- [x] `DONE` Add backend contract tests for each supported target type.
+  - Implemented:
+    - Refactored audio backend target handling into shared `baseBackend` logic with a mockable volume controller for deterministic contract testing.
+    - Added backend contract tests for supported `master_out` behavior (adjust, clamp, mute toggle, target listing) and explicit unsupported-target rejection (`mic_in`, `line_in`, `app`, `group`).
+    - Added error propagation assertions for backend-to-volume adapter interactions.
+  - Changed files/tests:
+    - `mama/internal/audio/backend_core.go`
+    - `mama/internal/audio/backend_unix.go`
+    - `mama/internal/audio/backend_windows.go`
+    - `mama/internal/audio/backend_contract_test.go`
 - [ ] `TODO` Add config migration/compatibility tests for future schema evolution.
 
 ### B. Firmware-side validation
@@ -139,6 +148,7 @@ Legend:
 - 2026-03-02: Implemented deterministic structured runtime logging (`event=<name> key=value`), migrated host runtime log emitters to structured events, added formatter unit tests, and updated troubleshooting docs. Verified with `go test ./...`.
 - 2026-03-02: Added long-run soak verification plan and scripted artifacts (`scripts/soak/run_host_soak.sh`) with timestamped outputs under `artifacts/soak/`. Verified with `go test ./...` and `scripts/soak/run_host_soak.sh 3`.
 - 2026-03-02: Added host integration tests with recorded serial fixtures for mixed valid/malformed bursts and disconnect handling. Refactored session loop to support fixture-driven channel replay while preserving runtime behavior. Verified with `go test ./...`.
+- 2026-03-02: Added audio backend contract coverage for all currently supported/declared target types by extracting shared backend logic behind a mockable volume controller and adding deterministic tests for `master_out` semantics, unsupported target rejection, and error propagation. Verified with `go test ./...`.
 
 ---
 
