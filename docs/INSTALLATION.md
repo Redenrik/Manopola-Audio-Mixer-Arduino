@@ -61,13 +61,30 @@ Default package behavior:
 - no scheduled task/service auto-install
 - uninstall is deleting the folder
 
-## Optional Installer (Future)
+## Optional Installer (Windows Maintainers)
 
-If you later add an installer:
-- keep a portable mode option
-- explicit opt-in for auto-start
-- clear uninstall path
-- avoid forced privileged install unless necessary
+Portable ZIP remains the default distribution.
+
+For maintainers that want an installer artifact in addition to portable mode:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows\package-installer.ps1 -PortableDir dist\mama-portable -AppVersion v1.0.0
+```
+
+Notes:
+- installer generation is optional and requires Inno Setup (`iscc`)
+- when `iscc` is unavailable, the script exits successfully after printing a skip warning
+- the portable package remains the canonical fallback artifact
+
+## Optional Update Manifest
+
+To ship a machine-readable update payload descriptor for any archive:
+
+```bash
+scripts/release/generate-update-manifest.sh dist/mama-portable.zip v1.0.0 https://github.com/<org>/<repo>/releases/download/v1.0.0/mama-portable.zip
+```
+
+This writes `update-manifest.json` with version, URL, checksum, and size metadata.
 
 ## Linux/macOS Notes
 

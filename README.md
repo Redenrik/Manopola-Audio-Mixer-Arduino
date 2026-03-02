@@ -43,8 +43,8 @@ This repository now includes:
 - `mama/cmd/mama-ui`: local setup GUI server.
 - `mama/internal/*`: config, protocol parser, serial I/O, audio backend, setup UI server.
 - `docs/`: architecture, installation, roadmap, operations.
-- `scripts/windows/`: release packaging helper scripts.
-- `scripts/release/`: release checksum generation utilities.
+- `scripts/windows/`: portable/installer packaging helper scripts.
+- `scripts/release/`: release checksum/update manifest/signing utilities.
 
 ## Hardware Wiring
 
@@ -218,10 +218,18 @@ Issue and pull request templates are available under `.github/ISSUE_TEMPLATE/` a
 Maintainers can generate SHA-256 checksum manifests for packaged artifacts with:
 
 ```bash
-scripts/release/generate-checksums.sh dist/mama-portable
+scripts/release/generate-checksums.sh dist
+```
+
+Optional update metadata manifests can be generated with:
+
+```bash
+scripts/release/generate-update-manifest.sh <archive-path> <tag> <download-url>
 ```
 
 Reproducible build guidance is documented in [docs/RELEASE_REPRODUCIBLE_BUILDS.md](docs/RELEASE_REPRODUCIBLE_BUILDS.md).
+
+Release packaging automation (portable + optional installer/update artifacts) is implemented in `.github/workflows/release-artifacts.yml`.
 
 Release signing/notarization automation and maintainer setup details are documented in [docs/SIGNING_AND_NOTARIZATION.md](docs/SIGNING_AND_NOTARIZATION.md) and implemented in `.github/workflows/release-signing.yml`.
 
