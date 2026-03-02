@@ -267,14 +267,23 @@
 <body>
   <main class="shell">
     <section class="panel">
-      <h1>Manopola Audio Mixer Setup</h1>
-      <p>Configure serial connection, assign each knob target, and visually identify knob numbers in real time.</p>
-      <p class="hint">Config path: <span class="mono" id="configPath">loading...</span></p>
+      <h1 id="titleMain">Manopola Audio Mixer Setup</h1>
+      <p id="subtitleMain">Configure serial connection, assign each knob target, and visually identify knob numbers in real time.</p>
+      <p class="hint"><span id="configPathLabel">Config path:</span> <span class="mono" id="configPath">loading...</span></p>
+      <div class="actions" style="margin-top:12px;">
+        <label style="min-width: 220px; margin: 0;">
+          <span id="languageLabel">Language</span>
+          <select id="languageSelect" aria-label="Language">
+            <option value="en">English</option>
+            <option value="it">Italiano</option>
+          </select>
+        </label>
+      </div>
     </section>
 
     <section class="panel">
-      <h2>First-Run Wizard</h2>
-      <p>Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.</p>
+      <h2 id="wizardHeading">First-Run Wizard</h2>
+      <p id="wizardIntro">Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.</p>
       <div class="actions">
         <button class="btn-primary" id="wizardStart" type="button">Start Wizard</button>
         <button id="wizardNext" type="button">Next Step</button>
@@ -286,25 +295,25 @@
 
     <section class="panel split">
       <div>
-        <h2>Connection</h2>
+        <h2 id="connectionHeading">Connection</h2>
         <label>
-          Serial Port
+          <span id="serialPortLabel">Serial Port</span>
           <div class="split" style="grid-template-columns: 1fr auto;">
             <select id="portSelect" aria-label="Detected serial ports"></select>
             <button type="button" id="refreshPorts">Refresh</button>
           </div>
         </label>
         <label>
-          Or type port manually
+          <span id="manualPortLabel">Or type port manually</span>
           <input id="portInput" aria-label="Manual serial port" placeholder="COM3 or /dev/ttyACM0">
         </label>
         <label>
-          Baud
+          <span id="baudLabel">Baud</span>
           <input id="baudInput" aria-label="Serial baud rate" type="number" min="1" step="1" value="115200">
         </label>
         <label style="display:flex; gap:8px; align-items:center; margin-top:10px;">
           <input id="debugInput" type="checkbox" aria-label="Enable debug logs">
-          Debug logs enabled
+          <span id="debugLabel">Debug logs enabled</span>
         </label>
         <div class="actions">
           <button type="button" id="testConnection">Test Connection</button>
@@ -313,8 +322,8 @@
       </div>
 
       <div>
-        <h2>Knob Identification</h2>
-        <p>Click <strong>Start Identify</strong> then rotate or press any physical knob. Matching indicator flashes below.</p>
+        <h2 id="identifyHeading">Knob Identification</h2>
+        <p id="identifyIntro">Click <strong>Start Identify</strong> then rotate or press any physical knob. Matching indicator flashes below.</p>
         <div class="actions">
           <button class="btn-secondary" id="startIdentify" type="button">Start Identify</button>
           <button id="stopIdentify" type="button">Stop</button>
@@ -325,19 +334,19 @@
     </section>
 
     <section class="panel">
-      <h2>Mappings</h2>
+      <h2 id="mappingsHeading">Mappings</h2>
       <div class="actions templates">
         <label style="min-width: 250px; margin: 0;">
-          Mapping Template
+          <span id="mappingTemplateLabel">Mapping Template</span>
           <select id="templateSelect" aria-label="Mapping templates"></select>
         </label>
         <button id="applyTemplate" type="button">Apply Template</button>
       </div>
       <div class="row header">
-        <div>Knob</div>
-        <div>Target</div>
-        <div>Name (app/group)</div>
-        <div>Step (0..1)</div>
+        <div id="headerKnob">Knob</div>
+        <div id="headerTarget">Target</div>
+        <div id="headerName">Name (app/group)</div>
+        <div id="headerStep">Step (0..1)</div>
         <div></div>
       </div>
       <div id="mappings"></div>
@@ -362,21 +371,24 @@
       config: null,
       knownTargets: ["master_out", "mic_in", "line_in", "app", "group"],
       identifyES: null,
+      language: "en",
       wizard: {
         active: false,
         index: 0,
         steps: [
-          { id: "detect", title: "Detect board", hint: "Refresh detected serial ports and select your board." },
-          { id: "test", title: "Test port", hint: "Run Test Connection to ensure the board is reachable." },
-          { id: "map", title: "Map knobs", hint: "Use Start Identify and rotate/press knobs to confirm IDs before editing mappings." },
-          { id: "save", title: "Save config", hint: "Persist serial + mapping configuration." },
-          { id: "verify", title: "Verify", hint: "Run identify again to confirm knob events after save." }
+          { id: "detect" },
+          { id: "test" },
+          { id: "map" },
+          { id: "save" },
+          { id: "verify" }
         ]
       },
       templates: {
         streaming: {
           label: "Streaming",
           description: "Game + mic + music mix",
+          labels: { en: "Streaming", it: "Streaming" },
+          descriptions: { en: "Game + mic + music mix", it: "Mix gioco + microfono + musica" },
           mappings: [
             { knob: 1, target: "master_out", step: 0.02, name: "" },
             { knob: 2, target: "app", step: 0.02, name: "obs" },
@@ -388,6 +400,8 @@
         conferencing: {
           label: "Conferencing",
           description: "Meeting app + mic focus",
+          labels: { en: "Conferencing", it: "Conferenze" },
+          descriptions: { en: "Meeting app + mic focus", it: "App meeting + focus microfono" },
           mappings: [
             { knob: 1, target: "master_out", step: 0.02, name: "" },
             { knob: 2, target: "app", step: 0.02, name: "teams" },
@@ -399,6 +413,8 @@
         music: {
           label: "Music",
           description: "Playback and recording controls",
+          labels: { en: "Music", it: "Musica" },
+          descriptions: { en: "Playback and recording controls", it: "Controlli di riproduzione e registrazione" },
           mappings: [
             { knob: 1, target: "master_out", step: 0.01, name: "" },
             { knob: 2, target: "line_in", step: 0.01, name: "" },
@@ -410,6 +426,8 @@
         gaming: {
           label: "Gaming",
           description: "Game/chat balance",
+          labels: { en: "Gaming", it: "Gaming" },
+          descriptions: { en: "Game/chat balance", it: "Bilanciamento gioco/chat" },
           mappings: [
             { knob: 1, target: "master_out", step: 0.02, name: "" },
             { knob: 2, target: "app", step: 0.02, name: "steam" },
@@ -425,8 +443,75 @@
     const knobTimers = new Map();
     const backupStorageKey = "mama.setup.config.backup.v1";
 
+    const languageStorageKey = "mama.setup.language.v1";
+    const i18n = {
+      en: {
+        pageTitle: "MAMA Setup",
+        titleMain: "Manopola Audio Mixer Setup",
+        subtitleMain: "Configure serial connection, assign each knob target, and visually identify knob numbers in real time.",
+        configPathLabel: "Config path:",
+        languageLabel: "Language",
+        wizardHeading: "First-Run Wizard",
+        wizardIntro: "Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.",
+        wizardStart: "Start Wizard", wizardNext: "Next Step", wizardReset: "Reset",
+        connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", testConnection: "Test Connection",
+        identifyHeading: "Knob Identification", identifyIntro: "Click Start Identify then rotate or press any physical knob. Matching indicator flashes below.", startIdentify: "Start Identify", stopIdentify: "Stop",
+        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name (app/group)", headerStep: "Step (0..1)", addMapping: "Add Mapping", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config",
+        noPorts: "No ports detected", waiting: "waiting...", buttonPress: "button press", delta: "delta",
+        wizardSteps: { detect: { title: "Detect board", hint: "Refresh detected serial ports and select your board." }, test: { title: "Test port", hint: "Run Test Connection to ensure the board is reachable." }, map: { title: "Map knobs", hint: "Use Start Identify and rotate/press knobs to confirm IDs before editing mappings." }, save: { title: "Save config", hint: "Persist serial + mapping configuration." }, verify: { title: "Verify", hint: "Run identify again to confirm knob events after save." } }
+      },
+      it: {
+        pageTitle: "Configurazione MAMA",
+        titleMain: "Configurazione Manopola Audio Mixer",
+        subtitleMain: "Configura la connessione seriale, assegna i target alle manopole e identifica visivamente i numeri in tempo reale.",
+        configPathLabel: "Percorso config:",
+        languageLabel: "Lingua",
+        wizardHeading: "Procedura guidata iniziale",
+        wizardIntro: "Segui questa procedura per rilevare la scheda, confermare la seriale, mappare le manopole, salvare e verificare gli eventi live.",
+        wizardStart: "Avvia procedura", wizardNext: "Passo successivo", wizardReset: "Reimposta",
+        connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", testConnection: "Test connessione",
+        identifyHeading: "Identificazione manopole", identifyIntro: "Fai clic su Avvia identificazione, poi ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
+        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome (app/gruppo)", headerStep: "Step (0..1)", addMapping: "Aggiungi mappatura", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config",
+        noPorts: "Nessuna porta rilevata", waiting: "in attesa...", buttonPress: "pressione tasto", delta: "delta",
+        wizardSteps: { detect: { title: "Rileva scheda", hint: "Aggiorna le porte seriali rilevate e seleziona la tua scheda." }, test: { title: "Test porta", hint: "Esegui Test connessione per verificare che la scheda sia raggiungibile." }, map: { title: "Mappa manopole", hint: "Usa Avvia identificazione e ruota/premi le manopole per confermare gli ID prima di modificare le mappature." }, save: { title: "Salva config", hint: "Salva la configurazione seriale e delle mappature." }, verify: { title: "Verifica", hint: "Avvia di nuovo l'identificazione per confermare gli eventi dopo il salvataggio." } }
+      }
+    };
+
     function $(id) {
       return document.getElementById(id);
+    }
+
+    function t(key) {
+      return (i18n[state.language] && i18n[state.language][key]) || i18n.en[key] || key;
+    }
+
+    function localizeStaticUI() {
+      document.title = t("pageTitle");
+      const bindings = {
+        titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
+        wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
+        manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", testConnection: "testConnection", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", mappingsHeading: "mappingsHeading",
+        mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep",
+        addMapping: "addMapping", saveConfig: "saveConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify"
+      };
+      for (const [id, key] of Object.entries(bindings)) {
+        const el = $(id);
+        if (el) el.textContent = t(key);
+      }
+    }
+
+    function localizedWizardStep(stepID) {
+      return (i18n[state.language].wizardSteps && i18n[state.language].wizardSteps[stepID]) || i18n.en.wizardSteps[stepID] || { title: stepID, hint: "" };
+    }
+
+    function setLanguage(lang) {
+      state.language = i18n[lang] ? lang : "en";
+      localStorage.setItem(languageStorageKey, state.language);
+      $("languageSelect").value = state.language;
+      localizeStaticUI();
+      renderWizard();
+      renderTemplateOptions();
+      createKnobCards();
     }
 
     function setStatus(id, text, cls = "") {
@@ -460,7 +545,8 @@
         li.className = "wizard-step";
         if (idx < state.wizard.index) li.classList.add("done");
         if (state.wizard.active && idx === state.wizard.index) li.classList.add("active");
-        li.innerHTML = `<strong>${idx + 1}. ${step.title}</strong><small>${step.hint}</small>`;
+        const localized = localizedWizardStep(step.id);
+        li.innerHTML = `<strong>${idx + 1}. ${localized.title}</strong><small>${localized.hint}</small>`;
         host.appendChild(li);
       });
     }
@@ -469,28 +555,28 @@
       state.wizard.active = true;
       state.wizard.index = 0;
       renderWizard();
-      setStatus("wizardStatus", "Step 1: click Refresh to detect available serial ports.", "ok");
+      setStatus("wizardStatus", `Step 1: ${localizedWizardStep("detect").hint}`, "ok");
     }
 
     function resetWizard() {
       state.wizard.active = false;
       state.wizard.index = 0;
       renderWizard();
-      setStatus("wizardStatus", "Wizard reset.");
+      setStatus("wizardStatus", state.language === "it" ? "Procedura reimpostata." : "Wizard reset.");
     }
 
     function nextWizardStep() {
       if (!state.wizard.active) {
-        setStatus("wizardStatus", "Start the wizard first.", "error");
+        setStatus("wizardStatus", state.language === "it" ? "Avvia prima la procedura." : "Start the wizard first.", "error");
         return;
       }
       if (state.wizard.index >= state.wizard.steps.length - 1) {
-        setStatus("wizardStatus", "Wizard complete: board detected, tested, mapped, saved, and verified.", "ok");
+        setStatus("wizardStatus", state.language === "it" ? "Procedura completata: scheda rilevata, testata, mappata, salvata e verificata." : "Wizard complete: board detected, tested, mapped, saved, and verified.", "ok");
         return;
       }
       state.wizard.index += 1;
       renderWizard();
-      const current = state.wizard.steps[state.wizard.index];
+      const current = localizedWizardStep(state.wizard.steps[state.wizard.index].id);
       setStatus("wizardStatus", `Step ${state.wizard.index + 1}: ${current.hint}`, "ok");
     }
 
@@ -504,7 +590,7 @@
         card.innerHTML = `
           <div class="dial"></div>
           <div><strong>Knob ${i}</strong></div>
-          <div class="hint" id="knob-${i}-meta">waiting...</div>
+          <div class="hint" id="knob-${i}-meta">${t("waiting")}</div>
         `;
         grid.appendChild(card);
       }
@@ -516,7 +602,9 @@
       for (const [id, tpl] of Object.entries(state.templates)) {
         const option = document.createElement("option");
         option.value = id;
-        option.textContent = `${tpl.label} — ${tpl.description}`;
+        const label = (tpl.labels && tpl.labels[state.language]) || tpl.label;
+        const description = (tpl.descriptions && tpl.descriptions[state.language]) || tpl.description;
+        option.textContent = `${label} — ${description}`;
         select.appendChild(option);
       }
     }
@@ -532,8 +620,8 @@
       }
       const meta = $("knob-" + knobId + "-meta");
       if (meta) {
-        if (kind === "button_press") meta.textContent = "button press";
-        else meta.textContent = "delta " + delta;
+        if (kind === "button_press") meta.textContent = t("buttonPress");
+        else meta.textContent = t("delta") + " " + delta;
       }
 
       if (knobTimers.has(knobId)) clearTimeout(knobTimers.get(knobId));
@@ -568,7 +656,7 @@
 
       const name = document.createElement("input");
       name.setAttribute("aria-label", "Application or group name");
-      name.placeholder = "discord.exe / music-group";
+      name.placeholder = state.language === "it" ? "discord.exe / gruppo-musica" : "discord.exe / music-group";
       name.value = mapping.name || "";
 
       const step = document.createElement("input");
@@ -582,7 +670,7 @@
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "btn-danger";
-      remove.textContent = "Remove";
+      remove.textContent = state.language === "it" ? "Rimuovi" : "Remove";
       remove.setAttribute("aria-label", "Remove mapping row");
       remove.addEventListener("click", () => row.remove());
 
@@ -682,7 +770,7 @@
       if (ports.length === 0) {
         const o = document.createElement("option");
         o.value = "";
-        o.textContent = "No ports detected";
+        o.textContent = t("noPorts");
         select.appendChild(o);
         return;
       }
@@ -700,16 +788,16 @@
         const port = effectivePort();
         const baud = parseInt($("baudInput").value, 10) || 115200;
         if (!port) {
-          throw new Error("Select or type a serial port first");
+          throw new Error(state.language === "it" ? "Seleziona o inserisci prima una porta seriale" : "Select or type a serial port first");
         }
         const body = await fetchJSON("/api/port-test", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ port, baud })
         });
-        setStatus("connectionStatus", body.message || "Connection successful", "ok");
+        setStatus("connectionStatus", body.message || (state.language === "it" ? "Connessione riuscita" : "Connection successful"), "ok");
         if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "test") {
-          setStatus("wizardStatus", "Port test passed. Click Next Step to continue mapping.", "ok");
+          setStatus("wizardStatus", state.language === "it" ? "Test porta superato. Clicca Passo successivo per continuare la mappatura." : "Port test passed. Click Next Step to continue mapping.", "ok");
         }
       } catch (err) {
         setStatus("connectionStatus", err.message, "error");
@@ -720,7 +808,7 @@
       const cfg = await fetchJSON("/api/config");
       state.config = cfg;
       applyConfigToForm(cfg);
-      setStatus("saveStatus", "Config loaded", "ok");
+      setStatus("saveStatus", state.language === "it" ? "Configurazione caricata" : "Config loaded", "ok");
     }
 
     async function saveConfig() {
@@ -732,9 +820,9 @@
           body: JSON.stringify(payload)
         });
         state.config = saved;
-        setStatus("saveStatus", "Config saved", "ok");
+        setStatus("saveStatus", state.language === "it" ? "Configurazione salvata" : "Config saved", "ok");
         if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "save") {
-          setStatus("wizardStatus", "Config saved successfully. Click Next Step for final verification.", "ok");
+          setStatus("wizardStatus", state.language === "it" ? "Configurazione salvata. Clicca Passo successivo per la verifica finale." : "Config saved successfully. Click Next Step for final verification.", "ok");
         }
       } catch (err) {
         setStatus("saveStatus", err.message, "error");
@@ -745,9 +833,9 @@
       try {
         const payload = buildConfigFromForm();
         localStorage.setItem(backupStorageKey, JSON.stringify(payload));
-        setStatus("saveStatus", "Backup snapshot saved in this browser.", "ok");
+        setStatus("saveStatus", state.language === "it" ? "Snapshot di backup salvata in questo browser." : "Backup snapshot saved in this browser.", "ok");
       } catch (err) {
-        setStatus("saveStatus", "Unable to create backup snapshot.", "error");
+        setStatus("saveStatus", state.language === "it" ? "Impossibile creare la snapshot di backup." : "Unable to create backup snapshot.", "error");
       }
     }
 
@@ -755,14 +843,14 @@
       try {
         const raw = localStorage.getItem(backupStorageKey);
         if (!raw) {
-          throw new Error("No backup snapshot found in this browser.");
+          throw new Error(state.language === "it" ? "Nessuna snapshot di backup trovata in questo browser." : "No backup snapshot found in this browser.");
         }
         const parsed = JSON.parse(raw);
         applyConfigToForm(parsed);
         state.config = parsed;
-        setStatus("saveStatus", "Backup snapshot restored. Click Save Config to persist.", "ok");
+        setStatus("saveStatus", state.language === "it" ? "Snapshot ripristinata. Clicca Salva config per renderla persistente." : "Backup snapshot restored. Click Save Config to persist.", "ok");
       } catch (err) {
-        setStatus("saveStatus", err.message || "Unable to restore backup snapshot.", "error");
+        setStatus("saveStatus", err.message || (state.language === "it" ? "Impossibile ripristinare la snapshot di backup." : "Unable to restore backup snapshot."), "error");
       }
     }
 
@@ -771,9 +859,9 @@
         const payload = buildConfigFromForm();
         const stamp = new Date().toISOString().replace(/[:.]/g, "-");
         downloadConfig(`mama-config-${stamp}.json`, payload);
-        setStatus("saveStatus", "Config exported to JSON file.", "ok");
+        setStatus("saveStatus", state.language === "it" ? "Configurazione esportata in file JSON." : "Config exported to JSON file.", "ok");
       } catch (err) {
-        setStatus("saveStatus", "Unable to export config.", "error");
+        setStatus("saveStatus", state.language === "it" ? "Impossibile esportare la configurazione." : "Unable to export config.", "error");
       }
     }
 
@@ -785,12 +873,12 @@
           const parsed = JSON.parse(String(reader.result || "{}"));
           applyConfigToForm(parsed);
           state.config = parsed;
-          setStatus("saveStatus", "Config imported. Review values and click Save Config.", "ok");
+          setStatus("saveStatus", state.language === "it" ? "Configurazione importata. Controlla i valori e clicca Salva config." : "Config imported. Review values and click Save Config.", "ok");
         } catch (err) {
-          setStatus("saveStatus", "Invalid config JSON file.", "error");
+          setStatus("saveStatus", state.language === "it" ? "File JSON di configurazione non valido." : "Invalid config JSON file.", "error");
         }
       };
-      reader.onerror = () => setStatus("saveStatus", "Failed to read import file.", "error");
+      reader.onerror = () => setStatus("saveStatus", state.language === "it" ? "Lettura file di importazione non riuscita." : "Failed to read import file.", "error");
       reader.readAsText(file);
     }
 
@@ -798,12 +886,13 @@
       const key = $("templateSelect").value;
       const tpl = state.templates[key];
       if (!tpl) {
-        setStatus("saveStatus", "Select a template to apply.", "error");
+        setStatus("saveStatus", state.language === "it" ? "Seleziona un template da applicare." : "Select a template to apply.", "error");
         return;
       }
       const cloned = tpl.mappings.map((mapping) => ({ ...mapping }));
       renderMappings(cloned);
-      setStatus("saveStatus", `Applied template: ${tpl.label}. Review mappings and click Save Config.`, "ok");
+      const label = (tpl.labels && tpl.labels[state.language]) || tpl.label;
+      setStatus("saveStatus", state.language === "it" ? `Template applicato: ${label}. Controlla le mappature e clicca Salva config.` : `Applied template: ${label}. Review mappings and click Save Config.`, "ok");
     }
 
     function stopIdentify() {
@@ -811,25 +900,25 @@
         state.identifyES.close();
         state.identifyES = null;
       }
-      setStatus("identifyStatus", "Identify stopped");
+      setStatus("identifyStatus", state.language === "it" ? "Identificazione arrestata" : "Identify stopped");
     }
 
     function startIdentify() {
       const port = effectivePort();
       const baud = parseInt($("baudInput").value, 10) || 115200;
       if (!port) {
-        setStatus("identifyStatus", "Select or type a serial port first", "error");
+        setStatus("identifyStatus", state.language === "it" ? "Seleziona o inserisci prima una porta seriale" : "Select or type a serial port first", "error");
         return;
       }
       stopIdentify();
       const url = "/api/identify?port=" + encodeURIComponent(port) + "&baud=" + encodeURIComponent(String(baud));
       const es = new EventSource(url);
       state.identifyES = es;
-      setStatus("identifyStatus", "Listening on " + port + " @ " + baud, "ok");
+      setStatus("identifyStatus", (state.language === "it" ? "In ascolto su " : "Listening on ") + port + " @ " + baud, "ok");
       if (state.wizard.active) {
         const stepID = state.wizard.steps[state.wizard.index].id;
-        if (stepID === "map") setStatus("wizardStatus", "Identify is running. Rotate and press each knob, then click Next Step.", "ok");
-        if (stepID === "verify") setStatus("wizardStatus", "Verification active. Confirm events are flashing for each knob.", "ok");
+        if (stepID === "map") setStatus("wizardStatus", state.language === "it" ? "Identificazione attiva. Ruota e premi ogni manopola, poi clicca Passo successivo." : "Identify is running. Rotate and press each knob, then click Next Step.", "ok");
+        if (stepID === "verify") setStatus("wizardStatus", state.language === "it" ? "Verifica attiva. Conferma che gli eventi lampeggiano per ogni manopola." : "Verification active. Confirm events are flashing for each knob.", "ok");
       }
 
       es.onmessage = (msg) => {
@@ -838,15 +927,15 @@
           if (ev.type === "event") {
             flashKnob(ev.knobId, ev.kind, ev.delta);
           } else if (ev.type === "error") {
-            setStatus("identifyStatus", ev.message || "stream error", "error");
+            setStatus("identifyStatus", ev.message || (state.language === "it" ? "errore stream" : "stream error"), "error");
           }
         } catch (err) {
-          setStatus("identifyStatus", "Invalid stream payload", "error");
+          setStatus("identifyStatus", state.language === "it" ? "Payload stream non valido" : "Invalid stream payload", "error");
         }
       };
 
       es.onerror = () => {
-        setStatus("identifyStatus", "Identify stream disconnected", "error");
+        setStatus("identifyStatus", state.language === "it" ? "Stream identificazione disconnesso" : "Identify stream disconnected", "error");
       };
     }
 
@@ -875,13 +964,13 @@
       $("wizardStart").addEventListener("click", startWizard);
       $("wizardNext").addEventListener("click", nextWizardStep);
       $("wizardReset").addEventListener("click", resetWizard);
+      $("languageSelect").addEventListener("change", (ev) => setLanguage(ev.target.value));
       window.addEventListener("beforeunload", stopIdentify);
     }
 
     async function main() {
-      createKnobCards();
-      renderTemplateOptions();
-      renderWizard();
+      const savedLanguage = localStorage.getItem(languageStorageKey) || "en";
+      setLanguage(savedLanguage);
       bindEvents();
       try {
         await loadStatus();

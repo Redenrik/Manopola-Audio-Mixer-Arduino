@@ -279,7 +279,16 @@ Legend:
     - `mama/internal/ui/server_test.go`
     - `README.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
-- [ ] `TODO` Add localization framework and initial EN/IT coverage.
+- [x] `DONE` Add localization framework and initial EN/IT coverage.
+  - Implemented:
+    - Added a lightweight setup-UI localization dictionary with English/Italian translations for page labels, wizard content, template descriptions, and runtime status text.
+    - Added a persisted language selector in the setup UI that re-renders static/dynamic content (`wizard`, template options, knob hints) without changing API request/response formats.
+    - Expanded setup UI server assertions for localization artifacts and documented the EN/IT language-toggle behavior in README.
+  - Changed files/tests:
+    - `mama/internal/ui/static/index.html`
+    - `mama/internal/ui/server_test.go`
+    - `README.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 - [x] `DONE` Add accessibility pass (keyboard navigation, labels, contrast, status clarity).
   - Implemented:
     - Improved setup UI keyboard accessibility with explicit `:focus-visible` styles for all form controls/buttons and updated status contrast tokens for clearer state visibility.
@@ -408,6 +417,8 @@ Legend:
 - 2026-03-02: Added setup UI config backup/restore/import/export workflow with browser-local snapshot controls and JSON file import/export support; reused shared form serialization for save compatibility, expanded setup UI index-page assertions, and updated README usage docs. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
 
 - 2026-03-02: Completed setup UI accessibility pass with keyboard focus-visible styling, ARIA labels + status live regions (including assertive error announcements), and accessible mapping-row remove semantics; expanded setup UI server assertions and README feature docs. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
+
+- 2026-03-02: Added setup UI localization framework with initial English/Italian coverage (persisted language selector, localized wizard/template/status copy, and dynamic re-rendering of key UI text), expanded setup UI index-page assertions, and documented language toggle behavior in README. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui ./...`.
 
 ---
 
