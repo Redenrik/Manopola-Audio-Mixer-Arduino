@@ -168,7 +168,14 @@ Legend:
 
 ## 6) Security, Governance, and v1.0 Readiness
 
-- [ ] `TODO` Add `SECURITY.md` with disclosure workflow.
+- [x] `DONE` Add `SECURITY.md` with disclosure workflow.
+  - Implemented:
+    - Added a root-level `SECURITY.md` that defines supported-version expectations for the current pre-`v1.0` phase and future policy updates.
+    - Documented private vulnerability reporting channels, required report contents, triage/response timelines, and coordinated disclosure steps.
+    - Added a `README.md` documentation index link so the security policy is easy to discover.
+  - Changed files/tests:
+    - `SECURITY.md`
+    - `README.md`
 - [x] `DONE` Add dependency and vulnerability scanning in CI.
   - Implemented:
     - Added a dedicated GitHub Actions security workflow with two jobs: dependency audit (`go mod verify` + tidy drift check) and `govulncheck` scanning for the `mama/` module.
@@ -203,6 +210,7 @@ Legend:
 - 2026-03-02: Remediated CI vulnerability-scan false failures caused by scanning with an out-of-date Go stdlib baseline by upgrading CI/security workflows from Go `1.22.x` to `1.24.x`; this aligns `govulncheck` with patched standard-library fixes while preserving module compatibility checks. Verified locally with `cd mama && go test ./...` and `cd mama && go mod verify` (network-limited environment prevented local `govulncheck` install).
 
 - 2026-03-02: Added release checksum generation (`scripts/release/generate-checksums.sh`) and reproducible-build guidance (`docs/RELEASE_REPRODUCIBLE_BUILDS.md`), then documented maintainer checksum steps in installation/README docs. Verified with `scripts/release/generate-checksums.sh <temp_artifacts>` + `sha256sum -c`, and `cd mama && go test ./...`.
+- 2026-03-02: Added a project `SECURITY.md` with supported-version guidance, private disclosure channels, and response SLAs; linked it from the README documentation index for contributor visibility. Verified with `cd mama && go test ./...`.
 
 ---
 
