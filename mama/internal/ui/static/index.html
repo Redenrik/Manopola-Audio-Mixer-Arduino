@@ -338,6 +338,13 @@
         <button id="addMapping" type="button">Add Mapping</button>
         <button class="btn-primary" id="saveConfig" type="button">Save Config</button>
       </div>
+      <div class="actions">
+        <button id="backupConfig" type="button">Backup Snapshot</button>
+        <button id="restoreConfig" type="button">Restore Snapshot</button>
+        <button id="exportConfig" type="button">Export Config</button>
+        <button id="importConfig" type="button">Import Config</button>
+        <input id="importConfigFile" type="file" accept="application/json" style="display:none;">
+      </div>
       <p class="status" id="saveStatus"></p>
     </section>
   </div>
@@ -409,6 +416,7 @@
 
     const knobCount = 5;
     const knobTimers = new Map();
+    const backupStorageKey = "mama.setup.config.backup.v1";
 
     function $(id) {
       return document.getElementById(id);
@@ -604,6 +612,40 @@
       });
     }
 
+    function buildConfigFromForm() {
+      return {
+        serial: {
+          port: effectivePort(),
+          baud: parseInt($("baudInput").value, 10) || 115200
+        },
+        debug: $("debugInput").checked,
+        mappings: collectMappings()
+      };
+    }
+
+    function applyConfigToForm(cfg) {
+      if (!cfg || typeof cfg !== "object") {
+        throw new Error("Invalid config object");
+      }
+      const serial = cfg.serial && typeof cfg.serial === "object" ? cfg.serial : {};
+      $("debugInput").checked = !!cfg.debug;
+      $("baudInput").value = String(serial.baud || 115200);
+      $("portInput").value = serial.port || "";
+      renderMappings(cfg.mappings || []);
+    }
+
+    function downloadConfig(filename, payload) {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
     async function loadStatus() {
       const status = await fetchJSON("/api/status");
       state.cfgPath = status.configPath;
@@ -664,23 +706,13 @@
     async function loadConfig() {
       const cfg = await fetchJSON("/api/config");
       state.config = cfg;
-      $("debugInput").checked = !!cfg.debug;
-      $("baudInput").value = String((cfg.serial && cfg.serial.baud) || 115200);
-      $("portInput").value = (cfg.serial && cfg.serial.port) || "";
-      renderMappings(cfg.mappings || []);
+      applyConfigToForm(cfg);
       setStatus("saveStatus", "Config loaded", "ok");
     }
 
     async function saveConfig() {
       try {
-        const payload = {
-          serial: {
-            port: effectivePort(),
-            baud: parseInt($("baudInput").value, 10) || 115200
-          },
-          debug: $("debugInput").checked,
-          mappings: collectMappings()
-        };
+        const payload = buildConfigFromForm();
         const saved = await fetchJSON("/api/config", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -694,6 +726,59 @@
       } catch (err) {
         setStatus("saveStatus", err.message, "error");
       }
+    }
+
+    function backupConfig() {
+      try {
+        const payload = buildConfigFromForm();
+        localStorage.setItem(backupStorageKey, JSON.stringify(payload));
+        setStatus("saveStatus", "Backup snapshot saved in this browser.", "ok");
+      } catch (err) {
+        setStatus("saveStatus", "Unable to create backup snapshot.", "error");
+      }
+    }
+
+    function restoreConfig() {
+      try {
+        const raw = localStorage.getItem(backupStorageKey);
+        if (!raw) {
+          throw new Error("No backup snapshot found in this browser.");
+        }
+        const parsed = JSON.parse(raw);
+        applyConfigToForm(parsed);
+        state.config = parsed;
+        setStatus("saveStatus", "Backup snapshot restored. Click Save Config to persist.", "ok");
+      } catch (err) {
+        setStatus("saveStatus", err.message || "Unable to restore backup snapshot.", "error");
+      }
+    }
+
+    function exportConfig() {
+      try {
+        const payload = buildConfigFromForm();
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        downloadConfig(`mama-config-${stamp}.json`, payload);
+        setStatus("saveStatus", "Config exported to JSON file.", "ok");
+      } catch (err) {
+        setStatus("saveStatus", "Unable to export config.", "error");
+      }
+    }
+
+    function importConfigFromFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result || "{}"));
+          applyConfigToForm(parsed);
+          state.config = parsed;
+          setStatus("saveStatus", "Config imported. Review values and click Save Config.", "ok");
+        } catch (err) {
+          setStatus("saveStatus", "Invalid config JSON file.", "error");
+        }
+      };
+      reader.onerror = () => setStatus("saveStatus", "Failed to read import file.", "error");
+      reader.readAsText(file);
     }
 
     function applyTemplate() {
@@ -763,6 +848,15 @@
       $("addMapping").addEventListener("click", () => $("mappings").appendChild(mappingRow()));
       $("applyTemplate").addEventListener("click", applyTemplate);
       $("saveConfig").addEventListener("click", saveConfig);
+      $("backupConfig").addEventListener("click", backupConfig);
+      $("restoreConfig").addEventListener("click", restoreConfig);
+      $("exportConfig").addEventListener("click", exportConfig);
+      $("importConfig").addEventListener("click", () => $("importConfigFile").click());
+      $("importConfigFile").addEventListener("change", (ev) => {
+        const [file] = ev.target.files || [];
+        importConfigFromFile(file);
+        ev.target.value = "";
+      });
       $("startIdentify").addEventListener("click", startIdentify);
       $("stopIdentify").addEventListener("click", stopIdentify);
       $("wizardStart").addEventListener("click", startWizard);

@@ -269,7 +269,16 @@ Legend:
     - `mama/internal/ui/server_test.go`
     - `README.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
-- [ ] `TODO` Add config backup/restore/import/export from UI.
+- [x] `DONE` Add config backup/restore/import/export from UI.
+  - Implemented:
+    - Added setup UI controls for browser-local backup snapshots (`Backup Snapshot`/`Restore Snapshot`) plus JSON config export/import actions.
+    - Implemented form-state serialization/apply helpers so backup/restore/import/export reuse the same config payload shape as Save Config while keeping existing save behavior backward-compatible.
+    - Expanded setup UI index-page server test assertions and README setup/feature docs to include the backup/restore/import/export workflow.
+  - Changed files/tests:
+    - `mama/internal/ui/static/index.html`
+    - `mama/internal/ui/server_test.go`
+    - `README.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 - [ ] `TODO` Add localization framework and initial EN/IT coverage.
 - [ ] `TODO` Add accessibility pass (keyboard navigation, labels, contrast, status clarity).
 
@@ -386,6 +395,8 @@ Legend:
 - 2026-03-02: Shipped setup UI first-run guided wizard (detect board -> test port -> map knobs -> save -> verify), including step state/status wiring to existing port refresh/test/identify/save actions, added server test coverage for wizard controls in the embedded page, and updated README setup guidance. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
 
 - 2026-03-02: Added setup UI mapping templates for streaming/conferencing/music/gaming presets with one-click apply into the existing mapping editor, extended index-page server test assertions for template controls, and documented template usage in README setup/feature sections. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
+
+- 2026-03-02: Added setup UI config backup/restore/import/export workflow with browser-local snapshot controls and JSON file import/export support; reused shared form serialization for save compatibility, expanded setup UI index-page assertions, and updated README usage docs. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
 
 ---
 
