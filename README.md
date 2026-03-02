@@ -189,6 +189,7 @@ This keeps configuration and binaries in one folder and avoids installing system
 - [docs/ROADMAP.md](docs/ROADMAP.md)
 - [docs/RELEASE_REPRODUCIBLE_BUILDS.md](docs/RELEASE_REPRODUCIBLE_BUILDS.md)
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+- [SECURITY.md](SECURITY.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## License
