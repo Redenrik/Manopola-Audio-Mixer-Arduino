@@ -19,7 +19,23 @@ Legend:
 ## 1) Core Missing Features
 
 ### A. Audio target support
-- [ ] `TODO` Implement `mic_in` backend support (Windows + Unix strategy decision documented).
+- [x] `DONE` Implement `mic_in` backend support (Windows + Unix strategy decision documented).
+  - Implemented:
+    - Refactored backend target routing so `master_out` and `mic_in` are controlled by independent volume controllers while preserving existing `master_out` behavior and unsupported handling for other targets.
+    - Added Unix microphone controller support using default PulseAudio source commands (`pactl`) with ALSA `amixer` fallback, including volume and mute toggles.
+    - Added Windows microphone controller support using Core Audio capture endpoint APIs (`ECapture`) for volume/mute reads and updates.
+    - Extended audio backend contract tests to cover `mic_in` adjust/mute behavior, dynamic target discovery when microphone control is available, and unsupported fallback when unavailable.
+    - Updated README, troubleshooting, and support-policy docs to reflect the new `mic_in` support status and platform/tooling conditions.
+  - Changed files/tests:
+    - `mama/internal/audio/backend_core.go`
+    - `mama/internal/audio/backend_unix.go`
+    - `mama/internal/audio/backend_windows.go`
+    - `mama/internal/audio/mic_controller_unix.go`
+    - `mama/internal/audio/mic_controller_windows.go`
+    - `mama/internal/audio/backend_contract_test.go`
+    - `README.md`
+    - `docs/TROUBLESHOOTING.md`
+    - `docs/SUPPORT_POLICY.md`
 - [ ] `TODO` Implement `line_in` backend support.
 - [ ] `TODO` Implement `app` per-process/session volume control.
 - [ ] `TODO` Implement `group` target for grouped app/session controls.
@@ -265,6 +281,7 @@ Legend:
 - 2026-03-02: Implemented robust `app/group` selector schema validation (`selector`/`selectors` with exact/contains/prefix/suffix/glob/exe kinds), added backward-compatible legacy `name` migration behavior, expanded config tests for valid/invalid selector paths, and updated README + troubleshooting docs. Verified with `cd mama && go test ./...`.
 - 2026-03-02: Added `app/group` overlap conflict rules with deterministic precedence (`priority` + selector specificity), rejecting ambiguous precedence ties, plus config/docs/test updates for priority validation and overlap handling. Verified with `cd mama && go test ./...`.
 - 2026-03-02: Implemented config profile support (`profiles` + `active_profile`) with backward-compatible top-level mappings fallback, active-profile runtime mapping resolution, and validation for profile naming/selection; added profile-focused config tests and README schema/validation updates. Verified with `cd mama && go test ./...`.
+- 2026-03-02: Implemented `mic_in` backend support with platform-specific strategy (`pactl`/`amixer` on Unix, Core Audio capture endpoint on Windows), refactored backend controller routing, expanded audio contract tests for `mic_in` + discovery behavior, and updated support/troubleshooting docs. Verified with `cd mama && go test ./internal/audio ./internal/ui ./cmd/mama` and `cd mama && go test ./...`.
 
 ---
 

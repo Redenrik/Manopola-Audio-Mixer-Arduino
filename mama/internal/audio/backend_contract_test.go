@@ -65,7 +65,7 @@ func (f *fakeVolumeController) Unmute() error {
 
 func TestBackendAdjustMasterOutContract(t *testing.T) {
 	fake := &fakeVolumeController{curVolume: 50}
-	b := &baseBackend{volume: fake}
+	b := &baseBackend{master: fake}
 
 	if err := b.Adjust(config.TargetMasterOut, "", 0.02, 3); err != nil {
 		t.Fatalf("Adjust() error = %v", err)
@@ -91,7 +91,7 @@ func TestBackendAdjustMasterOutClampsContract(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			fake := &fakeVolumeController{curVolume: tc.start}
-			b := &baseBackend{volume: fake}
+			b := &baseBackend{master: fake}
 			if err := b.Adjust(config.TargetMasterOut, "", tc.step, tc.delta); err != nil {
 				t.Fatalf("Adjust() error = %v", err)
 			}
@@ -105,7 +105,7 @@ func TestBackendAdjustMasterOutClampsContract(t *testing.T) {
 func TestBackendToggleMuteMasterOutContract(t *testing.T) {
 	t.Run("mutes when unmuted", func(t *testing.T) {
 		fake := &fakeVolumeController{muted: false}
-		b := &baseBackend{volume: fake}
+		b := &baseBackend{master: fake}
 		if err := b.ToggleMute(config.TargetMasterOut, ""); err != nil {
 			t.Fatalf("ToggleMute() error = %v", err)
 		}
@@ -116,7 +116,7 @@ func TestBackendToggleMuteMasterOutContract(t *testing.T) {
 
 	t.Run("unmutes when muted", func(t *testing.T) {
 		fake := &fakeVolumeController{muted: true}
-		b := &baseBackend{volume: fake}
+		b := &baseBackend{master: fake}
 		if err := b.ToggleMute(config.TargetMasterOut, ""); err != nil {
 			t.Fatalf("ToggleMute() error = %v", err)
 		}
@@ -128,8 +128,8 @@ func TestBackendToggleMuteMasterOutContract(t *testing.T) {
 
 func TestBackendUnsupportedTargetsContract(t *testing.T) {
 	fake := &fakeVolumeController{curVolume: 50}
-	b := &baseBackend{volume: fake}
-	unsupported := []config.TargetType{config.TargetMicIn, config.TargetLineIn, config.TargetApp, config.TargetGroup}
+	b := &baseBackend{master: fake}
+	unsupported := []config.TargetType{config.TargetLineIn, config.TargetApp, config.TargetGroup}
 
 	for _, target := range unsupported {
 		t.Run(string(target), func(t *testing.T) {
@@ -147,14 +147,14 @@ func TestBackendErrorPropagationContract(t *testing.T) {
 	errBoom := errors.New("boom")
 
 	t.Run("adjust get volume", func(t *testing.T) {
-		b := &baseBackend{volume: &fakeVolumeController{getVolumeErr: errBoom}}
+		b := &baseBackend{master: &fakeVolumeController{getVolumeErr: errBoom}}
 		if err := b.Adjust(config.TargetMasterOut, "", 0.02, 1); !errors.Is(err, errBoom) {
 			t.Fatalf("Adjust() error = %v, want %v", err, errBoom)
 		}
 	})
 
 	t.Run("toggle mute get muted", func(t *testing.T) {
-		b := &baseBackend{volume: &fakeVolumeController{getMutedErr: errBoom}}
+		b := &baseBackend{master: &fakeVolumeController{getMutedErr: errBoom}}
 		if err := b.ToggleMute(config.TargetMasterOut, ""); !errors.Is(err, errBoom) {
 			t.Fatalf("ToggleMute() error = %v, want %v", err, errBoom)
 		}
@@ -162,7 +162,7 @@ func TestBackendErrorPropagationContract(t *testing.T) {
 }
 
 func TestBackendListTargetsContract(t *testing.T) {
-	b := &baseBackend{volume: &fakeVolumeController{}}
+	b := &baseBackend{master: &fakeVolumeController{}}
 	targets, err := b.ListTargets()
 	if err != nil {
 		t.Fatalf("ListTargets() error = %v", err)
@@ -172,5 +172,45 @@ func TestBackendListTargetsContract(t *testing.T) {
 	}
 	if targets[0].ID != "system:master_out" || targets[0].Type != config.TargetMasterOut {
 		t.Fatalf("ListTargets()[0] = %#v, want id=system:master_out type=master_out", targets[0])
+	}
+}
+
+func TestBackendMicInContract(t *testing.T) {
+	fake := &fakeVolumeController{curVolume: 40}
+	b := &baseBackend{master: &fakeVolumeController{}, mic: fake}
+
+	if err := b.Adjust(config.TargetMicIn, "", 0.05, 2); err != nil {
+		t.Fatalf("Adjust(mic_in) error = %v", err)
+	}
+	if got := fake.setVolumeCalls[0]; got != 50 {
+		t.Fatalf("SetVolume() = %d, want 50", got)
+	}
+
+	if err := b.ToggleMute(config.TargetMicIn, ""); err != nil {
+		t.Fatalf("ToggleMute(mic_in) error = %v", err)
+	}
+	if fake.muteCalls != 1 {
+		t.Fatalf("muteCalls = %d, want 1", fake.muteCalls)
+	}
+}
+
+func TestBackendMicInUnsupportedWithoutController(t *testing.T) {
+	b := &baseBackend{master: &fakeVolumeController{}, mic: nil}
+	if err := b.Adjust(config.TargetMicIn, "", 0.1, 1); err == nil {
+		t.Fatal("Adjust(mic_in) expected unsupported error")
+	}
+}
+
+func TestBackendListTargetsIncludesMicWhenAvailable(t *testing.T) {
+	b := &baseBackend{master: &fakeVolumeController{}, mic: &fakeVolumeController{}}
+	targets, err := b.ListTargets()
+	if err != nil {
+		t.Fatalf("ListTargets() error = %v", err)
+	}
+	if len(targets) != 2 {
+		t.Fatalf("ListTargets() len = %d, want 2", len(targets))
+	}
+	if targets[1].Type != config.TargetMicIn || targets[1].ID != "system:mic_in" {
+		t.Fatalf("ListTargets()[1] = %#v, want mic target", targets[1])
 	}
 }

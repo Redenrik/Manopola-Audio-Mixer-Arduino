@@ -6,7 +6,7 @@ type windowsBackend struct{ baseBackend }
 
 func newBackend() Backend {
 	return &windowsBackend{
-		baseBackend: baseBackend{volume: systemVolumeController{}},
+		baseBackend: baseBackend{master: systemVolumeController{}, mic: newMicVolumeController()},
 	}
 }
 

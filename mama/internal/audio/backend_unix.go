@@ -6,6 +6,6 @@ type unixBackend struct{ baseBackend }
 
 func newBackend() Backend {
 	return &unixBackend{
-		baseBackend: baseBackend{volume: systemVolumeController{}},
+		baseBackend: baseBackend{master: systemVolumeController{}, mic: newMicVolumeController()},
 	}
 }
