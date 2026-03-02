@@ -1,0 +1,36 @@
+# Release QA Checklist
+
+Use this checklist before tagging or publishing a release artifact.
+
+## 1) Build & Test Baseline
+
+- [ ] CI is green for `.github/workflows/ci.yml` and `.github/workflows/security-scan.yml` on the release commit.
+- [ ] Local verification: `cd mama && go test ./...`.
+- [ ] Local verification: `cd mama && go mod verify`.
+- [ ] No unreviewed changes in `go.mod`/`go.sum`.
+
+## 2) Runtime and Config Verification
+
+- [ ] Setup UI loads and can save a valid config file.
+- [ ] Serial connection test succeeds against a representative board.
+- [ ] Knob rotation updates `master_out` volume and button toggles mute.
+- [ ] Protocol compatibility behavior is validated (`V:1` accepted, mismatches logged and controls dropped).
+
+## 3) Release Artifacts and Integrity
+
+- [ ] Artifacts built for intended release platforms.
+- [ ] SHA-256 checksums generated with `scripts/release/generate-checksums.sh`.
+- [ ] Checksum manifest verified (`sha256sum -c` or `shasum -a 256 -c`).
+- [ ] Portable mode validated (binaries + `config.yaml` side-by-side, no service install required).
+
+## 4) Documentation and Governance
+
+- [ ] Changelog / release notes drafted and reviewed.
+- [ ] Support/deprecation implications reviewed against `docs/SUPPORT_POLICY.md`.
+- [ ] Security-impacting changes reviewed against `SECURITY.md` disclosure expectations.
+- [ ] Open TODOs and follow-ups captured as GitHub issues.
+
+## 5) Sign-off
+
+- [ ] Final release candidate approved by maintainers.
+- [ ] Tag created and release published with checksums attached.

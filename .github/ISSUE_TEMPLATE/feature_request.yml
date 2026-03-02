@@ -1,0 +1,51 @@
+name: Feature request
+description: Propose a feature or enhancement for MAMA.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share enough context so maintainers can evaluate fit, complexity, and release impact.
+  - type: input
+    id: area
+    attributes:
+      label: Proposed area
+      description: Which part of the project is this for?
+      placeholder: e.g. audio backend, firmware protocol, setup UI, release process
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user or maintainer problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe expected behavior and any API/config/protocol changes.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What options did you consider and why not choose them?
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility impact
+      description: Note any backward compatibility, migration, or support-matrix implications.
+      placeholder: e.g. requires config migration, new protocol version, no breaking changes
+  - type: textarea
+    id: validation
+    attributes:
+      label: Suggested validation
+      description: How should this be tested (unit/integration/manual)?
+      placeholder: |
+        - Add parser tests for ...
+        - Verify on Windows + Linux with ...

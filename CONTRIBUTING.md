@@ -27,6 +27,7 @@ go run ./cmd/mama
 
 ## PR Checklist
 
+- Use issue/PR templates for consistent problem statements, validation notes, and risk callouts.
 - Keep behavior changes small and explicit.
 - Add/update tests for config/protocol/logic changes.
 - Update docs when behavior or user flow changes.
@@ -61,6 +62,8 @@ go run ./cmd/mama
 - Any PR introducing breaking behavior must include migration guidance and explicit release-note callouts.
 
 ## Testing Expectations
+
+- Follow [docs/RELEASE_QA_CHECKLIST.md](docs/RELEASE_QA_CHECKLIST.md) before tagging or publishing release artifacts.
 
 Minimum for code PRs:
 - `go test ./...`
