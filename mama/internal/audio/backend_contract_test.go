@@ -167,7 +167,10 @@ func TestBackendListTargetsContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTargets() error = %v", err)
 	}
-	if len(targets) != 1 || targets[0] != "system:master_out" {
-		t.Fatalf("ListTargets() = %v, want [system:master_out]", targets)
+	if len(targets) != 1 {
+		t.Fatalf("ListTargets() len = %d, want 1", len(targets))
+	}
+	if targets[0].ID != "system:master_out" || targets[0].Type != config.TargetMasterOut {
+		t.Fatalf("ListTargets()[0] = %#v, want id=system:master_out type=master_out", targets[0])
 	}
 }

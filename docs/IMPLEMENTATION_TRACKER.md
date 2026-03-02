@@ -23,7 +23,20 @@ Legend:
 - [ ] `TODO` Implement `line_in` backend support.
 - [ ] `TODO` Implement `app` per-process/session volume control.
 - [ ] `TODO` Implement `group` target for grouped app/session controls.
-- [ ] `TODO` Extend `/api/targets` to expose real discoverable targets (not placeholders).
+- [x] `DONE` Extend `/api/targets` to expose real discoverable targets (not placeholders).
+  - Implemented:
+    - Introduced a typed audio discovery model (`audio.DiscoveredTarget`) and migrated backend target listing to return structured metadata (`id`, `type`, `name`).
+    - Updated `/api/targets` to return `discovered` from backend enumeration while preserving backward-compatible `known` and `supported` fields.
+    - Added tests for backend discovery contracts and setup UI target endpoint response shape.
+    - Updated README feature notes to document the expanded `/api/targets` response.
+  - Changed files/tests:
+    - `mama/internal/audio/audio.go`
+    - `mama/internal/audio/backend_core.go`
+    - `mama/internal/audio/backend_contract_test.go`
+    - `mama/internal/ui/server.go`
+    - `mama/internal/ui/server_targets_test.go`
+    - `mama/cmd/mama/main_integration_test.go`
+    - `README.md`
 
 ### B. Config and mapping model maturity
 - [ ] `TODO` Define and validate robust schema for `app/group` selectors (exact match, wildcard, executable name, etc.).
@@ -166,6 +179,8 @@ Legend:
 - 2026-03-02: Added audio backend contract coverage for all currently supported/declared target types by extracting shared backend logic behind a mockable volume controller and adding deterministic tests for `master_out` semantics, unsupported target rejection, and error propagation. Verified with `go test ./...`.
 - 2026-03-02: Added config schema migration compatibility for legacy aliases (top-level `port`/`baud`, `knobs`, and mapping alias keys), plus tests covering migration and current-schema precedence; documented aliases in README. Verified with `go test ./...`.
 - 2026-03-02: Added GitHub Actions CI matrix testing across Linux/Windows/macOS for the `mama` Go module, running `go test ./...` on push/PR, and documented the workflow in README. Verified locally with `cd mama && go test ./...`.
+
+- 2026-03-02: Extended `/api/targets` with structured backend discovery (`discovered` with id/type/name), kept backward-compatible `known`/`supported` fields, added UI endpoint tests, and updated backend discovery contracts. Verified with `cd mama && go test ./...`.
 
 ---
 
