@@ -2,6 +2,7 @@ name: Release Signing and Notarization
 
 on:
   pull_request:
+  merge_group:
   release:
     types: [published]
   workflow_dispatch:
@@ -16,18 +17,18 @@ permissions:
   id-token: write
 
 jobs:
-  pull-request-info:
-    name: pull-request-info
-    if: ${{ github.event_name == 'pull_request' }}
+  workflow-info:
+    name: workflow-info
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
     runs-on: ubuntu-latest
 
     steps:
-      - name: Release signing only runs for releases
-        run: echo "Release signing and notarization jobs are only executed for release and manual dispatch events."
+      - name: Signing jobs only run for release/manual events
+        run: echo "Release signing and notarization jobs are only executed for release and workflow_dispatch events."
 
   sign-release-artifacts:
     name: sign-release-artifacts
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -77,7 +78,7 @@ jobs:
     name: notarize-macos-artifacts
     runs-on: macos-latest
     needs: sign-release-artifacts
-    if: ${{ secrets.APPLE_DEVELOPER_ID_APP != '' && secrets.APPLE_NOTARY_KEY_ID != '' && secrets.APPLE_NOTARY_ISSUER_ID != '' && secrets.APPLE_NOTARY_PRIVATE_KEY != '' }}
+    if: ${{ (github.event_name == 'release' || github.event_name == 'workflow_dispatch') && secrets.APPLE_DEVELOPER_ID_APP != '' && secrets.APPLE_NOTARY_KEY_ID != '' && secrets.APPLE_NOTARY_ISSUER_ID != '' && secrets.APPLE_NOTARY_PRIVATE_KEY != '' }}
 
     steps:
       - name: Checkout
