@@ -1,6 +1,8 @@
 #include <Wire.h>
 #include <util/atomic.h>
 
+#include "i2c_packet.h"
+
 static const uint8_t I2C_ADDR = 0x12;
 
 // Encoder polling state for one rotary encoder + push button.
@@ -75,37 +77,25 @@ static void updateEnc(Enc &e) {
   }
 }
 
-static int8_t stepsFromAccumulator(int16_t acc) {
-  int16_t steps = acc / 4; // 4 quadrature transitions = 1 detent step
-  if (steps > 127) steps = 127;
-  if (steps < -127) steps = -127;
-  return (int8_t)steps;
-}
-
 // Fixed packet on each I2C request:
 // byte0 = E4 delta (-127..127) in detent steps
 // byte1 = E5 delta
 // byte2 = E4 press edge (0/1)
 // byte3 = E5 press edge (0/1)
 static void onI2CRequest() {
-  int16_t a4 = e4.acc;
-  int16_t a5 = e5.acc;
+  I2CPacketState s4{e4.acc, e4.pressEdge};
+  I2CPacketState s5{e5.acc, e5.pressEdge};
+  const I2CPacket packet = i2cBuildPacketAndConsume(s4, s5);
 
-  int8_t d4 = stepsFromAccumulator(a4);
-  int8_t d5 = stepsFromAccumulator(a5);
+  e4.acc = s4.acc;
+  e5.acc = s5.acc;
+  e4.pressEdge = s4.pressEdge;
+  e5.pressEdge = s5.pressEdge;
 
-  e4.acc -= (int16_t)d4 * 4;
-  e5.acc -= (int16_t)d5 * 4;
-
-  uint8_t p4 = e4.pressEdge ? 1 : 0;
-  uint8_t p5 = e5.pressEdge ? 1 : 0;
-  e4.pressEdge = 0;
-  e5.pressEdge = 0;
-
-  Wire.write((uint8_t)d4);
-  Wire.write((uint8_t)d5);
-  Wire.write(p4);
-  Wire.write(p5);
+  Wire.write((uint8_t)packet.d4);
+  Wire.write((uint8_t)packet.d5);
+  Wire.write(packet.p4);
+  Wire.write(packet.p5);
 }
 
 void setup() {
