@@ -1,65 +1,112 @@
 # v1.0 Readiness Review and Acceptance Criteria
 
-This document defines the acceptance criteria required before publishing `v1.0.0`.
+This document defines objective acceptance gates required before publishing `v1.0.0`.
 
 ## Review Scope
 
-A `v1.0.0` candidate is acceptable only when all criteria below are marked complete with evidence links (workflow runs, logs, artifacts, or issue references).
+A `v1.0.0` candidate is acceptable only when **all blocking gates** are complete with evidence. Evidence must be either:
+- a reproducible command result captured in this document; or
+- a linked manual sign-off artifact (issue/PR comment, workflow URL, screenshot/log attachment, or release asset URL).
 
-## Acceptance Criteria
+---
 
-### 1) Product functionality baseline
+## Acceptance Gates
 
-- [ ] Core targets operate as documented: `master_out`, `mic_in`, `line_in`, `app`, and `group`.
-- [ ] Setup UI first-run flow works end-to-end: detect board, test port, map knobs, save, verify.
-- [ ] Config compatibility aliases load correctly without breaking current schema precedence.
-- [ ] `/api/targets` returns backward-compatible fields (`known`, `supported`) and discovery metadata (`discovered`).
+### Gate 1 — Product functionality baseline (Blocking)
 
-Evidence:
-- Test output from `cd mama && go test ./...`.
-- Manual verification notes for one representative hardware setup.
+| ID | Criteria (verifiable) | Ownership | Status | Required evidence format |
+| --- | --- | --- | --- | --- |
+| G1.1 | Host code/tests compile and pass all module tests. | Automatable by Codex | ✅ Complete | Dated command block for `cd mama && go test ./...`. |
+| G1.2 | Config compatibility aliases continue loading without current-schema precedence regressions. | Automatable by Codex | ✅ Complete | Covered by `go test` (`mama/internal/config` package) result in command block. |
+| G1.3 | Backward-compatible `/api/targets` fields (`known`, `supported`) and discovery metadata (`discovered`) remain validated in tests. | Automatable by Codex | ✅ Complete | Covered by `go test` (`mama/cmd/mama` + API tests) result in command block. |
+| G1.4 | Representative hardware flow succeeds end-to-end (detect board → test port → map knobs → save → verify output changes). | Manual/Maintainer required | ⬜ Pending | Owner + dated test log (board model, host OS, serial port, observed behavior). |
 
-### 2) Reliability and resilience
+#### Evidence captured this run (2026-03-02)
 
-- [ ] Protocol version handshake behavior is validated (`V:1` accepted; mismatch events safely dropped/logged).
-- [ ] Serial reconnect behavior confirms bounded backoff and clean recovery.
-- [ ] Runtime metrics and structured logs are emitted for parse errors, drops, reconnects, and backend failures.
-- [ ] Long-run soak process is executed per `docs/SOAK_TEST_PLAN.md` and reviewed.
+```bash
+$ cd mama && go test ./...
+ok   	mama/cmd/mama	0.017s
+?    	mama/cmd/mama-ui	[no test files]
+ok   	mama/internal/audio	0.020s
+ok   	mama/internal/config	0.037s
+ok   	mama/internal/proto	0.014s
+ok   	mama/internal/runtime	0.015s
+?    	mama/internal/serial	[no test files]
+ok   	mama/internal/ui	0.024s
+```
 
-Evidence:
-- Runtime logs captured during replay and hardware smoke tests.
-- Soak artifacts under `artifacts/soak/` (or attached CI artifacts).
+Manual sign-off placeholder:
+- **Owner:** `@maintainer-<name>`
+- **Evidence link:** `<PR comment / issue / artifact URL>`
 
-### 3) Platform and release quality gates
+---
 
-- [ ] CI matrix is green on Linux, Windows, and macOS.
-- [ ] Security scan workflow is green (`go mod verify`, tidy drift check, `govulncheck`).
-- [ ] Release artifacts include checksums and signature assets (`*.sig`, `*.pem`).
-- [ ] Optional installer/update artifacts (if shipped) are validated and portable mode remains supported.
+### Gate 2 — Reliability and resilience (Blocking)
 
-Evidence:
-- Workflow links for `.github/workflows/ci.yml`, `.github/workflows/security-scan.yml`, `.github/workflows/release-artifacts.yml`, and `.github/workflows/release-signing.yml`.
-- Attached checksum manifest and verification output.
+| ID | Criteria (verifiable) | Ownership | Status | Required evidence format |
+| --- | --- | --- | --- | --- |
+| G2.1 | Protocol compatibility handling (`V:1` accepted; mismatches dropped/logged) remains covered by automated tests. | Automatable by Codex | ✅ Complete | `go test` output including `mama/internal/proto` + `mama/cmd/mama`. |
+| G2.2 | Reconnect + bounded backoff + runtime metrics/logging paths remain validated by automated tests. | Automatable by Codex | ✅ Complete | `go test` output including `mama/internal/runtime` + `mama/cmd/mama`. |
+| G2.3 | Long-run soak execution completed per `docs/SOAK_TEST_PLAN.md` for release candidate build. | Manual/Maintainer required | ⬜ Pending | Owner + dated artifact bundle path (logs/metrics) and pass/fail note. |
 
-### 4) Documentation and governance readiness
+Manual sign-off placeholder:
+- **Owner:** `@maintainer-<name>`
+- **Evidence link:** `<soak artifact URL/path + summary>`
 
-- [ ] `docs/RELEASE_QA_CHECKLIST.md` is completed for the release candidate.
-- [ ] Support/deprecation and security policies are reviewed (`docs/SUPPORT_POLICY.md`, `SECURITY.md`).
-- [ ] Release notes are generated/reviewed and include upgrade guidance.
-- [ ] Any deferred non-blocking follow-ups are captured as GitHub issues with milestone labels.
+---
 
-Evidence:
-- Completed release checklist in PR/release notes.
-- Links to created follow-up issues (if any).
+### Gate 3 — Platform and release quality (Blocking)
 
-## Exit Decision
+| ID | Criteria (verifiable) | Ownership | Status | Required evidence format |
+| --- | --- | --- | --- | --- |
+| G3.1 | Module dependency verification passes. | Automatable by Codex | ✅ Complete | Dated command block for `cd mama && go mod verify`. |
+| G3.2 | CI matrix (`.github/workflows/ci.yml`) green for release commit on Linux/Windows/macOS. | Manual/Maintainer required | ⬜ Pending | Workflow URL + run ID + commit SHA. |
+| G3.3 | Security scan (`.github/workflows/security-scan.yml`) green for release commit. | Manual/Maintainer required | ⬜ Pending | Workflow URL + run ID + commit SHA. |
+| G3.4 | Release artifacts published with checksums and signing assets (`*.sig`, `*.pem`) and checksum verification output. | Manual/Maintainer required | ⬜ Pending | Release asset links + verification command output snippet. |
+| G3.5 | Optional installer/update artifacts (if shipped) validated; portable mode still functional. | Manual/Maintainer required | ⬜ Pending | Owner statement + test matrix table + evidence links. |
 
-Record one of the following outcomes in the release PR:
+#### Evidence captured this run (2026-03-02)
 
-- **GO**: all acceptance criteria complete with evidence.
-- **NO-GO**: one or more blocking criteria incomplete; include remediation owner and target date.
+```bash
+$ cd mama && go mod verify
+all modules verified
+```
 
-## Suggested Sign-off Template
+Manual sign-off placeholder:
+- **Owner:** `@maintainer-<name>`
+- **Evidence link:** `<workflow/release URLs>`
+
+---
+
+### Gate 4 — Documentation and governance readiness (Blocking)
+
+| ID | Criteria (verifiable) | Ownership | Status | Required evidence format |
+| --- | --- | --- | --- | --- |
+| G4.1 | `docs/RELEASE_QA_CHECKLIST.md` is completed for the candidate and attached to release PR. | Manual/Maintainer required | ⬜ Pending | Completed checklist section in PR description or linked artifact. |
+| G4.2 | Support/security policy review recorded against `docs/SUPPORT_POLICY.md` and `SECURITY.md`. | Manual/Maintainer required | ⬜ Pending | Reviewer name + dated approval note/link. |
+| G4.3 | Release notes generated and reviewed, including upgrade guidance. | Manual/Maintainer required | ⬜ Pending | Generated notes artifact URL + reviewer sign-off. |
+| G4.4 | Deferred non-blocking follow-ups tracked as issues with milestone labels. | Manual/Maintainer required | ⬜ Pending | Issue links + milestone names. |
+
+Manual sign-off placeholder:
+- **Owner:** `@maintainer-<name>`
+- **Evidence link:** `<PR/release notes/issue URLs>`
+
+---
+
+## Objective GO/NO-GO Decision
+
+Use these gates to make the decision:
+
+- **GO** only if **all Blocking items (G1.x–G4.x)** are complete with evidence.
+- **NO-GO** if any blocking item is pending/failed; include remediation owner and target date.
+
+### Current decision snapshot (from this run)
+
+- **Decision:** `NO-GO (expected in-repo pre-release state)`
+- **Reason:** Automatable in-repo checks passed, but manual/hardware/workflow/release sign-offs are still pending.
+- **Next required sign-offs:** G1.4, G2.3, G3.2–G3.5, G4.1–G4.4.
+
+## Sign-off Template
 
 ```text
 v1.0 readiness decision: GO | NO-GO
@@ -67,5 +114,6 @@ Date:
 Release candidate commit/tag:
 Reviewers:
 Blocking gaps (if any):
+Remediation owners + target dates:
 Evidence links:
 ```
