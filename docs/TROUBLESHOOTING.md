@@ -18,7 +18,7 @@
 
 - Open `config.yaml` and verify knob mapping exists.
 - Ensure mapping `step` is greater than 0.
-- Use `master_out` universally, or `mic_in` / `line_in` on Windows and Unix hosts that expose capture controls (`pactl`/`amixer`).
+- Use `master_out` universally, or `mic_in` / `line_in` on hosts that expose capture controls (`pactl`/`amixer`). `app` mappings are supported on Unix hosts with `pactl` sink-input controls.
 - Enable `debug: true` and read daemon logs for parse/mapping errors.
 - Runtime logs are now structured as deterministic `event=<name> key=value ...` entries (for example: `event=serial_state port="COM3" state="connected"`).
 - Check `event=runtime_metrics` log lines for aggregate counters (`parse_errors`, `dropped_events`, `reconnect_count`, `backend_failures`) while troubleshooting noisy serial links or backend issues.
@@ -38,4 +38,4 @@ Common causes:
 
 - Press action emits `B<id>:1` only.
 - Release events are intentionally ignored.
-- Confirm your mapping target is currently supported (`master_out`, plus `mic_in` / `line_in` when capture tooling is available).
+- Confirm your mapping target is currently supported (`master_out`, plus `mic_in` / `line_in` when capture tooling is available, and `app` on Unix hosts with `pactl`).

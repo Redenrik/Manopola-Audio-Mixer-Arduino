@@ -172,14 +172,14 @@ func runSessionFromChannels(ctx context.Context, cfg *config.Config, b audio.Bac
 
 			switch ev.Kind {
 			case proto.EventEncoderDelta:
-				if err := b.Adjust(m.Target, m.Name, m.Step, ev.Delta); err != nil {
+				if err := b.Adjust(m.Target, backendTargetName(m), m.Step, ev.Delta); err != nil {
 					metrics.IncBackendFailures()
 					if cfg.Debug {
 						runtime.Log("backend_error", runtime.Fields{"error": err, "knob_id": ev.KnobID, "operation": "adjust"})
 					}
 				}
 			case proto.EventButtonPress:
-				if err := b.ToggleMute(m.Target, m.Name); err != nil {
+				if err := b.ToggleMute(m.Target, backendTargetName(m)); err != nil {
 					metrics.IncBackendFailures()
 					if cfg.Debug {
 						runtime.Log("backend_error", runtime.Fields{"error": err, "knob_id": ev.KnobID, "operation": "toggle_mute"})
@@ -190,6 +190,13 @@ func runSessionFromChannels(ctx context.Context, cfg *config.Config, b audio.Bac
 			}
 		}
 	}
+}
+
+func backendTargetName(m config.Mapping) string {
+	if m.Target == config.TargetApp && m.Selector != nil {
+		return string(m.Selector.Kind) + ":" + m.Selector.Value
+	}
+	return m.Name
 }
 
 func sleepWithContext(ctx context.Context, d time.Duration) bool {

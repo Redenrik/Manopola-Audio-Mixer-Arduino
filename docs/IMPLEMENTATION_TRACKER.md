@@ -54,7 +54,27 @@ Legend:
     - `README.md`
     - `docs/TROUBLESHOOTING.md`
     - `docs/SUPPORT_POLICY.md`
-- [ ] `TODO` Implement `app` per-process/session volume control.
+- [x] `DONE` Implement `app` per-process/session volume control.
+  - Implemented:
+    - Added backend `app` target routing via a dedicated session-controller abstraction while preserving existing `master_out`/`mic_in`/`line_in` behavior and unsupported handling when app session tooling is unavailable.
+    - Implemented Unix per-app/session volume + mute controls using `pactl` sink-input discovery and selector-driven matching (`exact`, `contains`, `prefix`, `suffix`, `glob`, `exe`).
+    - Wired runtime mapping execution to forward app selector context to the backend, added backend + parser/controller tests for app target behavior, and updated support/docs to reflect shipped `app` support scope.
+  - Changed files/tests:
+    - `mama/internal/audio/backend_core.go`
+    - `mama/internal/audio/backend_unix.go`
+    - `mama/internal/audio/backend_windows.go`
+    - `mama/internal/audio/app_controller_unix.go`
+    - `mama/internal/audio/app_controller_windows.go`
+    - `mama/internal/audio/backend_contract_test.go`
+    - `mama/internal/audio/app_controller_unix_test.go`
+    - `mama/cmd/mama/main.go`
+    - `mama/cmd/mama/main_integration_test.go`
+    - `mama/internal/config/config.go`
+    - `mama/internal/config/default.yaml`
+    - `README.md`
+    - `docs/TROUBLESHOOTING.md`
+    - `docs/SUPPORT_POLICY.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 - [ ] `TODO` Implement `group` target for grouped app/session controls.
 - [x] `DONE` Extend `/api/targets` to expose real discoverable targets (not placeholders).
   - Implemented:
@@ -301,6 +321,8 @@ Legend:
 - 2026-03-02: Implemented `mic_in` backend support with platform-specific strategy (`pactl`/`amixer` on Unix, Core Audio capture endpoint on Windows), refactored backend controller routing, expanded audio contract tests for `mic_in` + discovery behavior, and updated support/troubleshooting docs. Verified with `cd mama && go test ./internal/audio ./internal/ui ./cmd/mama` and `cd mama && go test ./...`.
 
 - 2026-03-02: Implemented `line_in` backend support by adding dedicated backend routing/controller wiring (Unix + Windows capture tooling path), extending audio backend contract tests for `line_in` adjust/mute/discovery behavior, and updating user-facing docs/support matrix to mark `line_in` as supported where capture controls are available. Verified with `cd mama && go test ./internal/audio ./...`.
+
+- 2026-03-02: Implemented `app` per-process/session backend support on Unix hosts via `pactl` sink-input controls, including selector-token runtime wiring, backend discovery updates, and contract/parser tests for app adjust/mute/list behavior; updated README/troubleshooting/support docs with current scope. Verified with `cd mama && go test ./...`.
 
 
 ---
