@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -27,12 +26,14 @@ func main() {
 		cfgPath = config.ResolveDefaultPath()
 	}
 	if _, err := config.EnsureDefaultFile(cfgPath); err != nil {
-		log.Fatalf("failed to ensure config file: %v", err)
+		runtime.Log("startup_error", runtime.Fields{"error": err, "step": "ensure_config"})
+		os.Exit(1)
 	}
 
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
-		log.Fatalf("config error: %v", err)
+		runtime.Log("startup_error", runtime.Fields{"error": err, "step": "load_config"})
+		os.Exit(1)
 	}
 
 	b := audio.NewBackend()
@@ -60,13 +61,13 @@ func main() {
 			return
 		}
 
-		log.Printf("serial state: connecting port=%s baud=%d", cfg.Serial.Port, cfg.Serial.Baud)
+		runtime.Log("serial_state", runtime.Fields{"baud": cfg.Serial.Baud, "port": cfg.Serial.Port, "state": "connecting"})
 		r, err := serialx.Open(cfg.Serial.Port, cfg.Serial.Baud)
 		if err != nil {
 			metrics.IncReconnectCount()
 			delay := backoff.Next()
-			log.Printf("serial state: reconnecting open_failed=%v retry_in=%s", err, delay)
-			log.Printf("runtime metrics: %s", metrics.Snapshot())
+			runtime.Log("serial_state", runtime.Fields{"error": err, "retry_in": delay, "state": "reconnecting"})
+			runtime.Log("runtime_metrics", runtime.Fields{"snapshot": metrics.Snapshot()})
 			if !sleepWithContext(ctx, delay) {
 				return
 			}
@@ -74,13 +75,13 @@ func main() {
 		}
 
 		backoff.Reset()
-		log.Printf("serial state: connected port=%s", cfg.Serial.Port)
+		runtime.Log("serial_state", runtime.Fields{"port": cfg.Serial.Port, "state": "connected"})
 		if err := runSession(ctx, r, &cfg, b, metrics); err != nil && !errors.Is(err, context.Canceled) {
 			metrics.IncReconnectCount()
 			delay := backoff.Next()
-			log.Printf("serial state: disconnected err=%v", err)
-			log.Printf("serial state: reconnecting retry_in=%s", delay)
-			log.Printf("runtime metrics: %s", metrics.Snapshot())
+			runtime.Log("serial_state", runtime.Fields{"error": err, "state": "disconnected"})
+			runtime.Log("serial_state", runtime.Fields{"retry_in": delay, "state": "reconnecting"})
+			runtime.Log("runtime_metrics", runtime.Fields{"snapshot": metrics.Snapshot()})
 			if !sleepWithContext(ctx, delay) {
 				return
 			}
@@ -98,7 +99,7 @@ func runSession(ctx context.Context, r *serialx.Reader, cfg *config.Config, b au
 	}()
 
 	defer func() { _ = r.Close() }()
-	defer log.Printf("runtime metrics: %s", metrics.Snapshot())
+	defer runtime.Log("runtime_metrics", runtime.Fields{"snapshot": metrics.Snapshot()})
 
 	protocolAnnounced := false
 	protocolCompatible := true
@@ -117,14 +118,14 @@ func runSession(ctx context.Context, r *serialx.Reader, cfg *config.Config, b au
 				return fmt.Errorf("serial reader stopped")
 			}
 			if cfg.Debug {
-				log.Printf("RX: %s", line)
+				runtime.Log("serial_rx", runtime.Fields{"line": line})
 			}
 
 			ev, err := proto.ParseLine(line)
 			if err != nil {
 				metrics.IncParseErrors()
 				if cfg.Debug {
-					log.Printf("parse error: %v", err)
+					runtime.Log("parse_error", runtime.Fields{"error": err})
 				}
 				continue
 			}
@@ -133,9 +134,9 @@ func runSession(ctx context.Context, r *serialx.Reader, cfg *config.Config, b au
 				protocolAnnounced = true
 				protocolCompatible = proto.IsProtocolCompatible(ev.ProtocolVersion)
 				if protocolCompatible {
-					log.Printf("protocol version negotiated: firmware=%d host=%d", ev.ProtocolVersion, proto.HostProtocolVersion)
+					runtime.Log("protocol_negotiated", runtime.Fields{"firmware": ev.ProtocolVersion, "host": proto.HostProtocolVersion})
 				} else {
-					log.Printf("protocol mismatch: firmware=%d host=%d (dropping control events)", ev.ProtocolVersion, proto.HostProtocolVersion)
+					runtime.Log("protocol_mismatch", runtime.Fields{"firmware": ev.ProtocolVersion, "host": proto.HostProtocolVersion, "note": "dropping_control_events"})
 				}
 				continue
 			}
@@ -143,7 +144,7 @@ func runSession(ctx context.Context, r *serialx.Reader, cfg *config.Config, b au
 			if protocolAnnounced && !protocolCompatible {
 				metrics.IncDroppedEvents()
 				if cfg.Debug {
-					log.Printf("dropping event due to incompatible protocol: %q", line)
+					runtime.Log("event_dropped", runtime.Fields{"line": line, "reason": "incompatible_protocol"})
 				}
 				continue
 			}
@@ -152,7 +153,7 @@ func runSession(ctx context.Context, r *serialx.Reader, cfg *config.Config, b au
 			if !ok {
 				metrics.IncDroppedEvents()
 				if cfg.Debug {
-					log.Printf("unmapped knob: %d", ev.KnobID)
+					runtime.Log("event_dropped", runtime.Fields{"knob_id": ev.KnobID, "reason": "unmapped_knob"})
 				}
 				continue
 			}
@@ -162,14 +163,14 @@ func runSession(ctx context.Context, r *serialx.Reader, cfg *config.Config, b au
 				if err := b.Adjust(m.Target, m.Name, m.Step, ev.Delta); err != nil {
 					metrics.IncBackendFailures()
 					if cfg.Debug {
-						log.Printf("adjust error knob %d: %v", ev.KnobID, err)
+						runtime.Log("backend_error", runtime.Fields{"error": err, "knob_id": ev.KnobID, "operation": "adjust"})
 					}
 				}
 			case proto.EventButtonPress:
 				if err := b.ToggleMute(m.Target, m.Name); err != nil {
 					metrics.IncBackendFailures()
 					if cfg.Debug {
-						log.Printf("mute error knob %d: %v", ev.KnobID, err)
+						runtime.Log("backend_error", runtime.Fields{"error": err, "knob_id": ev.KnobID, "operation": "toggle_mute"})
 					}
 				}
 			default:
