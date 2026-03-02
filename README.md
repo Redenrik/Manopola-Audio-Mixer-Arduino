@@ -146,11 +146,17 @@ Compatibility aliases accepted for older configs:
 
 ## Continuous Integration
 
-GitHub Actions runs cross-platform tests on every pull request and on pushes to `main`.
+GitHub Actions runs cross-platform tests and security checks on every pull request and on pushes to `main`, using a patched Go toolchain line (`1.24.x`).
 
+Test workflow:
 - workflow: `.github/workflows/ci.yml`
 - operating systems: `ubuntu-latest`, `windows-latest`, `macos-latest`
 - command: `cd mama && go test ./...`
+
+Security workflow:
+- workflow: `.github/workflows/security-scan.yml`
+- operating system: `ubuntu-latest`
+- commands: `cd mama && go mod verify`, `cd mama && go mod tidy && git diff --exit-code -- go.mod go.sum`, and `cd mama && govulncheck ./...`
 
 ## Non-Terminal User Flow
 
