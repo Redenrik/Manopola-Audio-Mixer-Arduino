@@ -143,6 +143,14 @@ Compatibility aliases accepted for older configs:
 - top-level `knobs` (migrated to `mappings`)
 - mapping keys: `id` -> `knob`, `type` -> `target`, `app` -> `name`, `volume_step` -> `step`
 
+## Continuous Integration
+
+GitHub Actions runs cross-platform tests on every pull request and on pushes to `main`.
+
+- workflow: `.github/workflows/ci.yml`
+- operating systems: `ubuntu-latest`, `windows-latest`, `macos-latest`
+- command: `cd mama && go test ./...`
+
 ## Non-Terminal User Flow
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for packaging and release instructions.

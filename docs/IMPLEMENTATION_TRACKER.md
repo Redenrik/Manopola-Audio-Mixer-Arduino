@@ -129,7 +129,14 @@ Legend:
 
 ## 5) Release Engineering and Distribution
 
-- [ ] `TODO` Add CI matrix builds (Windows/Linux/macOS) with test execution.
+- [x] `DONE` Add CI matrix builds (Windows/Linux/macOS) with test execution.
+  - Implemented:
+    - Added a GitHub Actions CI workflow for pushes to `main` and all pull requests with a three-OS matrix (`ubuntu-latest`, `windows-latest`, `macos-latest`).
+    - Configured each matrix run to execute `go test ./...` from the `mama/` module using Go `1.22.x` with dependency caching.
+    - Documented CI behavior and scope in `README.md` for contributors.
+  - Changed files/tests:
+    - `.github/workflows/ci.yml`
+    - `README.md`
 - [ ] `TODO` Add release artifact checksums and reproducible-build notes.
 - [ ] `TODO` Add signing/notarization workflow docs and automation.
 - [ ] `TODO` Add optional installer/update path while preserving portable mode.
@@ -158,6 +165,7 @@ Legend:
 - 2026-03-02: Added host integration tests with recorded serial fixtures for mixed valid/malformed bursts and disconnect handling. Refactored session loop to support fixture-driven channel replay while preserving runtime behavior. Verified with `go test ./...`.
 - 2026-03-02: Added audio backend contract coverage for all currently supported/declared target types by extracting shared backend logic behind a mockable volume controller and adding deterministic tests for `master_out` semantics, unsupported target rejection, and error propagation. Verified with `go test ./...`.
 - 2026-03-02: Added config schema migration compatibility for legacy aliases (top-level `port`/`baud`, `knobs`, and mapping alias keys), plus tests covering migration and current-schema precedence; documented aliases in README. Verified with `go test ./...`.
+- 2026-03-02: Added GitHub Actions CI matrix testing across Linux/Windows/macOS for the `mama` Go module, running `go test ./...` on push/PR, and documented the workflow in README. Verified locally with `cd mama && go test ./...`.
 
 ---
 
