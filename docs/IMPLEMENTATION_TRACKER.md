@@ -36,7 +36,24 @@ Legend:
     - `README.md`
     - `docs/TROUBLESHOOTING.md`
     - `docs/SUPPORT_POLICY.md`
-- [ ] `TODO` Implement `line_in` backend support.
+- [x] `DONE` Implement `line_in` backend support.
+  - Implemented:
+    - Extended backend target routing with a dedicated `line_in` controller path so adjust/mute actions are handled independently from `master_out` and `mic_in`.
+    - Added platform-specific line-input controller constructors and wired default backend initialization to expose `line_in` when capture endpoint controls are available.
+    - Expanded backend contract coverage for `line_in` adjust/mute support, unsupported fallback when controller discovery is unavailable, and target discovery metadata updates.
+    - Updated README, troubleshooting, support-policy, and default-config comments to reflect shipped `line_in` support semantics.
+  - Changed files/tests:
+    - `mama/internal/audio/backend_core.go`
+    - `mama/internal/audio/backend_unix.go`
+    - `mama/internal/audio/backend_windows.go`
+    - `mama/internal/audio/line_controller_unix.go`
+    - `mama/internal/audio/line_controller_windows.go`
+    - `mama/internal/audio/backend_contract_test.go`
+    - `mama/internal/config/config.go`
+    - `mama/internal/config/default.yaml`
+    - `README.md`
+    - `docs/TROUBLESHOOTING.md`
+    - `docs/SUPPORT_POLICY.md`
 - [ ] `TODO` Implement `app` per-process/session volume control.
 - [ ] `TODO` Implement `group` target for grouped app/session controls.
 - [x] `DONE` Extend `/api/targets` to expose real discoverable targets (not placeholders).
@@ -282,6 +299,9 @@ Legend:
 - 2026-03-02: Added `app/group` overlap conflict rules with deterministic precedence (`priority` + selector specificity), rejecting ambiguous precedence ties, plus config/docs/test updates for priority validation and overlap handling. Verified with `cd mama && go test ./...`.
 - 2026-03-02: Implemented config profile support (`profiles` + `active_profile`) with backward-compatible top-level mappings fallback, active-profile runtime mapping resolution, and validation for profile naming/selection; added profile-focused config tests and README schema/validation updates. Verified with `cd mama && go test ./...`.
 - 2026-03-02: Implemented `mic_in` backend support with platform-specific strategy (`pactl`/`amixer` on Unix, Core Audio capture endpoint on Windows), refactored backend controller routing, expanded audio contract tests for `mic_in` + discovery behavior, and updated support/troubleshooting docs. Verified with `cd mama && go test ./internal/audio ./internal/ui ./cmd/mama` and `cd mama && go test ./...`.
+
+- 2026-03-02: Implemented `line_in` backend support by adding dedicated backend routing/controller wiring (Unix + Windows capture tooling path), extending audio backend contract tests for `line_in` adjust/mute/discovery behavior, and updating user-facing docs/support matrix to mark `line_in` as supported where capture controls are available. Verified with `cd mama && go test ./internal/audio ./...`.
+
 
 ---
 

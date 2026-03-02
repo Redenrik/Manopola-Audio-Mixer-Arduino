@@ -129,7 +129,7 @@ func TestBackendToggleMuteMasterOutContract(t *testing.T) {
 func TestBackendUnsupportedTargetsContract(t *testing.T) {
 	fake := &fakeVolumeController{curVolume: 50}
 	b := &baseBackend{master: fake}
-	unsupported := []config.TargetType{config.TargetLineIn, config.TargetApp, config.TargetGroup}
+	unsupported := []config.TargetType{config.TargetApp, config.TargetGroup}
 
 	for _, target := range unsupported {
 		t.Run(string(target), func(t *testing.T) {
@@ -201,16 +201,45 @@ func TestBackendMicInUnsupportedWithoutController(t *testing.T) {
 	}
 }
 
-func TestBackendListTargetsIncludesMicWhenAvailable(t *testing.T) {
-	b := &baseBackend{master: &fakeVolumeController{}, mic: &fakeVolumeController{}}
+func TestBackendListTargetsIncludesMicAndLineInWhenAvailable(t *testing.T) {
+	b := &baseBackend{master: &fakeVolumeController{}, mic: &fakeVolumeController{}, lineIn: &fakeVolumeController{}}
 	targets, err := b.ListTargets()
 	if err != nil {
 		t.Fatalf("ListTargets() error = %v", err)
 	}
-	if len(targets) != 2 {
-		t.Fatalf("ListTargets() len = %d, want 2", len(targets))
+	if len(targets) != 3 {
+		t.Fatalf("ListTargets() len = %d, want 3", len(targets))
 	}
 	if targets[1].Type != config.TargetMicIn || targets[1].ID != "system:mic_in" {
 		t.Fatalf("ListTargets()[1] = %#v, want mic target", targets[1])
+	}
+	if targets[2].Type != config.TargetLineIn || targets[2].ID != "system:line_in" {
+		t.Fatalf("ListTargets()[2] = %#v, want line-in target", targets[2])
+	}
+}
+
+func TestBackendLineInContract(t *testing.T) {
+	fake := &fakeVolumeController{curVolume: 30}
+	b := &baseBackend{master: &fakeVolumeController{}, lineIn: fake}
+
+	if err := b.Adjust(config.TargetLineIn, "", 0.10, 3); err != nil {
+		t.Fatalf("Adjust(line_in) error = %v", err)
+	}
+	if got := fake.setVolumeCalls[0]; got != 60 {
+		t.Fatalf("SetVolume() = %d, want 60", got)
+	}
+
+	if err := b.ToggleMute(config.TargetLineIn, ""); err != nil {
+		t.Fatalf("ToggleMute(line_in) error = %v", err)
+	}
+	if fake.muteCalls != 1 {
+		t.Fatalf("muteCalls = %d, want 1", fake.muteCalls)
+	}
+}
+
+func TestBackendLineInUnsupportedWithoutController(t *testing.T) {
+	b := &baseBackend{master: &fakeVolumeController{}, lineIn: nil}
+	if err := b.Adjust(config.TargetLineIn, "", 0.1, 1); err == nil {
+		t.Fatal("Adjust(line_in) expected unsupported error")
 	}
 }

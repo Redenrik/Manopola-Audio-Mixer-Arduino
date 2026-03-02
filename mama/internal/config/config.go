@@ -31,7 +31,7 @@ debug: true
 
 # Current backend support:
 # - implemented: master_out
-# - placeholders for future releases: mic_in, line_in, app, group
+# - placeholders for future releases: app, group
 # Keep default mappings on master_out so first run works end-to-end.
 # step = volume change per encoder "click" (0.01 = 1%, 0.02 = 2%, etc.)
 mappings:
