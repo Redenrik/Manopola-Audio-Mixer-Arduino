@@ -98,18 +98,32 @@ type SerialCfg struct {
 }
 
 type Config struct {
-	Serial   SerialCfg `yaml:"serial" json:"serial"`
+	Serial        SerialCfg `yaml:"serial" json:"serial"`
+	Mappings      []Mapping `yaml:"mappings" json:"mappings"`
+	Profiles      []Profile `yaml:"profiles,omitempty" json:"profiles,omitempty"`
+	ActiveProfile string    `yaml:"active_profile,omitempty" json:"active_profile,omitempty"`
+	Debug         bool      `yaml:"debug" json:"debug"`
+}
+
+type Profile struct {
+	Name     string    `yaml:"name" json:"name"`
 	Mappings []Mapping `yaml:"mappings" json:"mappings"`
-	Debug    bool      `yaml:"debug" json:"debug"`
 }
 
 type rawConfig struct {
-	Serial      SerialCfg    `yaml:"serial"`
-	Mappings    []rawMapping `yaml:"mappings"`
-	Debug       *bool        `yaml:"debug"`
-	LegacyPort  string       `yaml:"port"`
-	LegacyBaud  int          `yaml:"baud"`
-	LegacyKnobs []rawMapping `yaml:"knobs"`
+	Serial        SerialCfg    `yaml:"serial"`
+	Mappings      []rawMapping `yaml:"mappings"`
+	Profiles      []rawProfile `yaml:"profiles"`
+	ActiveProfile string       `yaml:"active_profile"`
+	Debug         *bool        `yaml:"debug"`
+	LegacyPort    string       `yaml:"port"`
+	LegacyBaud    int          `yaml:"baud"`
+	LegacyKnobs   []rawMapping `yaml:"knobs"`
+}
+
+type rawProfile struct {
+	Name     string       `yaml:"name"`
+	Mappings []rawMapping `yaml:"mappings"`
 }
 
 type rawMapping struct {
@@ -148,8 +162,10 @@ func ParseYAML(b []byte) (Config, error) {
 
 func migrateRawConfig(raw rawConfig) Config {
 	c := Config{
-		Serial: raw.Serial,
-		Debug:  raw.Debug != nil && *raw.Debug,
+		Serial:        raw.Serial,
+		Profiles:      make([]Profile, 0, len(raw.Profiles)),
+		ActiveProfile: raw.ActiveProfile,
+		Debug:         raw.Debug != nil && *raw.Debug,
 	}
 
 	if c.Serial.Port == "" {
@@ -166,33 +182,48 @@ func migrateRawConfig(raw rawConfig) Config {
 
 	c.Mappings = make([]Mapping, 0, len(mappings))
 	for _, rm := range mappings {
-		m := Mapping{
-			Knob:      rm.Knob,
-			Target:    rm.Target,
-			Name:      rm.Name,
-			Selector:  rm.Selector,
-			Selectors: rm.Selectors,
-			Priority:  rm.Priority,
-			Step:      rm.Step,
-		}
+		c.Mappings = append(c.Mappings, migrateRawMapping(rm))
+	}
 
-		if m.Knob == 0 {
-			m.Knob = rm.LegacyID
+	for _, rp := range raw.Profiles {
+		profile := Profile{
+			Name:     rp.Name,
+			Mappings: make([]Mapping, 0, len(rp.Mappings)),
 		}
-		if m.Target == "" {
-			m.Target = rm.LegacyType
+		for _, rm := range rp.Mappings {
+			profile.Mappings = append(profile.Mappings, migrateRawMapping(rm))
 		}
-		if m.Name == "" {
-			m.Name = rm.LegacyApp
-		}
-		if m.Step == 0 {
-			m.Step = rm.LegacyStep
-		}
-
-		c.Mappings = append(c.Mappings, m)
+		c.Profiles = append(c.Profiles, profile)
 	}
 
 	return c
+}
+
+func migrateRawMapping(rm rawMapping) Mapping {
+	m := Mapping{
+		Knob:      rm.Knob,
+		Target:    rm.Target,
+		Name:      rm.Name,
+		Selector:  rm.Selector,
+		Selectors: rm.Selectors,
+		Priority:  rm.Priority,
+		Step:      rm.Step,
+	}
+
+	if m.Knob == 0 {
+		m.Knob = rm.LegacyID
+	}
+	if m.Target == "" {
+		m.Target = rm.LegacyType
+	}
+	if m.Name == "" {
+		m.Name = rm.LegacyApp
+	}
+	if m.Step == 0 {
+		m.Step = rm.LegacyStep
+	}
+
+	return m
 }
 
 func Validate(c Config) (Config, error) {
@@ -206,13 +237,53 @@ func Validate(c Config) (Config, error) {
 	if c.Serial.Port == "" {
 		return Config{}, fmt.Errorf("serial.port must be set")
 	}
-	if len(c.Mappings) == 0 {
+	if len(c.Mappings) == 0 && len(c.Profiles) == 0 {
 		return Config{}, fmt.Errorf("at least one mapping is required")
 	}
 
-	seenKnobs := make(map[int]struct{}, len(c.Mappings))
-	for i := range c.Mappings {
-		m := &c.Mappings[i]
+	if err := validateMappingSet(c.Mappings); err != nil {
+		return Config{}, err
+	}
+
+	profileNames := make(map[string]struct{}, len(c.Profiles))
+	for i := range c.Profiles {
+		p := &c.Profiles[i]
+		p.Name = strings.TrimSpace(p.Name)
+		if p.Name == "" {
+			return Config{}, fmt.Errorf("profile %d: name must be set", i+1)
+		}
+		if _, exists := profileNames[strings.ToLower(p.Name)]; exists {
+			return Config{}, fmt.Errorf("duplicate profile name %q", p.Name)
+		}
+		profileNames[strings.ToLower(p.Name)] = struct{}{}
+
+		if len(p.Mappings) == 0 {
+			return Config{}, fmt.Errorf("profile %q must define at least one mapping", p.Name)
+		}
+		if err := validateMappingSet(p.Mappings); err != nil {
+			return Config{}, fmt.Errorf("profile %q: %w", p.Name, err)
+		}
+	}
+
+	c.ActiveProfile = strings.TrimSpace(c.ActiveProfile)
+	if len(c.Profiles) > 0 {
+		if c.ActiveProfile == "" {
+			c.ActiveProfile = c.Profiles[0].Name
+		}
+		if _, exists := profileNames[strings.ToLower(c.ActiveProfile)]; !exists {
+			return Config{}, fmt.Errorf("active_profile %q does not match any defined profile", c.ActiveProfile)
+		}
+	} else {
+		c.ActiveProfile = ""
+	}
+
+	return c, nil
+}
+
+func validateMappingSet(mappings []Mapping) error {
+	seenKnobs := make(map[int]struct{}, len(mappings))
+	for i := range mappings {
+		m := &mappings[i]
 
 		m.Name = strings.TrimSpace(m.Name)
 		if m.Selector != nil {
@@ -223,10 +294,10 @@ func Validate(c Config) (Config, error) {
 		}
 
 		if m.Knob <= 0 {
-			return Config{}, fmt.Errorf("invalid knob id: %d", m.Knob)
+			return fmt.Errorf("invalid knob id: %d", m.Knob)
 		}
 		if _, exists := seenKnobs[m.Knob]; exists {
-			return Config{}, fmt.Errorf("duplicate mapping for knob %d", m.Knob)
+			return fmt.Errorf("duplicate mapping for knob %d", m.Knob)
 		}
 		seenKnobs[m.Knob] = struct{}{}
 
@@ -234,26 +305,26 @@ func Validate(c Config) (Config, error) {
 		case TargetMasterOut, TargetMicIn, TargetLineIn, TargetApp, TargetGroup:
 			// valid
 		default:
-			return Config{}, fmt.Errorf("invalid target for knob %d: %q", m.Knob, m.Target)
+			return fmt.Errorf("invalid target for knob %d: %q", m.Knob, m.Target)
 		}
 
 		if err := validateMappingSelectors(m); err != nil {
-			return Config{}, fmt.Errorf("knob %d: %w", m.Knob, err)
+			return fmt.Errorf("knob %d: %w", m.Knob, err)
 		}
 
 		if math.IsNaN(m.Step) || math.IsInf(m.Step, 0) || m.Step <= 0 || m.Step > 1 {
-			return Config{}, fmt.Errorf("invalid step for knob %d: %f", m.Knob, m.Step)
+			return fmt.Errorf("invalid step for knob %d: %f", m.Knob, m.Step)
 		}
 		if m.Priority < 0 {
-			return Config{}, fmt.Errorf("invalid priority for knob %d: %d", m.Knob, m.Priority)
+			return fmt.Errorf("invalid priority for knob %d: %d", m.Knob, m.Priority)
 		}
 	}
 
-	if err := validateMappingPrecedence(c.Mappings); err != nil {
-		return Config{}, err
+	if err := validateMappingPrecedence(mappings); err != nil {
+		return err
 	}
 
-	return c, nil
+	return nil
 }
 
 func validateMappingPrecedence(mappings []Mapping) error {
@@ -484,10 +555,28 @@ func ResolveDefaultPath() string {
 }
 
 func (c Config) MappingForKnob(knob int) (Mapping, bool) {
-	for _, m := range c.Mappings {
+	for _, m := range c.ActiveMappings() {
 		if m.Knob == knob {
 			return m, true
 		}
 	}
 	return Mapping{}, false
+}
+
+func (c Config) ActiveMappings() []Mapping {
+	if len(c.Profiles) == 0 {
+		return c.Mappings
+	}
+
+	active := c.ActiveProfile
+	if active == "" {
+		active = c.Profiles[0].Name
+	}
+	for _, p := range c.Profiles {
+		if strings.EqualFold(p.Name, active) {
+			return p.Mappings
+		}
+	}
+
+	return c.Mappings
 }

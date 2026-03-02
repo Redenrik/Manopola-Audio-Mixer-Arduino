@@ -119,26 +119,31 @@ serial:
 
 debug: true
 
+active_profile: "streaming"
+
 mappings:
   - knob: 1
     target: master_out
     step: 0.02
 
-  - knob: 2
-    target: app
-    selector:
-      kind: exe
-      value: "discord.exe"
-    step: 0.02
+profiles:
+  - name: "streaming"
+    mappings:
+      - knob: 1
+        target: app
+        selector:
+          kind: exe
+          value: "discord.exe"
+        step: 0.02
 
-  - knob: 3
-    target: group
-    selectors:
-      - kind: contains
-        value: "Game"
-      - kind: prefix
-        value: "Spotify"
-    step: 0.02
+      - knob: 2
+        target: group
+        selectors:
+          - kind: contains
+            value: "Game"
+          - kind: prefix
+            value: "Spotify"
+        step: 0.02
 ```
 
 `target` values:
@@ -159,7 +164,10 @@ mappings:
 Validation rules:
 - `serial.port` required
 - `serial.baud > 0`
-- at least one mapping required
+- at least one mapping required (top-level `mappings` or one `profiles[].mappings` set)
+- `profiles` entries require unique non-empty `name` values and non-empty `mappings`
+- `active_profile` is optional; when omitted and profiles exist, it defaults to the first profile name
+- `active_profile` must match one configured profile name when profiles are present
 - unique `knob` IDs and `knob > 0`
 - `step` in `(0, 1]`
 - `app` must define `selector` and must not define `selectors`
