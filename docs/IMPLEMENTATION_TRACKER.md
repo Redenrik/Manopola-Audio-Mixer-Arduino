@@ -222,7 +222,17 @@ Legend:
     - `README.md`
 
 ### B. Firmware-side validation
-- [ ] `TODO` Add stress tests for fast encoder spin handling and button debounce edge cases.
+- [x] `DONE` Add stress tests for fast encoder spin handling and button debounce edge cases.
+  - Implemented:
+    - Extracted reusable master encoder state logic into `firmware/master/encoder_logic.h`, and wired `master.ino` to use the shared helpers so runtime behavior and stress tests execute the same code path.
+    - Added a native firmware stress test (`firmware/master/tests/encoder_logic_stress_test.cpp`) covering rapid multi-detent quadrature bursts and button bounce/re-press debounce edge cases.
+    - Added a runnable validation script (`scripts/firmware/run_encoder_stress_test.sh`) and documented usage in README for repeatable firmware-side verification.
+  - Changed files/tests:
+    - `firmware/master/master.ino`
+    - `firmware/master/encoder_logic.h`
+    - `firmware/master/tests/encoder_logic_stress_test.cpp`
+    - `scripts/firmware/run_encoder_stress_test.sh`
+    - `README.md`
 - [ ] `TODO` Add I2C robustness checks for master/slave packet integrity under load.
 
 ---
@@ -341,6 +351,8 @@ Legend:
 
 - 2026-03-02: Implemented `app` per-process/session backend support on Unix hosts via `pactl` sink-input controls, including selector-token runtime wiring, backend discovery updates, and contract/parser tests for app adjust/mute/list behavior; updated README/troubleshooting/support docs with current scope. Verified with `cd mama && go test ./...`.
 - 2026-03-02: Implemented `group` target backend support via grouped app/session selector routing (Unix `pactl` sink-input control), including runtime selector token serialization, backend/controller contract tests, and documentation/support-matrix updates. Verified with `cd mama && go test ./...`.
+
+- 2026-03-02: Added firmware-side encoder stress validation by extracting shared encoder/button state logic (`firmware/master/encoder_logic.h`), adding native burst/debounce stress coverage (`firmware/master/tests/encoder_logic_stress_test.cpp`), and shipping a repeatable runner script + README guidance. Verified with `scripts/firmware/run_encoder_stress_test.sh` and `cd mama && go test ./...`.
 
 
 ---
