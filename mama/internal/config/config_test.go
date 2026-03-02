@@ -448,3 +448,112 @@ mappings:
 		t.Fatal("expected error for negative priority")
 	}
 }
+
+func TestLoadAcceptsProfilesAndResolvesActiveProfileMappings(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+active_profile: "streaming"
+profiles:
+  - name: "default"
+    mappings:
+      - knob: 1
+        target: master_out
+        step: 0.02
+  - name: "streaming"
+    mappings:
+      - knob: 1
+        target: app
+        selector:
+          kind: exact
+          value: "OBS"
+        step: 0.03
+`)
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if cfg.ActiveProfile != "streaming" {
+		t.Fatalf("expected active profile streaming, got %q", cfg.ActiveProfile)
+	}
+
+	m, ok := cfg.MappingForKnob(1)
+	if !ok {
+		t.Fatal("expected knob 1 mapping in active profile")
+	}
+	if m.Target != TargetApp {
+		t.Fatalf("expected active profile target app, got %q", m.Target)
+	}
+}
+
+func TestLoadDefaultsActiveProfileToFirstProfile(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+profiles:
+  - name: "default"
+    mappings:
+      - knob: 1
+        target: master_out
+        step: 0.02
+`)
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.ActiveProfile != "default" {
+		t.Fatalf("expected default active profile to be first profile name, got %q", cfg.ActiveProfile)
+	}
+}
+
+func TestLoadRejectsUnknownActiveProfile(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+active_profile: "missing"
+profiles:
+  - name: "default"
+    mappings:
+      - knob: 1
+        target: master_out
+        step: 0.02
+`)
+
+	if _, err := Load(cfgPath); err == nil {
+		t.Fatal("expected unknown active profile error")
+	}
+}
+
+func TestLoadAllowsLegacyTopLevelMappingsAlongsideProfiles(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 5
+    target: master_out
+    step: 0.02
+active_profile: "conference"
+profiles:
+  - name: "conference"
+    mappings:
+      - knob: 1
+        target: master_out
+        step: 0.04
+`)
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	m, ok := cfg.MappingForKnob(1)
+	if !ok {
+		t.Fatal("expected profile mapping for knob 1")
+	}
+	if m.Step != 0.04 {
+		t.Fatalf("expected active profile mapping step 0.04, got %v", m.Step)
+	}
+}

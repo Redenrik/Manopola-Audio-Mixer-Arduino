@@ -60,7 +60,15 @@ Legend:
     - `mama/internal/config/config_test.go`
     - `README.md`
     - `docs/TROUBLESHOOTING.md`
-- [ ] `TODO` Add profile support (multiple mapping sets with active profile selection).
+- [x] `DONE` Add profile support (multiple mapping sets with active profile selection).
+  - Implemented:
+    - Extended config schema with `profiles[]` and `active_profile`, including validation for unique profile names, non-empty profile mappings, and active-profile existence.
+    - Added active-profile mapping resolution so runtime knob lookups use the selected profile while preserving backward compatibility for top-level `mappings`.
+    - Added unit tests for profile loading/validation/defaulting and updated README config schema/validation docs.
+  - Changed files/tests:
+    - `mama/internal/config/config.go`
+    - `mama/internal/config/config_test.go`
+    - `README.md`
 
 ---
 
@@ -256,6 +264,7 @@ Legend:
 - 2026-03-02: Added issue and PR templates for standardized triage/review, published a release QA checklist for pre-tag validation, and linked the new governance assets from README/CONTRIBUTING. Verified with `cd mama && go test ./...`.
 - 2026-03-02: Implemented robust `app/group` selector schema validation (`selector`/`selectors` with exact/contains/prefix/suffix/glob/exe kinds), added backward-compatible legacy `name` migration behavior, expanded config tests for valid/invalid selector paths, and updated README + troubleshooting docs. Verified with `cd mama && go test ./...`.
 - 2026-03-02: Added `app/group` overlap conflict rules with deterministic precedence (`priority` + selector specificity), rejecting ambiguous precedence ties, plus config/docs/test updates for priority validation and overlap handling. Verified with `cd mama && go test ./...`.
+- 2026-03-02: Implemented config profile support (`profiles` + `active_profile`) with backward-compatible top-level mappings fallback, active-profile runtime mapping resolution, and validation for profile naming/selection; added profile-focused config tests and README schema/validation updates. Verified with `cd mama && go test ./...`.
 
 ---
 
