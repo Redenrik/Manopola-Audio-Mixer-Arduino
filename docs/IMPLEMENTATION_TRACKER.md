@@ -49,7 +49,17 @@ Legend:
     - `mama/internal/config/config_test.go`
     - `README.md`
     - `docs/TROUBLESHOOTING.md`
-- [ ] `TODO` Add conflict/precedence rules for overlapping mappings.
+- [x] `DONE` Add conflict/precedence rules for overlapping mappings.
+  - Implemented:
+    - Added optional per-mapping `priority` support for `app/group` targets to provide explicit overlap precedence while preserving backward compatibility for existing configs.
+    - Added overlap validation that detects ambiguous `app/group` selector collisions and rejects ties when precedence scores are identical.
+    - Added specificity-based precedence scoring (`priority` first, selector specificity second) as deterministic conflict resolution rules.
+    - Documented precedence and troubleshooting guidance for overlap/priority validation failures.
+  - Changed files/tests:
+    - `mama/internal/config/config.go`
+    - `mama/internal/config/config_test.go`
+    - `README.md`
+    - `docs/TROUBLESHOOTING.md`
 - [ ] `TODO` Add profile support (multiple mapping sets with active profile selection).
 
 ---
@@ -245,6 +255,7 @@ Legend:
 
 - 2026-03-02: Added issue and PR templates for standardized triage/review, published a release QA checklist for pre-tag validation, and linked the new governance assets from README/CONTRIBUTING. Verified with `cd mama && go test ./...`.
 - 2026-03-02: Implemented robust `app/group` selector schema validation (`selector`/`selectors` with exact/contains/prefix/suffix/glob/exe kinds), added backward-compatible legacy `name` migration behavior, expanded config tests for valid/invalid selector paths, and updated README + troubleshooting docs. Verified with `cd mama && go test ./...`.
+- 2026-03-02: Added `app/group` overlap conflict rules with deterministic precedence (`priority` + selector specificity), rejecting ambiguous precedence ties, plus config/docs/test updates for priority validation and overlap handling. Verified with `cd mama && go test ./...`.
 
 ---
 

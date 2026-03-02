@@ -351,3 +351,100 @@ knobs:
 		t.Fatalf("expected current schema mapping knob 1, got %d", cfg.Mappings[0].Knob)
 	}
 }
+
+func TestLoadRejectsOverlappingAppMappingsWithSamePrecedence(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 1
+    target: app
+    selector:
+      kind: exe
+      value: "discord.exe"
+    step: 0.02
+  - knob: 2
+    target: app
+    selector:
+      kind: exe
+      value: "discord.exe"
+    step: 0.02
+`)
+
+	if _, err := Load(cfgPath); err == nil {
+		t.Fatal("expected overlap precedence error")
+	}
+}
+
+func TestLoadAcceptsOverlappingAppMappingsWithDifferentPriority(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 1
+    target: app
+    selector:
+      kind: exe
+      value: "discord.exe"
+    priority: 100
+    step: 0.02
+  - knob: 2
+    target: app
+    selector:
+      kind: exe
+      value: "discord.exe"
+    priority: 200
+    step: 0.02
+`)
+
+	if _, err := Load(cfgPath); err != nil {
+		t.Fatalf("expected load success with explicit precedence, got: %v", err)
+	}
+}
+
+func TestLoadRejectsOverlappingGroupMappingsWithSamePrecedence(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 1
+    target: group
+    selectors:
+      - kind: exact
+        value: "Discord"
+      - kind: exact
+        value: "Spotify"
+    step: 0.02
+  - knob: 2
+    target: group
+    selectors:
+      - kind: exact
+        value: "Discord"
+      - kind: glob
+        value: "*Game*"
+    step: 0.02
+`)
+
+	if _, err := Load(cfgPath); err == nil {
+		t.Fatal("expected overlap precedence error")
+	}
+}
+
+func TestLoadRejectsNegativePriority(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 1
+    target: app
+    selector:
+      kind: exact
+      value: "Discord"
+    priority: -1
+    step: 0.02
+`)
+
+	if _, err := Load(cfgPath); err == nil {
+		t.Fatal("expected error for negative priority")
+	}
+}

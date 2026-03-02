@@ -72,6 +72,7 @@ type Mapping struct {
 	Name      string     `yaml:"name,omitempty" json:"name,omitempty"` // legacy alias; migrated to selector(s) for app/group
 	Selector  *Selector  `yaml:"selector,omitempty" json:"selector,omitempty"`
 	Selectors []Selector `yaml:"selectors,omitempty" json:"selectors,omitempty"`
+	Priority  int        `yaml:"priority,omitempty" json:"priority,omitempty"`
 	Step      float64    `yaml:"step" json:"step"` // e.g. 0.02 = 2% per detent
 }
 
@@ -118,6 +119,7 @@ type rawMapping struct {
 	Selector   *Selector  `yaml:"selector"`
 	Selectors  []Selector `yaml:"selectors"`
 	Step       float64    `yaml:"step"`
+	Priority   int        `yaml:"priority"`
 	LegacyID   int        `yaml:"id"`
 	LegacyType TargetType `yaml:"type"`
 	LegacyApp  string     `yaml:"app"`
@@ -170,6 +172,7 @@ func migrateRawConfig(raw rawConfig) Config {
 			Name:      rm.Name,
 			Selector:  rm.Selector,
 			Selectors: rm.Selectors,
+			Priority:  rm.Priority,
 			Step:      rm.Step,
 		}
 
@@ -241,9 +244,112 @@ func Validate(c Config) (Config, error) {
 		if math.IsNaN(m.Step) || math.IsInf(m.Step, 0) || m.Step <= 0 || m.Step > 1 {
 			return Config{}, fmt.Errorf("invalid step for knob %d: %f", m.Knob, m.Step)
 		}
+		if m.Priority < 0 {
+			return Config{}, fmt.Errorf("invalid priority for knob %d: %d", m.Knob, m.Priority)
+		}
+	}
+
+	if err := validateMappingPrecedence(c.Mappings); err != nil {
+		return Config{}, err
 	}
 
 	return c, nil
+}
+
+func validateMappingPrecedence(mappings []Mapping) error {
+	for i := 0; i < len(mappings); i++ {
+		for j := i + 1; j < len(mappings); j++ {
+			a := mappings[i]
+			b := mappings[j]
+
+			if !isPrecedenceTarget(a.Target) || !isPrecedenceTarget(b.Target) || a.Target != b.Target {
+				continue
+			}
+			if !mappingsOverlap(a, b) {
+				continue
+			}
+
+			if precedenceScore(a) == precedenceScore(b) {
+				return fmt.Errorf("ambiguous precedence between knob %d and knob %d for target %q; set distinct priority values", a.Knob, b.Knob, a.Target)
+			}
+		}
+	}
+
+	return nil
+}
+
+func isPrecedenceTarget(target TargetType) bool {
+	return target == TargetApp || target == TargetGroup
+}
+
+func mappingsOverlap(a, b Mapping) bool {
+	switch a.Target {
+	case TargetApp:
+		if a.Selector == nil || b.Selector == nil {
+			return false
+		}
+		return selectorsEqual(*a.Selector, *b.Selector)
+	case TargetGroup:
+		for _, left := range a.Selectors {
+			for _, right := range b.Selectors {
+				if selectorsEqual(left, right) {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+func selectorsEqual(a, b Selector) bool {
+	return a.Kind == b.Kind && strings.EqualFold(strings.TrimSpace(a.Value), strings.TrimSpace(b.Value))
+}
+
+func precedenceScore(m Mapping) int {
+	return (m.Priority * 1000) + mappingSpecificity(m)
+}
+
+func mappingSpecificity(m Mapping) int {
+	switch m.Target {
+	case TargetApp:
+		if m.Selector == nil {
+			return 0
+		}
+		return selectorSpecificity(*m.Selector)
+	case TargetGroup:
+		max := 0
+		for _, selector := range m.Selectors {
+			if score := selectorSpecificity(selector); score > max {
+				max = score
+			}
+		}
+		return max
+	default:
+		return 0
+	}
+}
+
+func selectorSpecificity(selector Selector) int {
+	length := len(strings.TrimSpace(selector.Value))
+	if length > 100 {
+		length = 100
+	}
+
+	switch selector.Kind {
+	case SelectorExact:
+		return 600 + length
+	case SelectorExe:
+		return 500 + length
+	case SelectorPrefix, SelectorSuffix:
+		return 400 + length
+	case SelectorContains:
+		return 300 + length
+	case SelectorGlob:
+		return 200 + length
+	default:
+		return length
+	}
 }
 
 func validateMappingSelectors(m *Mapping) error {
