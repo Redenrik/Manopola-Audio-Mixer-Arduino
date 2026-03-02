@@ -1,6 +1,7 @@
 name: Release Signing and Notarization
 
 on:
+  pull_request:
   release:
     types: [published]
   workflow_dispatch:
@@ -15,8 +16,18 @@ permissions:
   id-token: write
 
 jobs:
+  pull-request-info:
+    name: pull-request-info
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Release signing only runs for releases
+        run: echo "Release signing and notarization jobs are only executed for release and manual dispatch events."
+
   sign-release-artifacts:
     name: sign-release-artifacts
+    if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
 
     steps:
