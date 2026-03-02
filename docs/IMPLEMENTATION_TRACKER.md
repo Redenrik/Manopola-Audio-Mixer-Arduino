@@ -409,30 +409,22 @@ Legend:
     - `CONTRIBUTING.md`
 - [x] `DONE` Run v1.0 readiness review and publish acceptance criteria.
 - [x] `DONE` Harden readiness/checklist docs with evidence-driven gates and automation ownership labels.
+- [x] `DONE` Address readiness/release checklist reviewer follow-ups (actionable evidence + ownership clarity).
   - Status history: `IN_PROGRESS` (2026-03-02) -> `DONE` (2026-03-02).
   - Implementation plan (executed this iteration):
-    1. Audit `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` for vague, non-verifiable items and missing ownership labels.
-    2. Rework both docs into objective gates with explicit per-item classification: `Automatable by Codex` vs `Manual/Maintainer required`.
-    3. Run in-repo automatable commands, capture dated command snippets + outcomes inline, and leave manual items unclaimed with owner/evidence placeholders.
-    4. Record GO/NO-GO gate decision criteria tied to objective completion and update tracker execution log with shipped scope vs remaining manual work.
+    1. Re-audit `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` for vague acceptance wording and missing per-item execution ownership labels.
+    2. Convert checklist/readiness entries into measurable pass criteria with explicit evidence format requirements and manual owner placeholders.
+    3. Run in-repo automatable release-readiness commands, capture dated command/output snippets inline, and keep non-executable manual gates pending.
+    4. Recompute objective GO/NO-GO blockers from captured evidence and log shipped-vs-manual scope in the execution log.
   - Implemented:
-    - Converted the readiness review into objective gate tables with per-item automation ownership, explicit evidence requirements, and dated evidence from this run for executable checks.
-    - Reworked the release QA checklist into actionable verification steps with command references, status semantics, and maintainer sign-off placeholders for manual validations.
-    - Added an explicit GO/NO-GO decision gate tied to blocking criteria completion and synchronized tracker execution notes with what remains manual/out-of-repo.
+    - Tightened `v1.0` readiness gates into per-item objective criteria with explicit execution-type labels and evidence requirements.
+    - Expanded release QA checklist rows so every item is action-oriented, execution-typed, and mapped to command/evidence expectations.
+    - Added fresh dated command evidence for automatable in-repo checks (tests, dependency verification, checksum script preflight/smoke) while leaving hardware/workflow/release approvals unclaimed.
   - Changed files/tests:
     - `docs/V1_READINESS_REVIEW.md`
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 
-  - Implemented:
-    - Added a dedicated `v1.0` readiness review document with explicit acceptance criteria and evidence requirements across functionality, reliability, release quality gates, and governance checks.
-    - Linked readiness criteria into maintainer workflows via the release QA checklist and documentation index to keep release sign-off consistent.
-    - Verified repository checks remain green after documentation updates.
-  - Changed files/tests:
-    - `docs/V1_READINESS_REVIEW.md`
-    - `docs/RELEASE_QA_CHECKLIST.md`
-    - `README.md`
-    - `docs/IMPLEMENTATION_TRACKER.md`
 
 ---
 
@@ -493,6 +485,8 @@ Legend:
 - 2026-03-02: Published `v1.0` readiness acceptance criteria in `docs/V1_READINESS_REVIEW.md` (including GO/NO-GO decision template and evidence expectations), linked it from the release QA checklist and README documentation index, and completed the tracker governance item. Verified with `cd mama && go test ./...`.
 
 - 2026-03-02: Hardened `v1.0` readiness/release QA documentation into evidence-driven gates with explicit `Automatable by Codex` vs `Manual/Maintainer required` ownership labels, recorded dated outcomes for in-repo automatable checks (`cd mama && go test ./...`, `cd mama && go mod verify`), added manual owner/evidence placeholders, and tied GO/NO-GO criteria to objective blocking gates. Remaining work is explicitly manual (hardware validation, CI/release workflow runs, and maintainer approvals).
+
+- 2026-03-02: Addressed reviewer follow-ups for readiness/release QA docs by converting remaining vague entries into objective, testable criteria; adding explicit execution-type labeling and owner/evidence requirements for every checklist section; and capturing fresh dated automatable evidence (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum-script syntax/smoke verification). GO/NO-GO remains `NO-GO` due only to manual maintainer/hardware/workflow release gates.
 
 
 ---
