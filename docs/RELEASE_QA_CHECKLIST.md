@@ -33,6 +33,7 @@ Use this checklist before tagging or publishing a release artifact.
 - [ ] Support/deprecation implications reviewed against `docs/SUPPORT_POLICY.md`.
 - [ ] Security-impacting changes reviewed against `SECURITY.md` disclosure expectations.
 - [ ] Open TODOs and follow-ups captured as GitHub issues.
+- [ ] `docs/V1_READINESS_REVIEW.md` acceptance criteria reviewed and decision recorded (`GO`/`NO-GO`).
 
 ## 5) Sign-off
 
