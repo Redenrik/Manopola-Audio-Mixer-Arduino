@@ -40,6 +40,17 @@ This writes:
 
 - `dist/mama-portable/SHA256SUMS.txt`
 
+
+### Sign release artifacts
+
+From repository root:
+
+```bash
+scripts/release/sign-artifacts.sh dist/mama-portable
+```
+
+This produces Sigstore keyless signatures and certificates (`*.sig`, `*.pem`) for each file in the release directory.
+
 ## Verification Steps
 
 From the artifact directory:
@@ -62,3 +73,5 @@ shasum -a 256 -c SHA256SUMS.txt
 - Generated checksums match previous build output.
 
 If checksums differ, compare binary metadata and build environment before publishing.
+
+For release workflow automation and macOS notarization details, see [docs/SIGNING_AND_NOTARIZATION.md](docs/SIGNING_AND_NOTARIZATION.md).

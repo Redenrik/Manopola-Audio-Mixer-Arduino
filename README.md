@@ -223,6 +223,8 @@ scripts/release/generate-checksums.sh dist/mama-portable
 
 Reproducible build guidance is documented in [docs/RELEASE_REPRODUCIBLE_BUILDS.md](docs/RELEASE_REPRODUCIBLE_BUILDS.md).
 
+Release signing/notarization automation and maintainer setup details are documented in [docs/SIGNING_AND_NOTARIZATION.md](docs/SIGNING_AND_NOTARIZATION.md) and implemented in `.github/workflows/release-signing.yml`.
+
 ## Non-Terminal User Flow
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for packaging and release instructions.
@@ -243,6 +245,7 @@ This keeps configuration and binaries in one folder and avoids installing system
 - [docs/ROADMAP.md](docs/ROADMAP.md)
 - [docs/RELEASE_REPRODUCIBLE_BUILDS.md](docs/RELEASE_REPRODUCIBLE_BUILDS.md)
 - [docs/RELEASE_QA_CHECKLIST.md](docs/RELEASE_QA_CHECKLIST.md)
+- [docs/SIGNING_AND_NOTARIZATION.md](docs/SIGNING_AND_NOTARIZATION.md)
 - [docs/SUPPORT_POLICY.md](docs/SUPPORT_POLICY.md)
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 - [SECURITY.md](SECURITY.md)

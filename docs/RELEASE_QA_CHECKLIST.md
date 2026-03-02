@@ -20,6 +20,8 @@ Use this checklist before tagging or publishing a release artifact.
 
 - [ ] Artifacts built for intended release platforms.
 - [ ] SHA-256 checksums generated with `scripts/release/generate-checksums.sh`.
+- [ ] Release assets signed (`*.sig` + `*.pem`) via `.github/workflows/release-signing.yml` or `scripts/release/sign-artifacts.sh`.
+- [ ] If macOS `.app` artifacts are shipped, notarized/stapled zips are attached to the release.
 - [ ] Checksum manifest verified (`sha256sum -c` or `shasum -a 256 -c`).
 - [ ] Portable mode validated (binaries + `config.yaml` side-by-side, no service install required).
 
