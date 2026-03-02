@@ -194,7 +194,19 @@ Legend:
     - `README.md`
     - `CONTRIBUTING.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
-- [ ] `TODO` Add issue/PR templates and release QA checklist.
+- [x] `DONE` Add issue/PR templates and release QA checklist.
+  - Implemented:
+    - Added GitHub issue templates for bug reports and feature requests plus issue-config defaults that disable blank issues and direct security reports to private disclosure.
+    - Added a pull request template that captures summary, scope, validation, compatibility/risk, and release-note notes.
+    - Added a maintainer release QA checklist and linked template/checklist usage from contributor-facing docs.
+  - Changed files/tests:
+    - `.github/ISSUE_TEMPLATE/bug_report.yml`
+    - `.github/ISSUE_TEMPLATE/feature_request.yml`
+    - `.github/ISSUE_TEMPLATE/config.yml`
+    - `.github/pull_request_template.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `README.md`
+    - `CONTRIBUTING.md`
 - [ ] `TODO` Run v1.0 readiness review and publish acceptance criteria.
 
 ---
@@ -221,6 +233,8 @@ Legend:
 - 2026-03-02: Added release checksum generation (`scripts/release/generate-checksums.sh`) and reproducible-build guidance (`docs/RELEASE_REPRODUCIBLE_BUILDS.md`), then documented maintainer checksum steps in installation/README docs. Verified with `scripts/release/generate-checksums.sh <temp_artifacts>` + `sha256sum -c`, and `cd mama && go test ./...`.
 - 2026-03-02: Added a project `SECURITY.md` with supported-version guidance, private disclosure channels, and response SLAs; linked it from the README documentation index for contributor visibility. Verified with `cd mama && go test ./...`.
 - 2026-03-02: Defined and published a formal support matrix + deprecation/versioning policy in `docs/SUPPORT_POLICY.md`, linked it from README and CONTRIBUTING for discoverability, and completed governance tracker item updates. Verified with `cd mama && go test ./...`.
+
+- 2026-03-02: Added issue and PR templates for standardized triage/review, published a release QA checklist for pre-tag validation, and linked the new governance assets from README/CONTRIBUTING. Verified with `cd mama && go test ./...`.
 
 ---
 

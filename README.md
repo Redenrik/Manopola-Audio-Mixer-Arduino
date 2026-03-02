@@ -159,6 +159,8 @@ Security workflow:
 - operating system: `ubuntu-latest`
 - commands: `cd mama && go mod verify`, `cd mama && go mod tidy && git diff --exit-code -- go.mod go.sum`, and `cd mama && govulncheck ./...`
 
+Issue and pull request templates are available under `.github/ISSUE_TEMPLATE/` and `.github/pull_request_template.md` to standardize triage and review details.
+
 ## Release Integrity
 
 Maintainers can generate SHA-256 checksum manifests for packaged artifacts with:
@@ -188,6 +190,7 @@ This keeps configuration and binaries in one folder and avoids installing system
 - [docs/INSTALLATION.md](docs/INSTALLATION.md)
 - [docs/ROADMAP.md](docs/ROADMAP.md)
 - [docs/RELEASE_REPRODUCIBLE_BUILDS.md](docs/RELEASE_REPRODUCIBLE_BUILDS.md)
+- [docs/RELEASE_QA_CHECKLIST.md](docs/RELEASE_QA_CHECKLIST.md)
 - [docs/SUPPORT_POLICY.md](docs/SUPPORT_POLICY.md)
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 - [SECURITY.md](SECURITY.md)
