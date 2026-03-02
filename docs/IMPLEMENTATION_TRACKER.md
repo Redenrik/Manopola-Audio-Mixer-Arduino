@@ -184,7 +184,16 @@ Legend:
   - Changed files/tests:
     - `.github/workflows/security-scan.yml`
     - `README.md`
-- [ ] `TODO` Define support matrix and deprecation/versioning policy.
+- [x] `DONE` Define support matrix and deprecation/versioning policy.
+  - Implemented:
+    - Added a dedicated support policy document that defines host OS/architecture support, firmware/protocol compatibility expectations, and feature-level target support status.
+    - Defined semantic versioning rules (post-`v1.0.0`), pre-`v1.0.0` breaking-change expectations, and deprecation timelines for config, protocol, and platform support.
+    - Added release checklist hooks and linked the policy from contributor-facing docs.
+  - Changed files/tests:
+    - `docs/SUPPORT_POLICY.md`
+    - `README.md`
+    - `CONTRIBUTING.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 - [ ] `TODO` Add issue/PR templates and release QA checklist.
 - [ ] `TODO` Run v1.0 readiness review and publish acceptance criteria.
 
@@ -211,6 +220,7 @@ Legend:
 
 - 2026-03-02: Added release checksum generation (`scripts/release/generate-checksums.sh`) and reproducible-build guidance (`docs/RELEASE_REPRODUCIBLE_BUILDS.md`), then documented maintainer checksum steps in installation/README docs. Verified with `scripts/release/generate-checksums.sh <temp_artifacts>` + `sha256sum -c`, and `cd mama && go test ./...`.
 - 2026-03-02: Added a project `SECURITY.md` with supported-version guidance, private disclosure channels, and response SLAs; linked it from the README documentation index for contributor visibility. Verified with `cd mama && go test ./...`.
+- 2026-03-02: Defined and published a formal support matrix + deprecation/versioning policy in `docs/SUPPORT_POLICY.md`, linked it from README and CONTRIBUTING for discoverability, and completed governance tracker item updates. Verified with `cd mama && go test ./...`.
 
 ---
 

@@ -55,6 +55,11 @@ go run ./cmd/mama
   - imperative subject line
   - include impacted area (`firmware`, `daemon`, `ui`, `docs`)
 
+## Compatibility and Support Policy
+
+- Follow [docs/SUPPORT_POLICY.md](docs/SUPPORT_POLICY.md) for support matrix, semantic versioning expectations, and deprecation timelines.
+- Any PR introducing breaking behavior must include migration guidance and explicit release-note callouts.
+
 ## Testing Expectations
 
 Minimum for code PRs:
