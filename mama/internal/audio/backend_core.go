@@ -26,6 +26,7 @@ func (systemVolumeController) Unmute() error           { return volume.Unmute() 
 type baseBackend struct {
 	master volumeController
 	mic    volumeController
+	lineIn volumeController
 }
 
 func (b *baseBackend) controllerFor(target config.TargetType) volumeController {
@@ -34,6 +35,8 @@ func (b *baseBackend) controllerFor(target config.TargetType) volumeController {
 		return b.master
 	case config.TargetMicIn:
 		return b.mic
+	case config.TargetLineIn:
+		return b.lineIn
 	default:
 		return nil
 	}
@@ -75,6 +78,9 @@ func (b *baseBackend) ListTargets() ([]DiscoveredTarget, error) {
 	}
 	if b.mic != nil {
 		targets = append(targets, DiscoveredTarget{ID: "system:mic_in", Type: config.TargetMicIn, Name: "System Microphone"})
+	}
+	if b.lineIn != nil {
+		targets = append(targets, DiscoveredTarget{ID: "system:line_in", Type: config.TargetLineIn, Name: "System Line Input"})
 	}
 	return targets, nil
 }

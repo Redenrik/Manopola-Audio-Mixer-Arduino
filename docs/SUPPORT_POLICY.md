@@ -27,7 +27,7 @@ This document defines what MAMA versions are supported, what environments are ex
 |---|---|
 | `master_out` | Supported |
 | `mic_in` | Supported on Windows + Unix hosts with capture endpoint tooling available |
-| `line_in` | Planned (not yet implemented) |
+| `line_in` | Supported on Windows + Unix hosts with capture endpoint tooling available |
 | `app` | Planned (not yet implemented) |
 | `group` | Planned (not yet implemented) |
 
