@@ -1,0 +1,151 @@
+name: Release Artifacts
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag (for manual runs)
+        required: true
+        type: string
+      include_installer:
+        description: Build optional Windows installer artifact
+        required: false
+        default: false
+        type: boolean
+      include_update_manifest:
+        description: Generate optional update-manifest.json per artifact
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: mama-linux-amd64-portable
+            archive_ext: tar.gz
+          - os: macos-latest
+            artifact_name: mama-macos-amd64-portable
+            archive_ext: tar.gz
+          - os: windows-latest
+            artifact_name: mama-windows-amd64-portable
+            archive_ext: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+          EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          tag="$EVENT_RELEASE_TAG"
+          if [ -z "$tag" ]; then
+            tag="$INPUT_RELEASE_TAG"
+          fi
+          if [ -z "$tag" ]; then
+            echo "release tag not provided" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache-dependency-path: mama/go.sum
+
+      - name: Build portable directory (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          out_dir="dist/${{ matrix.artifact_name }}"
+          mkdir -p "$out_dir"
+          cd mama
+          go build -o "../$out_dir/mama" ./cmd/mama
+          go build -o "../$out_dir/mama-ui" ./cmd/mama-ui
+          cd ..
+          cp mama/internal/config/default.yaml "$out_dir/config.yaml"
+
+      - name: Build portable directory (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: scripts/windows/package-portable.ps1 -OutputDir "dist/${{ matrix.artifact_name }}"
+
+      - name: Package archive (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          tar -czf "${{ matrix.artifact_name }}.tar.gz" "${{ matrix.artifact_name }}"
+
+      - name: Package archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/${{ matrix.artifact_name }}/*" -DestinationPath "dist/${{ matrix.artifact_name }}.zip" -Force
+
+      - name: Build optional Windows installer
+        if: runner.os == 'Windows' && (github.event_name == 'release' || inputs.include_installer)
+        shell: pwsh
+        run: scripts/windows/package-installer.ps1 -PortableDir "dist/${{ matrix.artifact_name }}" -OutputDir "dist/installer" -AppVersion "${{ steps.release.outputs.tag }}"
+
+      - name: Generate checksums
+        shell: bash
+        run: scripts/release/generate-checksums.sh dist
+
+      - name: Generate optional update manifest
+        if: github.event_name == 'release' || inputs.include_update_manifest
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          archive_path="dist/${{ matrix.artifact_name }}.${{ matrix.archive_ext }}"
+          download_url="https://github.com/$REPO/releases/download/$RELEASE_TAG/$(basename "$archive_path")"
+          scripts/release/generate-update-manifest.sh "$archive_path" "$RELEASE_TAG" "$download_url" "dist/${{ matrix.artifact_name }}-update-manifest.json"
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "$RELEASE_TAG" \
+            dist/${{ matrix.artifact_name }}.${{ matrix.archive_ext }} \
+            dist/${{ matrix.artifact_name }}-update-manifest.json \
+            dist/SHA256SUMS.txt \
+            --clobber
+          if compgen -G "dist/installer/*.exe" >/dev/null; then
+            gh release upload "$RELEASE_TAG" dist/installer/*.exe --clobber
+          fi
+
+      - name: Upload workflow artifacts
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            dist/${{ matrix.artifact_name }}.${{ matrix.archive_ext }}
+            dist/${{ matrix.artifact_name }}-update-manifest.json
+            dist/SHA256SUMS.txt
+            dist/installer/*.exe
+          if-no-files-found: ignore

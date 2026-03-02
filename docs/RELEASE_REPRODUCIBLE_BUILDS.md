@@ -16,29 +16,38 @@ This document defines the minimum repeatable release flow for MAMA artifacts.
 
 ## Build Steps
 
-### Windows portable artifacts
+### Automated cross-platform release packaging
 
-From repository root:
+Use `.github/workflows/release-artifacts.yml` for tagged releases. It builds portable archives for Linux/macOS/Windows and optionally emits Windows installer + update manifest assets.
+
+For local Windows-only packaging from repository root:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\windows\package-portable.ps1
 ```
 
-Output folder:
+Optional installer from the portable directory:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows\package-installer.ps1 -PortableDir dist\mama-portable -AppVersion v1.0.0
+```
+
+Output folders:
 
 - `dist\mama-portable\`
+- `dist\installer\` (optional, requires Inno Setup `iscc`)
 
 ### Generate SHA-256 checksums
 
 From repository root:
 
 ```bash
-scripts/release/generate-checksums.sh dist/mama-portable
+scripts/release/generate-checksums.sh dist
 ```
 
 This writes:
 
-- `dist/mama-portable/SHA256SUMS.txt`
+- `dist/SHA256SUMS.txt`
 
 
 ### Sign release artifacts
@@ -75,3 +84,12 @@ shasum -a 256 -c SHA256SUMS.txt
 If checksums differ, compare binary metadata and build environment before publishing.
 
 For release workflow automation and macOS notarization details, see [docs/SIGNING_AND_NOTARIZATION.md](docs/SIGNING_AND_NOTARIZATION.md).
+
+
+### Generate optional update manifests
+
+```bash
+scripts/release/generate-update-manifest.sh dist/mama-windows-amd64-portable.zip v1.0.0 https://github.com/<org>/<repo>/releases/download/v1.0.0/mama-windows-amd64-portable.zip
+```
+
+This writes `update-manifest.json` containing version, URL, checksum, and artifact size for updater integrations.

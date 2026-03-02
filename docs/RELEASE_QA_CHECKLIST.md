@@ -24,6 +24,8 @@ Use this checklist before tagging or publishing a release artifact.
 - [ ] If macOS `.app` artifacts are shipped, notarized/stapled zips are attached to the release.
 - [ ] Checksum manifest verified (`sha256sum -c` or `shasum -a 256 -c`).
 - [ ] Portable mode validated (binaries + `config.yaml` side-by-side, no service install required).
+- [ ] Optional installer artifacts (if shipped) install/uninstall cleanly and preserve portable fallback availability.
+- [ ] Optional `*-update-manifest.json` assets (if shipped) match published artifact URL/checksum/size.
 
 ## 4) Documentation and Governance
 

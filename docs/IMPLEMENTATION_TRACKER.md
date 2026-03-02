@@ -336,7 +336,21 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `README.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
-- [ ] `TODO` Add optional installer/update path while preserving portable mode.
+- [x] `DONE` Add optional installer/update path while preserving portable mode.
+  - Implemented:
+    - Added release artifact automation workflow (`release-artifacts.yml`) that builds portable archives for Linux/macOS/Windows and publishes optional update manifests and Windows installer artifacts.
+    - Added Windows optional installer packaging via Inno Setup (`package-installer.ps1` + `mama-installer.iss`) with graceful skip behavior when `iscc` is unavailable so portable mode remains first-class.
+    - Added reusable update-manifest generation script and updated installation/release documentation to describe portable-first distribution plus optional installer/update flows.
+  - Changed files/tests:
+    - `.github/workflows/release-artifacts.yml`
+    - `scripts/windows/package-installer.ps1`
+    - `scripts/windows/mama-installer.iss`
+    - `scripts/release/generate-update-manifest.sh`
+    - `docs/INSTALLATION.md`
+    - `docs/RELEASE_REPRODUCIBLE_BUILDS.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `README.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 - [ ] `TODO` Add automated changelog/release-notes generation.
 
 ---
@@ -427,6 +441,8 @@ Legend:
 - 2026-03-02: Shipped setup UI first-run guided wizard (detect board -> test port -> map knobs -> save -> verify), including step state/status wiring to existing port refresh/test/identify/save actions, added server test coverage for wizard controls in the embedded page, and updated README setup guidance. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
 
 - 2026-03-02: Added setup UI mapping templates for streaming/conferencing/music/gaming presets with one-click apply into the existing mapping editor, extended index-page server test assertions for template controls, and documented template usage in README setup/feature sections. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
+
+- 2026-03-02: Added optional installer/update release path while preserving portable-first distribution: shipped cross-platform release packaging workflow (`release-artifacts.yml`), optional Windows Inno Setup packaging (`package-installer.ps1` + `mama-installer.iss`), and reusable `generate-update-manifest.sh` metadata generation. Updated installation/release docs and QA checklist. Verified with `bash -n scripts/release/generate-update-manifest.sh`, `scripts/release/generate-update-manifest.sh` against a sample artifact, and `cd mama && go test ./...`.
 
 - 2026-03-02: Added setup UI config backup/restore/import/export workflow with browser-local snapshot controls and JSON file import/export support; reused shared form serialization for save compatibility, expanded setup UI index-page assertions, and updated README usage docs. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
 
