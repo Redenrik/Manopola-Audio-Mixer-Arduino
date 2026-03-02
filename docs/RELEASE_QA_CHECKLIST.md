@@ -6,15 +6,27 @@ Use this checklist before tagging or publishing a release artifact.
 
 ---
 
+## Section execution ownership
+
+| Section | Classification | Notes |
+| --- | --- | --- |
+| 1) Build & Test Baseline | Mixed: Automatable by Codex + Manual/Maintainer required | Command checks are automatable; CI/review approvals remain manual. |
+| 2) Runtime and Config Verification | Mixed: Automatable by Codex + Manual/Maintainer required | In-repo coverage checks are automatable; hardware/soak checks are manual. |
+| 3) Release Artifacts and Integrity | Mixed: Automatable by Codex preflight + Manual/Maintainer required | Local script preflight is automatable; published release validation is manual. |
+| 4) Documentation and Governance | Mixed: Automatable by Codex + Manual/Maintainer required | Document-structure checks are automatable; approvals/sign-offs are manual. |
+| 5) Final Sign-off | Manual/Maintainer required | Cannot be completed by Codex in local environment. |
+
+---
+
 ## 1) Build & Test Baseline
 
 | ID | Readiness gate mapping | Execution type | Actionable verification step | Command/reference | Current status | Evidence / required format |
 | --- | --- | --- | --- | --- | --- | --- |
-| B1 | G1.1, G1.2, G1.3, G2.1, G2.2 | Automatable by Codex | Run full host test suite from module root and confirm all test packages pass. | `cd mama && go test ./...` | ✅ Complete (2026-03-02) | Output block in Section 6 must include `mama/cmd/mama`, `mama/internal/config`, `mama/internal/proto`, `mama/internal/runtime`. |
-| B2 | G3.1 | Automatable by Codex | Verify module dependency checksums and module cache integrity. | `cd mama && go mod verify` | ✅ Complete (2026-03-02) | Output block in Section 6 must include `all modules verified`. |
-| B3 | G3.3 | Manual/Maintainer required | Confirm CI matrix workflow passed for release commit. | `.github/workflows/ci.yml` | ⬜ Pending | Owner: `@maintainer-<name>`; workflow URL + run ID + commit SHA + final conclusion. |
-| B4 | G3.4 | Manual/Maintainer required | Confirm security scan workflow passed for release commit. | `.github/workflows/security-scan.yml` | ⬜ Pending | Owner: `@maintainer-<name>`; workflow URL + run ID + commit SHA + final conclusion. |
-| B5 | G3.1 | Manual/Maintainer required | Confirm no unreviewed `go.mod`/`go.sum` drift remains in release PR. | Release PR diff review | ⬜ Pending | Owner: `@maintainer-<name>`; explicit review comment acknowledging dependency diff status. |
+| B1 | G1.1, G1.2, G1.3, G2.1, G2.2 | Automatable by Codex | Run host test suite and confirm no package failures. | `cd mama && go test ./...` | ✅ Complete (2026-03-02) | Section 6 `E1` must include `mama/cmd/mama`, `mama/internal/config`, `mama/internal/proto`, `mama/internal/runtime`. |
+| B2 | G3.1 | Automatable by Codex | Verify module dependency checksums and module cache integrity. | `cd mama && go mod verify` | ✅ Complete (2026-03-02) | Section 6 `E2` must include `all modules verified`. |
+| B3 | G3.3 | Manual/Maintainer required | Confirm CI matrix workflow passed for release commit across Linux/Windows/macOS. | `.github/workflows/ci.yml` | ⬜ Pending | Owner: `@maintainer-<name>`; workflow URL + run ID + commit SHA + conclusion. |
+| B4 | G3.4 | Manual/Maintainer required | Confirm security scan workflow passed for release commit. | `.github/workflows/security-scan.yml` | ⬜ Pending | Owner: `@maintainer-<name>`; workflow URL + run ID + commit SHA + conclusion. |
+| B5 | G3.1 | Manual/Maintainer required | Confirm no unreviewed `go.mod`/`go.sum` drift remains in release PR. | Release PR diff review | ⬜ Pending | Owner: `@maintainer-<name>`; explicit review comment that dependency diff is acceptable/empty. |
 
 ---
 
@@ -22,8 +34,8 @@ Use this checklist before tagging or publishing a release artifact.
 
 | ID | Readiness gate mapping | Execution type | Actionable verification step | Command/reference | Current status | Evidence / required format |
 | --- | --- | --- | --- | --- | --- | --- |
-| R1 | G2.1 | Automatable by Codex | Confirm protocol compatibility behavior is still test-covered (accept `V:1`, reject mismatches). | `cd mama && go test ./...` (includes `mama/internal/proto`) | ✅ Complete (2026-03-02) | Reuse Section 6 `go test` output block. |
-| R2 | G1.2 | Automatable by Codex | Confirm config compatibility aliases and precedence behavior are still test-covered. | `cd mama && go test ./...` (includes `mama/internal/config`) | ✅ Complete (2026-03-02) | Reuse Section 6 `go test` output block. |
+| R1 | G2.1 | Automatable by Codex | Confirm protocol compatibility behavior remains test-covered. | `cd mama && go test ./...` (includes `mama/internal/proto`) | ✅ Complete (2026-03-02) | Reuse Section 6 `E1`. |
+| R2 | G1.2 | Automatable by Codex | Confirm config compatibility aliases/precedence remain test-covered. | `cd mama && go test ./...` (includes `mama/internal/config`) | ✅ Complete (2026-03-02) | Reuse Section 6 `E1`. |
 | R3 | G1.4 | Manual/Maintainer required | Verify setup UI loads and saves a valid config in representative environment. | `mama-ui` runtime smoke | ⬜ Pending | Owner: `@maintainer-<name>`; OS/browser + executed steps + saved `config.yaml` snippet/path + result. |
 | R4 | G1.4 | Manual/Maintainer required | Verify serial connection against representative board/firmware. | Hardware smoke test | ⬜ Pending | Owner: `@maintainer-<name>`; board model + firmware revision + serial port + log excerpt + result. |
 | R5 | G1.4 | Manual/Maintainer required | Verify knob rotation changes `master_out` and button toggles mute in live run. | Hardware interaction test | ⬜ Pending | Owner: `@maintainer-<name>`; timestamped video/log/screenshot + observed state transitions + result. |
@@ -35,11 +47,11 @@ Use this checklist before tagging or publishing a release artifact.
 
 | ID | Readiness gate mapping | Execution type | Actionable verification step | Command/reference | Current status | Evidence / required format |
 | --- | --- | --- | --- | --- | --- | --- |
-| A1 | G3.2 | Automatable by Codex (artifact preflight) | Validate release checksum script syntax. | `bash -n scripts/release/generate-checksums.sh` | ✅ Complete (2026-03-02) | Output in Section 6 (no syntax errors). |
-| A2 | G3.2 | Automatable by Codex (artifact preflight) | Smoke-test checksum generation on local staged files. | `scripts/release/generate-checksums.sh <artifact_dir>` | ✅ Complete (2026-03-02) | Section 6 output showing `wrote checksums: .../SHA256SUMS.txt`. |
-| A3 | G3.2 | Automatable by Codex (artifact preflight) | Verify generated checksum manifest against files. | `(cd <artifact_dir> && sha256sum -c SHA256SUMS.txt)` | ✅ Complete (2026-03-02) | Section 6 output showing `OK` for each file. |
+| A1 | G3.2 | Automatable by Codex (artifact preflight) | Validate release checksum script syntax. | `bash -n scripts/release/generate-checksums.sh` | ✅ Complete (2026-03-02) | Section 6 `E3` preflight command exits with no syntax error output. |
+| A2 | G3.2 | Automatable by Codex (artifact preflight) | Smoke-test checksum generation on local staged files. | `scripts/release/generate-checksums.sh <artifact_dir>` | ✅ Complete (2026-03-02) | Section 6 `E3` contains `wrote checksums: .../SHA256SUMS.txt`. |
+| A3 | G3.2 | Automatable by Codex (artifact preflight) | Verify generated checksum manifest against staged files. | `(cd <artifact_dir> && sha256sum -c SHA256SUMS.txt)` | ✅ Complete (2026-03-02) | Section 6 `E3` shows `OK` for each staged file. |
 | A4 | G3.5 | Manual/Maintainer required | Confirm intended platform artifacts were published. | GitHub Release assets | ⬜ Pending | Owner: `@maintainer-<name>`; release URL + platform coverage note. |
-| A5 | G3.5 | Manual/Maintainer required | Confirm signing artifacts (`*.sig`, `*.pem`) are attached and valid for release assets. | Signing workflow / `scripts/release/sign-artifacts.sh` | ⬜ Pending | Owner: `@maintainer-<name>`; workflow/log URL + asset links + verification snippet + result. |
+| A5 | G3.5 | Manual/Maintainer required | Confirm signing artifacts (`*.sig`, `*.pem`) are attached and valid. | Signing workflow / `scripts/release/sign-artifacts.sh` | ⬜ Pending | Owner: `@maintainer-<name>`; workflow/log URL + asset links + verification command output + result. |
 | A6 | G3.5 | Manual/Maintainer required | If macOS app artifacts are shipped, confirm notarized/stapled zips are attached. | Notarization workflow / `scripts/release/notarize-macos.sh` | ⬜ Pending | Owner: `@maintainer-<name>`; notarization ticket/log + asset links + result. |
 | A7 | G3.6 | Manual/Maintainer required | Confirm portable mode works (binary + adjacent `config.yaml`, no installer required). | Portable smoke test | ⬜ Pending | Owner: `@maintainer-<name>`; executed commands + runtime result summary. |
 | A8 | G3.6 | Manual/Maintainer required | If installer artifacts are shipped, validate install/uninstall and portable fallback. | Installer matrix test | ⬜ Pending | Owner: `@maintainer-<name>`; matrix results table + logs + result. |
@@ -51,8 +63,8 @@ Use this checklist before tagging or publishing a release artifact.
 
 | ID | Readiness gate mapping | Execution type | Actionable verification step | Command/reference | Current status | Evidence / required format |
 | --- | --- | --- | --- | --- | --- | --- |
-| D1 | G4.2 | Automatable by Codex | Confirm readiness doc defines objective gates and GO/NO-GO decision criteria. | `docs/V1_READINESS_REVIEW.md` | ✅ Complete (2026-03-02) | This checklist iteration references updated gate-based review doc. |
-| D2 | G4.1 | Automatable by Codex | Confirm this checklist labels each item with execution type and evidence requirements. | `docs/RELEASE_QA_CHECKLIST.md` | ✅ Complete (2026-03-02) | This checklist iteration includes execution type/evidence columns for all items. |
+| D1 | G4.2 | Automatable by Codex | Confirm readiness doc defines objective gates and GO/NO-GO criteria. | `docs/V1_READINESS_REVIEW.md` | ✅ Complete (2026-03-02) | Readiness doc includes objective gate tables + GO/NO-GO blocker rule. |
+| D2 | G4.1 | Automatable by Codex | Confirm this checklist labels each section/item with execution type and evidence requirements. | `docs/RELEASE_QA_CHECKLIST.md` | ✅ Complete (2026-03-02) | Section ownership matrix and per-item execution/evidence columns present. |
 | D3 | G4.4 | Manual/Maintainer required | Generate/review release notes and validate upgrade guidance completeness. | `scripts/release/generate-release-notes.sh` + release PR review | ⬜ Pending | Owner: `@maintainer-<name>`; generated notes artifact URL + reviewer sign-off. |
 | D4 | G4.3 | Manual/Maintainer required | Record support/deprecation review against `docs/SUPPORT_POLICY.md`. | Support review note | ⬜ Pending | Owner: `@maintainer-<name>`; reviewer + date + approval note/link. |
 | D5 | G4.3 | Manual/Maintainer required | Record security-impacting changes review against `SECURITY.md`. | Security review note | ⬜ Pending | Owner: `@maintainer-<name>`; reviewer + date + approval note/link. |
@@ -72,20 +84,30 @@ Use this checklist before tagging or publishing a release artifact.
 
 ## 6) Evidence Captured This Run (2026-03-02)
 
+### E1 — Host test suite
+
 ```bash
 $ cd mama && go test ./...
-ok  	mama/cmd/mama	0.016s
+ok  	mama/cmd/mama	0.018s
 ?   	mama/cmd/mama-ui	[no test files]
-ok  	mama/internal/audio	0.021s
-ok  	mama/internal/config	0.034s
-ok  	mama/internal/proto	0.017s
-ok  	mama/internal/runtime	0.015s
+ok  	mama/internal/audio	0.019s
+ok  	mama/internal/config	0.051s
+ok  	mama/internal/proto	0.014s
+ok  	mama/internal/runtime	0.014s
 ?   	mama/internal/serial	[no test files]
 ok  	mama/internal/ui	0.024s
+```
 
+### E2 — Dependency verification
+
+```bash
 $ cd mama && go mod verify
 all modules verified
+```
 
+### E3 — Checksum script preflight + smoke verification
+
+```bash
 $ bash -n scripts/release/generate-checksums.sh
 $ rm -rf /tmp/mama-release-smoke && mkdir -p /tmp/mama-release-smoke
 $ printf 'alpha\n' > /tmp/mama-release-smoke/a.txt
