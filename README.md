@@ -138,6 +138,11 @@ Validation rules:
 - `step` in `(0, 1]`
 - `name` required for `app/group`, forbidden otherwise
 
+Compatibility aliases accepted for older configs:
+- top-level `port`/`baud` (migrated to `serial.port`/`serial.baud`)
+- top-level `knobs` (migrated to `mappings`)
+- mapping keys: `id` -> `knob`, `type` -> `target`, `app` -> `name`, `volume_step` -> `step`
+
 ## Non-Terminal User Flow
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for packaging and release instructions.

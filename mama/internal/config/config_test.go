@@ -178,3 +178,75 @@ func TestEnsureDefaultFileCreatesWhenMissing(t *testing.T) {
 		t.Fatal("expected second call to be no-op")
 	}
 }
+
+func TestLoadMigratesLegacyTopLevelAndMappingFields(t *testing.T) {
+	cfgPath := writeConfig(t, `
+port: "COM9"
+baud: 57600
+debug: true
+knobs:
+  - id: 1
+    type: master_out
+    volume_step: 0.05
+  - id: 2
+    type: app
+    app: "Discord"
+    volume_step: 0.03
+`)
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Serial.Port != "COM9" {
+		t.Fatalf("expected migrated serial port COM9, got %q", cfg.Serial.Port)
+	}
+	if cfg.Serial.Baud != 57600 {
+		t.Fatalf("expected migrated serial baud 57600, got %d", cfg.Serial.Baud)
+	}
+	if !cfg.Debug {
+		t.Fatal("expected migrated debug=true")
+	}
+	if got := len(cfg.Mappings); got != 2 {
+		t.Fatalf("expected 2 migrated mappings, got %d", got)
+	}
+	if cfg.Mappings[1].Name != "Discord" {
+		t.Fatalf("expected migrated app alias to name, got %q", cfg.Mappings[1].Name)
+	}
+}
+
+func TestLoadPrefersCurrentSchemaOverLegacyAliases(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM11"
+  baud: 115200
+port: "COM2"
+baud: 9600
+mappings:
+  - knob: 1
+    target: master_out
+    step: 0.02
+knobs:
+  - id: 9
+    type: app
+    app: "ShouldNotApply"
+    volume_step: 0.5
+`)
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Serial.Port != "COM11" {
+		t.Fatalf("expected current schema serial.port to win, got %q", cfg.Serial.Port)
+	}
+	if cfg.Serial.Baud != 115200 {
+		t.Fatalf("expected current schema serial.baud to win, got %d", cfg.Serial.Baud)
+	}
+	if got := len(cfg.Mappings); got != 1 {
+		t.Fatalf("expected 1 mapping from current schema, got %d", got)
+	}
+	if cfg.Mappings[0].Knob != 1 {
+		t.Fatalf("expected current schema mapping knob 1, got %d", cfg.Mappings[0].Knob)
+	}
+}
