@@ -60,4 +60,10 @@ func TestHandleIndex_IncludesWizard(t *testing.T) {
 	if !strings.Contains(body, "wizardStart") {
 		t.Fatalf("expected wizard controls in index html")
 	}
+	if !strings.Contains(body, "templateSelect") {
+		t.Fatalf("expected template selector in index html")
+	}
+	if !strings.Contains(body, "applyTemplate") {
+		t.Fatalf("expected template apply control in index html")
+	}
 }

@@ -132,6 +132,10 @@
       margin-top: 10px;
     }
 
+    .actions.templates {
+      align-items: end;
+    }
+
     .btn-primary {
       background: linear-gradient(140deg, var(--accent), #f4a261);
       border-color: #e38b2f;
@@ -315,6 +319,13 @@
 
     <section class="panel">
       <h2>Mappings</h2>
+      <div class="actions templates">
+        <label style="min-width: 250px; margin: 0;">
+          Mapping Template
+          <select id="templateSelect"></select>
+        </label>
+        <button id="applyTemplate" type="button">Apply Template</button>
+      </div>
       <div class="row header">
         <div>Knob</div>
         <div>Target</div>
@@ -347,6 +358,52 @@
           { id: "save", title: "Save config", hint: "Persist serial + mapping configuration." },
           { id: "verify", title: "Verify", hint: "Run identify again to confirm knob events after save." }
         ]
+      },
+      templates: {
+        streaming: {
+          label: "Streaming",
+          description: "Game + mic + music mix",
+          mappings: [
+            { knob: 1, target: "master_out", step: 0.02, name: "" },
+            { knob: 2, target: "app", step: 0.02, name: "obs" },
+            { knob: 3, target: "app", step: 0.02, name: "discord" },
+            { knob: 4, target: "app", step: 0.02, name: "spotify" },
+            { knob: 5, target: "mic_in", step: 0.02, name: "" }
+          ]
+        },
+        conferencing: {
+          label: "Conferencing",
+          description: "Meeting app + mic focus",
+          mappings: [
+            { knob: 1, target: "master_out", step: 0.02, name: "" },
+            { knob: 2, target: "app", step: 0.02, name: "teams" },
+            { knob: 3, target: "app", step: 0.02, name: "zoom" },
+            { knob: 4, target: "app", step: 0.02, name: "browser" },
+            { knob: 5, target: "mic_in", step: 0.02, name: "" }
+          ]
+        },
+        music: {
+          label: "Music",
+          description: "Playback and recording controls",
+          mappings: [
+            { knob: 1, target: "master_out", step: 0.01, name: "" },
+            { knob: 2, target: "line_in", step: 0.01, name: "" },
+            { knob: 3, target: "app", step: 0.01, name: "spotify" },
+            { knob: 4, target: "app", step: 0.01, name: "vlc" },
+            { knob: 5, target: "mic_in", step: 0.01, name: "" }
+          ]
+        },
+        gaming: {
+          label: "Gaming",
+          description: "Game/chat balance",
+          mappings: [
+            { knob: 1, target: "master_out", step: 0.02, name: "" },
+            { knob: 2, target: "app", step: 0.02, name: "steam" },
+            { knob: 3, target: "app", step: 0.02, name: "discord" },
+            { knob: 4, target: "group", step: 0.02, name: "media" },
+            { knob: 5, target: "mic_in", step: 0.02, name: "" }
+          ]
+        }
       }
     };
 
@@ -434,6 +491,17 @@
           <div class="hint" id="knob-${i}-meta">waiting...</div>
         `;
         grid.appendChild(card);
+      }
+    }
+
+    function renderTemplateOptions() {
+      const select = $("templateSelect");
+      select.innerHTML = "";
+      for (const [id, tpl] of Object.entries(state.templates)) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = `${tpl.label} — ${tpl.description}`;
+        select.appendChild(option);
       }
     }
 
@@ -628,6 +696,18 @@
       }
     }
 
+    function applyTemplate() {
+      const key = $("templateSelect").value;
+      const tpl = state.templates[key];
+      if (!tpl) {
+        setStatus("saveStatus", "Select a template to apply.", "error");
+        return;
+      }
+      const cloned = tpl.mappings.map((mapping) => ({ ...mapping }));
+      renderMappings(cloned);
+      setStatus("saveStatus", `Applied template: ${tpl.label}. Review mappings and click Save Config.`, "ok");
+    }
+
     function stopIdentify() {
       if (state.identifyES) {
         state.identifyES.close();
@@ -681,6 +761,7 @@
       }).catch(err => setStatus("saveStatus", err.message, "error")));
       $("testConnection").addEventListener("click", testConnection);
       $("addMapping").addEventListener("click", () => $("mappings").appendChild(mappingRow()));
+      $("applyTemplate").addEventListener("click", applyTemplate);
       $("saveConfig").addEventListener("click", saveConfig);
       $("startIdentify").addEventListener("click", startIdentify);
       $("stopIdentify").addEventListener("click", stopIdentify);
@@ -692,6 +773,7 @@
 
     async function main() {
       createKnobCards();
+      renderTemplateOptions();
       renderWizard();
       bindEvents();
       try {
