@@ -31,6 +31,8 @@ Common causes:
 - invalid `step` (must be `> 0` and `<= 1`)
 - `app` mapping missing `selector` (or invalid selector kind/value)
 - `group` mapping missing `selectors`
+- overlapping `app/group` mappings with identical precedence (set distinct `priority` values)
+- negative mapping `priority`
 
 ## Press action does not mute
 

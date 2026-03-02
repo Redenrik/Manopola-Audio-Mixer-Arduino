@@ -165,6 +165,8 @@ Validation rules:
 - `app` must define `selector` and must not define `selectors`
 - `group` must define `selectors` and must not define `selector`
 - selector values must be non-empty strings
+- `priority` (optional, `>= 0`) can be set on `app/group` mappings to resolve overlaps; higher priority wins
+- overlapping `app/group` mappings with identical precedence score are rejected as ambiguous
 - non-`app/group` targets must not define `name`, `selector`, or `selectors`
 
 Compatibility aliases accepted for older configs:
