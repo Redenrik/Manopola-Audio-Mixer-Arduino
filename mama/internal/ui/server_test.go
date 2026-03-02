@@ -42,3 +42,22 @@ func TestHandlePortTest_MissingPort(t *testing.T) {
 		t.Fatalf("expected %d, got %d", http.StatusBadRequest, rr.Code)
 	}
 }
+
+func TestHandleIndex_IncludesWizard(t *testing.T) {
+	s := New("config.yaml")
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+
+	s.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "First-Run Wizard") {
+		t.Fatalf("expected wizard section in index html")
+	}
+	if !strings.Contains(body, "wizardStart") {
+		t.Fatalf("expected wizard controls in index html")
+	}
+}
