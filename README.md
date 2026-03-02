@@ -26,8 +26,9 @@ This repository now includes:
   - setup UI serial connection test button for validating port + baud before saving
   - setup UI live identify mode (rotate/press a knob and the matching indicator flashes)
   - setup API `/api/targets` now returns discovered backend targets (`discovered`) alongside compatibility fields (`known`, `supported`)
+- Additional target support:
+  - `app` per-session volume + mute on Unix hosts with `pactl` sink-input controls
 - Planned / not yet implemented in audio backend:
-    - per-app (`app`)
   - app groups (`group`)
 
 ## Repository Layout
@@ -149,7 +150,7 @@ profiles:
 - `master_out` (implemented)
 - `mic_in` (implemented on Windows and Unix hosts with `pactl` or `amixer` available)
 - `line_in` (implemented on Windows and Unix hosts with capture tooling available; routed via capture endpoint controls)
-- `app` (planned, requires `selector`)
+- `app` (implemented on Unix hosts with `pactl`; requires `selector`)
 - `group` (planned, requires `selectors`)
 
 `selector.kind` / `selectors[].kind` values:

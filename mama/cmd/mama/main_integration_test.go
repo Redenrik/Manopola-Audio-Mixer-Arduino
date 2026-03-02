@@ -109,3 +109,10 @@ func readFixtureLines(t *testing.T, name string) []string {
 	}
 	return strings.Split(trimmed, "\n")
 }
+
+func TestBackendTargetName_AppSelector(t *testing.T) {
+	m := config.Mapping{Target: config.TargetApp, Selector: &config.Selector{Kind: config.SelectorExe, Value: "discord"}}
+	if got := backendTargetName(m); got != "exe:discord" {
+		t.Fatalf("backendTargetName()=%q want %q", got, "exe:discord")
+	}
+}

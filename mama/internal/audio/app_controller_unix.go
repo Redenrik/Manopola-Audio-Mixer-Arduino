@@ -1,0 +1,198 @@
+//go:build !windows
+
+package audio
+
+import (
+	"fmt"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"mama/internal/config"
+)
+
+type commandRunner func(name string, args ...string) (string, error)
+
+type appSession struct {
+	id      string
+	name    string
+	exe     string
+	volume  int
+	isMuted bool
+}
+
+type unixAppSessionController struct {
+	run commandRunner
+}
+
+var (
+	sinkInputIDPattern = regexp.MustCompile(`^Sink Input #(\d+)`)
+	volumePattern      = regexp.MustCompile(`(\d+)%`)
+)
+
+func newAppSessionController() appSessionController {
+	if _, err := exec.LookPath("pactl"); err != nil {
+		return nil
+	}
+	return &unixAppSessionController{run: runCommandOutput}
+}
+
+func runCommandOutput(name string, args ...string) (string, error) {
+	out, err := exec.Command(name, args...).CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("%s %s: %w", name, strings.Join(args, " "), err)
+	}
+	return string(out), nil
+}
+
+func (u *unixAppSessionController) Adjust(selectorToken string, step float64, deltaSteps int) error {
+	target, err := u.selectSession(selectorToken)
+	if err != nil {
+		return err
+	}
+	next := target.volume + int(step*100*float64(deltaSteps))
+	if next < 0 {
+		next = 0
+	}
+	if next > 100 {
+		next = 100
+	}
+	_, err = u.run("pactl", "set-sink-input-volume", target.id, fmt.Sprintf("%d%%", next))
+	return err
+}
+
+func (u *unixAppSessionController) ToggleMute(selectorToken string) error {
+	target, err := u.selectSession(selectorToken)
+	if err != nil {
+		return err
+	}
+	next := "1"
+	if target.isMuted {
+		next = "0"
+	}
+	_, err = u.run("pactl", "set-sink-input-mute", target.id, next)
+	return err
+}
+
+func (u *unixAppSessionController) ListTargets() ([]DiscoveredTarget, error) {
+	sessions, err := u.listSessions()
+	if err != nil {
+		return nil, err
+	}
+	targets := make([]DiscoveredTarget, 0, len(sessions))
+	for _, s := range sessions {
+		name := s.name
+		if name == "" {
+			name = s.exe
+		}
+		targets = append(targets, DiscoveredTarget{ID: "app:" + s.id, Type: config.TargetApp, Name: name})
+	}
+	return targets, nil
+}
+
+func (u *unixAppSessionController) selectSession(selectorToken string) (appSession, error) {
+	sel := parseSelectorToken(selectorToken)
+	sessions, err := u.listSessions()
+	if err != nil {
+		return appSession{}, err
+	}
+	for _, s := range sessions {
+		if sessionMatchesSelector(s, sel) {
+			return s, nil
+		}
+	}
+	return appSession{}, fmt.Errorf("no app session matched selector %q", selectorToken)
+}
+
+func (u *unixAppSessionController) listSessions() ([]appSession, error) {
+	out, err := u.run("pactl", "list", "sink-inputs")
+	if err != nil {
+		return nil, err
+	}
+	return parsePactlSinkInputs(out), nil
+}
+
+func parsePactlSinkInputs(out string) []appSession {
+	lines := strings.Split(out, "\n")
+	var sessions []appSession
+	var current *appSession
+	flush := func() {
+		if current != nil && current.id != "" {
+			sessions = append(sessions, *current)
+		}
+	}
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if matches := sinkInputIDPattern.FindStringSubmatch(trimmed); len(matches) == 2 {
+			flush()
+			current = &appSession{id: matches[1]}
+			continue
+		}
+		if current == nil {
+			continue
+		}
+		switch {
+		case strings.HasPrefix(trimmed, "Mute:"):
+			current.isMuted = strings.HasPrefix(strings.TrimSpace(strings.TrimPrefix(trimmed, "Mute:")), "yes")
+		case strings.HasPrefix(trimmed, "Volume:") && current.volume == 0:
+			if m := volumePattern.FindStringSubmatch(trimmed); len(m) == 2 {
+				if vol, err := strconv.Atoi(m[1]); err == nil {
+					if vol < 0 {
+						vol = 0
+					}
+					if vol > 100 {
+						vol = 100
+					}
+					current.volume = vol
+				}
+			}
+		case strings.HasPrefix(trimmed, "application.name ="):
+			current.name = trimPactlValue(trimmed)
+		case strings.HasPrefix(trimmed, "application.process.binary ="):
+			current.exe = trimPactlValue(trimmed)
+		}
+	}
+	flush()
+	return sessions
+}
+
+func trimPactlValue(line string) string {
+	parts := strings.SplitN(line, "=", 2)
+	if len(parts) != 2 {
+		return ""
+	}
+	return strings.Trim(strings.TrimSpace(parts[1]), `"`)
+}
+
+func sessionMatchesSelector(s appSession, selector config.Selector) bool {
+	value := strings.TrimSpace(selector.Value)
+	if value == "" {
+		return false
+	}
+	target := s.name
+	if selector.Kind == config.SelectorExe {
+		target = s.exe
+	}
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return false
+	}
+	switch selector.Kind {
+	case config.SelectorExact, config.SelectorExe:
+		return strings.EqualFold(target, value)
+	case config.SelectorContains:
+		return strings.Contains(strings.ToLower(target), strings.ToLower(value))
+	case config.SelectorPrefix:
+		return strings.HasPrefix(strings.ToLower(target), strings.ToLower(value))
+	case config.SelectorSuffix:
+		return strings.HasSuffix(strings.ToLower(target), strings.ToLower(value))
+	case config.SelectorGlob:
+		ok, err := filepath.Match(strings.ToLower(value), strings.ToLower(target))
+		return err == nil && ok
+	default:
+		return false
+	}
+}

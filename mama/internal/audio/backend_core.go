@@ -1,7 +1,9 @@
 package audio
 
 import (
+	"fmt"
 	"math"
+	"strings"
 
 	"github.com/itchyny/volume-go"
 	"mama/internal/config"
@@ -27,6 +29,13 @@ type baseBackend struct {
 	master volumeController
 	mic    volumeController
 	lineIn volumeController
+	app    appSessionController
+}
+
+type appSessionController interface {
+	Adjust(selectorToken string, step float64, deltaSteps int) error
+	ToggleMute(selectorToken string) error
+	ListTargets() ([]DiscoveredTarget, error)
 }
 
 func (b *baseBackend) controllerFor(target config.TargetType) volumeController {
@@ -43,6 +52,13 @@ func (b *baseBackend) controllerFor(target config.TargetType) volumeController {
 }
 
 func (b *baseBackend) Adjust(target config.TargetType, name string, step float64, deltaSteps int) error {
+	if target == config.TargetApp {
+		if b.app == nil {
+			return Unsupported(target)
+		}
+		return b.app.Adjust(name, step, deltaSteps)
+	}
+
 	controller := b.controllerFor(target)
 	if controller == nil {
 		return Unsupported(target)
@@ -58,6 +74,13 @@ func (b *baseBackend) Adjust(target config.TargetType, name string, step float64
 }
 
 func (b *baseBackend) ToggleMute(target config.TargetType, name string) error {
+	if target == config.TargetApp {
+		if b.app == nil {
+			return Unsupported(target)
+		}
+		return b.app.ToggleMute(name)
+	}
+
 	controller := b.controllerFor(target)
 	if controller == nil {
 		return Unsupported(target)
@@ -82,5 +105,26 @@ func (b *baseBackend) ListTargets() ([]DiscoveredTarget, error) {
 	if b.lineIn != nil {
 		targets = append(targets, DiscoveredTarget{ID: "system:line_in", Type: config.TargetLineIn, Name: "System Line Input"})
 	}
+	if b.app != nil {
+		appTargets, err := b.app.ListTargets()
+		if err != nil {
+			return nil, fmt.Errorf("list app targets: %w", err)
+		}
+		targets = append(targets, appTargets...)
+	}
 	return targets, nil
+}
+
+func parseSelectorToken(token string) config.Selector {
+	kind := config.SelectorExact
+	value := strings.TrimSpace(token)
+	if left, right, ok := strings.Cut(value, ":"); ok {
+		candidate := config.SelectorKind(strings.TrimSpace(left))
+		switch candidate {
+		case config.SelectorExact, config.SelectorContains, config.SelectorPrefix, config.SelectorSuffix, config.SelectorGlob, config.SelectorExe:
+			kind = candidate
+			value = strings.TrimSpace(right)
+		}
+	}
+	return config.Selector{Kind: kind, Value: value}
 }
