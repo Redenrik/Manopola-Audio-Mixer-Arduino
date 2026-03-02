@@ -78,4 +78,13 @@ func TestHandleIndex_IncludesWizard(t *testing.T) {
 	if !strings.Contains(body, "importConfig") {
 		t.Fatalf("expected import config control in index html")
 	}
+	if !strings.Contains(body, "role=\"status\" aria-live=\"polite\"") {
+		t.Fatalf("expected aria-live status regions in index html")
+	}
+	if !strings.Contains(body, "remove.setAttribute(\"aria-label\", \"Remove mapping row\")") {
+		t.Fatalf("expected accessible mapping remove control label in index html")
+	}
+	if !strings.Contains(body, "input:focus-visible") {
+		t.Fatalf("expected keyboard focus-visible styling in index html")
+	}
 }

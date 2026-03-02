@@ -125,6 +125,13 @@
       box-shadow: 0 8px 16px rgba(2, 128, 144, 0.16);
     }
 
+    input:focus-visible, select:focus-visible, button:focus-visible {
+      outline: 3px solid #0b7285;
+      outline-offset: 2px;
+      border-color: #0b7285;
+      box-shadow: 0 0 0 2px rgba(11, 114, 133, 0.18);
+    }
+
     .actions {
       display: flex;
       gap: 8px;
@@ -211,8 +218,8 @@
       min-height: 1.3em;
     }
 
-    .status.error { color: #8d2d17; }
-    .status.ok { color: #1c6f64; }
+    .status.error { color: #7a2614; }
+    .status.ok { color: #175a51; }
 
     .hint {
       margin-top: 8px;
@@ -258,7 +265,7 @@
   </style>
 </head>
 <body>
-  <div class="shell">
+  <main class="shell">
     <section class="panel">
       <h1>Manopola Audio Mixer Setup</h1>
       <p>Configure serial connection, assign each knob target, and visually identify knob numbers in real time.</p>
@@ -274,7 +281,7 @@
         <button id="wizardReset" type="button">Reset</button>
       </div>
       <ol class="wizard-steps" id="wizardSteps"></ol>
-      <p class="status" id="wizardStatus"></p>
+      <p class="status" id="wizardStatus" role="status" aria-live="polite"></p>
     </section>
 
     <section class="panel split">
@@ -283,26 +290,26 @@
         <label>
           Serial Port
           <div class="split" style="grid-template-columns: 1fr auto;">
-            <select id="portSelect"></select>
+            <select id="portSelect" aria-label="Detected serial ports"></select>
             <button type="button" id="refreshPorts">Refresh</button>
           </div>
         </label>
         <label>
           Or type port manually
-          <input id="portInput" placeholder="COM3 or /dev/ttyACM0">
+          <input id="portInput" aria-label="Manual serial port" placeholder="COM3 or /dev/ttyACM0">
         </label>
         <label>
           Baud
-          <input id="baudInput" type="number" min="1" step="1" value="115200">
+          <input id="baudInput" aria-label="Serial baud rate" type="number" min="1" step="1" value="115200">
         </label>
         <label style="display:flex; gap:8px; align-items:center; margin-top:10px;">
-          <input id="debugInput" type="checkbox">
+          <input id="debugInput" type="checkbox" aria-label="Enable debug logs">
           Debug logs enabled
         </label>
         <div class="actions">
           <button type="button" id="testConnection">Test Connection</button>
         </div>
-        <p class="status" id="connectionStatus"></p>
+        <p class="status" id="connectionStatus" role="status" aria-live="polite"></p>
       </div>
 
       <div>
@@ -313,7 +320,7 @@
           <button id="stopIdentify" type="button">Stop</button>
         </div>
         <div class="knobs" id="knobGrid"></div>
-        <p class="status" id="identifyStatus"></p>
+        <p class="status" id="identifyStatus" role="status" aria-live="polite"></p>
       </div>
     </section>
 
@@ -322,7 +329,7 @@
       <div class="actions templates">
         <label style="min-width: 250px; margin: 0;">
           Mapping Template
-          <select id="templateSelect"></select>
+          <select id="templateSelect" aria-label="Mapping templates"></select>
         </label>
         <button id="applyTemplate" type="button">Apply Template</button>
       </div>
@@ -345,9 +352,9 @@
         <button id="importConfig" type="button">Import Config</button>
         <input id="importConfigFile" type="file" accept="application/json" style="display:none;">
       </div>
-      <p class="status" id="saveStatus"></p>
+      <p class="status" id="saveStatus" role="status" aria-live="polite"></p>
     </section>
-  </div>
+  </main>
 
   <script>
     const state = {
@@ -426,6 +433,7 @@
       const el = $(id);
       el.textContent = text || "";
       el.className = "status" + (cls ? " " + cls : "");
+      el.setAttribute("aria-live", cls === "error" ? "assertive" : "polite");
     }
 
     async function fetchJSON(url, opts = {}) {
@@ -539,6 +547,7 @@
       row.className = "row";
 
       const knob = document.createElement("select");
+      knob.setAttribute("aria-label", "Mapping knob");
       for (let i = 1; i <= knobCount; i++) {
         const o = document.createElement("option");
         o.value = String(i);
@@ -548,6 +557,7 @@
       knob.value = String(mapping.knob || 1);
 
       const target = document.createElement("select");
+      target.setAttribute("aria-label", "Mapping target");
       for (const t of state.knownTargets) {
         const o = document.createElement("option");
         o.value = t;
@@ -557,10 +567,12 @@
       target.value = mapping.target || "master_out";
 
       const name = document.createElement("input");
+      name.setAttribute("aria-label", "Application or group name");
       name.placeholder = "discord.exe / music-group";
       name.value = mapping.name || "";
 
       const step = document.createElement("input");
+      step.setAttribute("aria-label", "Volume step");
       step.type = "number";
       step.min = "0.001";
       step.max = "1";
@@ -570,7 +582,8 @@
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "btn-danger";
-      remove.textContent = "X";
+      remove.textContent = "Remove";
+      remove.setAttribute("aria-label", "Remove mapping row");
       remove.addEventListener("click", () => row.remove());
 
       function syncNameState() {
