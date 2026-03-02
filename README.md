@@ -146,7 +146,7 @@ Compatibility aliases accepted for older configs:
 
 ## Continuous Integration
 
-GitHub Actions runs cross-platform tests and security checks on every pull request and on pushes to `main`.
+GitHub Actions runs cross-platform tests and security checks on every pull request and on pushes to `main`, using a patched Go toolchain line (`1.24.x`).
 
 Test workflow:
 - workflow: `.github/workflows/ci.yml`

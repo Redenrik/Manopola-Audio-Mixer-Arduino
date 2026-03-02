@@ -163,7 +163,7 @@ Legend:
 - [x] `DONE` Add dependency and vulnerability scanning in CI.
   - Implemented:
     - Added a dedicated GitHub Actions security workflow with two jobs: dependency audit (`go mod verify` + tidy drift check) and `govulncheck` scanning for the `mama/` module.
-    - Configured scans to run on pushes to `main` and all pull requests with deterministic Go setup (`1.22.x`) and module-scoped working directory.
+    - Configured scans to run on pushes to `main` and all pull requests with deterministic Go setup (`1.24.x`) and module-scoped working directory.
     - Documented the new security scanning workflow and commands in `README.md`.
   - Changed files/tests:
     - `.github/workflows/security-scan.yml`
@@ -190,6 +190,8 @@ Legend:
 - 2026-03-02: Extended `/api/targets` with structured backend discovery (`discovered` with id/type/name), kept backward-compatible `known`/`supported` fields, added UI endpoint tests, and updated backend discovery contracts. Verified with `cd mama && go test ./...`.
 
 - 2026-03-02: Added CI security scanning workflow (`.github/workflows/security-scan.yml`) covering dependency verification (`go mod verify` + tidy drift) and vulnerability scanning (`govulncheck ./...`), plus README CI documentation updates. Verified locally with `cd mama && go test ./...` and `cd mama && go mod verify`.
+
+- 2026-03-02: Remediated CI vulnerability-scan false failures caused by scanning with an out-of-date Go stdlib baseline by upgrading CI/security workflows from Go `1.22.x` to `1.24.x`; this aligns `govulncheck` with patched standard-library fixes while preserving module compatibility checks. Verified locally with `cd mama && go test ./...` and `cd mama && go mod verify` (network-limited environment prevented local `govulncheck` install).
 
 ---
 
