@@ -99,6 +99,10 @@ func runSession(ctx context.Context, r *serialx.Reader, cfg *config.Config, b au
 	}()
 
 	defer func() { _ = r.Close() }()
+	return runSessionFromChannels(ctx, cfg, b, metrics, lines, readErrC)
+}
+
+func runSessionFromChannels(ctx context.Context, cfg *config.Config, b audio.Backend, metrics *runtime.Metrics, lines <-chan string, readErrC <-chan error) error {
 	defer runtime.Log("runtime_metrics", runtime.Fields{"snapshot": metrics.Snapshot()})
 
 	protocolAnnounced := false
@@ -115,7 +119,15 @@ func runSession(ctx context.Context, r *serialx.Reader, cfg *config.Config, b au
 			return nil
 		case line, ok := <-lines:
 			if !ok {
-				return fmt.Errorf("serial reader stopped")
+				select {
+				case err := <-readErrC:
+					if err != nil {
+						return err
+					}
+					return nil
+				default:
+					return fmt.Errorf("serial reader stopped")
+				}
 			}
 			if cfg.Debug {
 				runtime.Log("serial_rx", runtime.Fields{"line": line})
