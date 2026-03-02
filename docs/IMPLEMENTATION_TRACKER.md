@@ -424,6 +424,21 @@ Legend:
     - `docs/V1_READINESS_REVIEW.md`
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
+- [x] `DONE` Reconcile readiness/checklist docs with objective gate mapping and fresh run evidence.
+  - Status history: `IN_PROGRESS` (2026-03-02) -> `DONE` (2026-03-02).
+  - Implementation plan (executed this iteration):
+    1. Add an explicit gate-to-checklist mapping so each checklist section item can be traced to readiness blockers/non-blockers.
+    2. Re-run automatable in-repo checks (`go test`, `go mod verify`, checksum script preflight/smoke) and refresh dated evidence blocks with this run's output.
+    3. Tighten manual checklist/readiness wording to require owner placeholders and specific evidence payload formats per item.
+    4. Recompute GO/NO-GO snapshot from refreshed evidence and log exactly what remains manual.
+  - Implemented:
+    - Added explicit readiness gate mapping in the release checklist and objective pass conditions so checklist progress is traceable to `GO/NO-GO` blockers.
+    - Refreshed automatable evidence blocks in both readiness and checklist docs with current dated command snippets from this run.
+    - Standardized manual item evidence requirements into owner + artifact template fields to remove ambiguous sign-off wording.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 
 
 ---
@@ -488,6 +503,8 @@ Legend:
 
 - 2026-03-02: Addressed reviewer follow-ups for readiness/release QA docs by converting remaining vague entries into objective, testable criteria; adding explicit execution-type labeling and owner/evidence requirements for every checklist section; and capturing fresh dated automatable evidence (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum-script syntax/smoke verification). GO/NO-GO remains `NO-GO` due only to manual maintainer/hardware/workflow release gates.
 
+
+- 2026-03-02: Reconciled readiness/release QA docs with explicit readiness-gate mapping per checklist item, refreshed evidence-driven automatable outputs from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum syntax/smoke/verify), and standardized manual owner/evidence templates. GO/NO-GO remains `NO-GO` strictly due to pending manual maintainer/hardware/workflow gates.
 
 ---
 
