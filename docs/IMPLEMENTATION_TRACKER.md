@@ -351,7 +351,18 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `README.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
-- [ ] `TODO` Add automated changelog/release-notes generation.
+- [x] `DONE` Add automated changelog/release-notes generation.
+  - Implemented:
+    - Added a deterministic release-note generator script that builds markdown from git history between release tags, grouping conventional commit prefixes into readable sections.
+    - Added a dedicated GitHub Actions workflow to auto-generate release notes on published releases, update the release body from the generated markdown, and upload a `release-notes-<tag>.md` asset.
+    - Updated release integrity/reproducible-build documentation and QA checklist to include the new automated changelog/release-note flow for maintainers.
+  - Changed files/tests:
+    - `scripts/release/generate-release-notes.sh`
+    - `.github/workflows/release-notes.yml`
+    - `docs/RELEASE_REPRODUCIBLE_BUILDS.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `README.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 
 ---
 
@@ -449,6 +460,8 @@ Legend:
 - 2026-03-02: Completed setup UI accessibility pass with keyboard focus-visible styling, ARIA labels + status live regions (including assertive error announcements), and accessible mapping-row remove semantics; expanded setup UI server assertions and README feature docs. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
 
 - 2026-03-02: Added setup UI localization framework with initial English/Italian coverage (persisted language selector, localized wizard/template/status copy, and dynamic re-rendering of key UI text), expanded setup UI index-page assertions, and documented language toggle behavior in README. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui ./...`.
+
+- 2026-03-02: Added automated changelog/release-note generation by shipping `scripts/release/generate-release-notes.sh` (deterministic tag-range markdown), plus `.github/workflows/release-notes.yml` to publish generated notes into GitHub releases and upload a markdown asset. Updated README/release docs/checklist for maintainer usage. Verified with `bash -n scripts/release/generate-release-notes.sh`, `bash -n scripts/release/generate-checksums.sh`, and manual script execution against a temporary tagged git repo fixture.
 
 ---
 

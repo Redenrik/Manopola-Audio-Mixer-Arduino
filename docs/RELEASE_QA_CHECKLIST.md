@@ -29,7 +29,7 @@ Use this checklist before tagging or publishing a release artifact.
 
 ## 4) Documentation and Governance
 
-- [ ] Changelog / release notes drafted and reviewed.
+- [ ] Changelog / release notes generated via `.github/workflows/release-notes.yml` (or `scripts/release/generate-release-notes.sh`) and reviewed.
 - [ ] Support/deprecation implications reviewed against `docs/SUPPORT_POLICY.md`.
 - [ ] Security-impacting changes reviewed against `SECURITY.md` disclosure expectations.
 - [ ] Open TODOs and follow-ups captured as GitHub issues.
