@@ -68,7 +68,13 @@ Legend:
     - `mama/internal/runtime/structured_log_test.go`
     - `mama/cmd/mama/main.go`
     - `docs/TROUBLESHOOTING.md`
-- [ ] `TODO` Add long-run soak test plan and scripted verification artifacts.
+- [x] `DONE` Add long-run soak test plan and scripted verification artifacts.
+  - Implemented:
+    - Added a dedicated long-run soak test plan with scope, cadence, and artifact review criteria for host runtime verification.
+    - Added a reusable soak script that runs repeated host checks, writes timestamped artifacts, and fails fast on regressions.
+  - Changed files/tests:
+    - `docs/SOAK_TEST_PLAN.md`
+    - `scripts/soak/run_host_soak.sh`
 
 ---
 
@@ -122,6 +128,7 @@ Legend:
 - 2026-03-01: Implemented serial reconnect strategy with bounded exponential backoff and clear runtime state logs in host runtime. Added dedicated backoff unit tests and verified with `go test ./...`.
 - 2026-03-01: Implemented host runtime metrics counters (parse errors, dropped events, reconnect count, backend failures), integrated counter updates into reconnect/session paths, and added metrics snapshot logging plus unit tests. Verified with `go test ./...`.
 - 2026-03-02: Implemented deterministic structured runtime logging (`event=<name> key=value`), migrated host runtime log emitters to structured events, added formatter unit tests, and updated troubleshooting docs. Verified with `go test ./...`.
+- 2026-03-02: Added long-run soak verification plan and scripted artifacts (`scripts/soak/run_host_soak.sh`) with timestamped outputs under `artifacts/soak/`. Verified with `go test ./...` and `scripts/soak/run_host_soak.sh 3`.
 
 ---
 
