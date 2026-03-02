@@ -221,6 +221,36 @@
       font-size: 0.9rem;
       color: #35594d;
     }
+
+    .wizard-steps {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .wizard-step {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #f8fcfb;
+    }
+
+    .wizard-step.done {
+      border-color: #8ac9bf;
+      background: #effaf7;
+    }
+
+    .wizard-step.active {
+      border-color: #f4a261;
+      box-shadow: 0 8px 16px rgba(244, 162, 97, 0.18);
+    }
+
+    .wizard-step small {
+      display: block;
+      color: var(--ink-dim);
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -229,6 +259,18 @@
       <h1>Manopola Audio Mixer Setup</h1>
       <p>Configure serial connection, assign each knob target, and visually identify knob numbers in real time.</p>
       <p class="hint">Config path: <span class="mono" id="configPath">loading...</span></p>
+    </section>
+
+    <section class="panel">
+      <h2>First-Run Wizard</h2>
+      <p>Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.</p>
+      <div class="actions">
+        <button class="btn-primary" id="wizardStart" type="button">Start Wizard</button>
+        <button id="wizardNext" type="button">Next Step</button>
+        <button id="wizardReset" type="button">Reset</button>
+      </div>
+      <ol class="wizard-steps" id="wizardSteps"></ol>
+      <p class="status" id="wizardStatus"></p>
     </section>
 
     <section class="panel split">
@@ -294,7 +336,18 @@
       cfgPath: "",
       config: null,
       knownTargets: ["master_out", "mic_in", "line_in", "app", "group"],
-      identifyES: null
+      identifyES: null,
+      wizard: {
+        active: false,
+        index: 0,
+        steps: [
+          { id: "detect", title: "Detect board", hint: "Refresh detected serial ports and select your board." },
+          { id: "test", title: "Test port", hint: "Run Test Connection to ensure the board is reachable." },
+          { id: "map", title: "Map knobs", hint: "Use Start Identify and rotate/press knobs to confirm IDs before editing mappings." },
+          { id: "save", title: "Save config", hint: "Persist serial + mapping configuration." },
+          { id: "verify", title: "Verify", hint: "Run identify again to confirm knob events after save." }
+        ]
+      }
     };
 
     const knobCount = 5;
@@ -323,6 +376,49 @@
       const manual = $("portInput").value.trim();
       if (manual) return manual;
       return $("portSelect").value.trim();
+    }
+
+
+    function renderWizard() {
+      const host = $("wizardSteps");
+      host.innerHTML = "";
+      state.wizard.steps.forEach((step, idx) => {
+        const li = document.createElement("li");
+        li.className = "wizard-step";
+        if (idx < state.wizard.index) li.classList.add("done");
+        if (state.wizard.active && idx === state.wizard.index) li.classList.add("active");
+        li.innerHTML = `<strong>${idx + 1}. ${step.title}</strong><small>${step.hint}</small>`;
+        host.appendChild(li);
+      });
+    }
+
+    function startWizard() {
+      state.wizard.active = true;
+      state.wizard.index = 0;
+      renderWizard();
+      setStatus("wizardStatus", "Step 1: click Refresh to detect available serial ports.", "ok");
+    }
+
+    function resetWizard() {
+      state.wizard.active = false;
+      state.wizard.index = 0;
+      renderWizard();
+      setStatus("wizardStatus", "Wizard reset.");
+    }
+
+    function nextWizardStep() {
+      if (!state.wizard.active) {
+        setStatus("wizardStatus", "Start the wizard first.", "error");
+        return;
+      }
+      if (state.wizard.index >= state.wizard.steps.length - 1) {
+        setStatus("wizardStatus", "Wizard complete: board detected, tested, mapped, saved, and verified.", "ok");
+        return;
+      }
+      state.wizard.index += 1;
+      renderWizard();
+      const current = state.wizard.steps[state.wizard.index];
+      setStatus("wizardStatus", `Step ${state.wizard.index + 1}: ${current.hint}`, "ok");
     }
 
     function createKnobCards() {
@@ -489,6 +585,9 @@
           body: JSON.stringify({ port, baud })
         });
         setStatus("connectionStatus", body.message || "Connection successful", "ok");
+        if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "test") {
+          setStatus("wizardStatus", "Port test passed. Click Next Step to continue mapping.", "ok");
+        }
       } catch (err) {
         setStatus("connectionStatus", err.message, "error");
       }
@@ -521,6 +620,9 @@
         });
         state.config = saved;
         setStatus("saveStatus", "Config saved", "ok");
+        if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "save") {
+          setStatus("wizardStatus", "Config saved successfully. Click Next Step for final verification.", "ok");
+        }
       } catch (err) {
         setStatus("saveStatus", err.message, "error");
       }
@@ -546,6 +648,11 @@
       const es = new EventSource(url);
       state.identifyES = es;
       setStatus("identifyStatus", "Listening on " + port + " @ " + baud, "ok");
+      if (state.wizard.active) {
+        const stepID = state.wizard.steps[state.wizard.index].id;
+        if (stepID === "map") setStatus("wizardStatus", "Identify is running. Rotate and press each knob, then click Next Step.", "ok");
+        if (stepID === "verify") setStatus("wizardStatus", "Verification active. Confirm events are flashing for each knob.", "ok");
+      }
 
       es.onmessage = (msg) => {
         try {
@@ -566,17 +673,26 @@
     }
 
     function bindEvents() {
-      $("refreshPorts").addEventListener("click", () => loadPorts().catch(err => setStatus("saveStatus", err.message, "error")));
+      $("refreshPorts").addEventListener("click", () => loadPorts().then(() => {
+        if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "detect") {
+          const hasPort = $("portSelect").value.trim() || $("portInput").value.trim();
+          if (hasPort) setStatus("wizardStatus", "Board detection complete. Choose the correct port and click Next Step.", "ok");
+        }
+      }).catch(err => setStatus("saveStatus", err.message, "error")));
       $("testConnection").addEventListener("click", testConnection);
       $("addMapping").addEventListener("click", () => $("mappings").appendChild(mappingRow()));
       $("saveConfig").addEventListener("click", saveConfig);
       $("startIdentify").addEventListener("click", startIdentify);
       $("stopIdentify").addEventListener("click", stopIdentify);
+      $("wizardStart").addEventListener("click", startWizard);
+      $("wizardNext").addEventListener("click", nextWizardStep);
+      $("wizardReset").addEventListener("click", resetWizard);
       window.addEventListener("beforeunload", stopIdentify);
     }
 
     async function main() {
       createKnobCards();
+      renderWizard();
       bindEvents();
       try {
         await loadStatus();

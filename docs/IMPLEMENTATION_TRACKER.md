@@ -249,7 +249,16 @@ Legend:
 
 ## 4) Setup UI and End-User Experience
 
-- [ ] `TODO` Add first-run guided wizard (detect board -> test port -> map knobs -> save -> verify).
+- [x] `DONE` Add first-run guided wizard (detect board -> test port -> map knobs -> save -> verify).
+  - Implemented:
+    - Added a dedicated first-run wizard panel in the setup UI with explicit detect/test/map/save/verify steps and reset/next progression controls.
+    - Wired wizard status updates to existing refresh-port, port-test, identify, and save actions so guided flow stays aligned with manual setup behavior.
+    - Added UI server coverage that asserts wizard controls are present in the embedded index page and documented the new guided flow in README.
+  - Changed files/tests:
+    - `mama/internal/ui/static/index.html`
+    - `mama/internal/ui/server_test.go`
+    - `README.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 - [ ] `TODO` Add mapping templates (streaming/conferencing/music/gaming).
 - [ ] `TODO` Add config backup/restore/import/export from UI.
 - [ ] `TODO` Add localization framework and initial EN/IT coverage.
@@ -364,6 +373,8 @@ Legend:
 
 - 2026-03-02: Added firmware-side encoder stress validation by extracting shared encoder/button state logic (`firmware/master/encoder_logic.h`), adding native burst/debounce stress coverage (`firmware/master/tests/encoder_logic_stress_test.cpp`), and shipping a repeatable runner script + README guidance. Verified with `scripts/firmware/run_encoder_stress_test.sh` and `cd mama && go test ./...`.
 - 2026-03-02: Added I2C robustness validation for master/slave packet integrity by extracting shared slave packet accounting logic (`firmware/slave/i2c_packet.h`), adding burst-load packet integrity coverage (`firmware/slave/tests/i2c_packet_integrity_test.cpp`), and shipping a repeatable runner script (`scripts/firmware/run_i2c_robustness_test.sh`) with README guidance. Verified with `scripts/firmware/run_i2c_robustness_test.sh`, `scripts/firmware/run_encoder_stress_test.sh`, and `cd mama && go test ./...`.
+
+- 2026-03-02: Shipped setup UI first-run guided wizard (detect board -> test port -> map knobs -> save -> verify), including step state/status wiring to existing port refresh/test/identify/save actions, added server test coverage for wizard controls in the embedded page, and updated README setup guidance. Verified with `cd mama && go test ./internal/ui ./cmd/mama-ui` and `cd mama && go test ./...`.
 
 
 ---

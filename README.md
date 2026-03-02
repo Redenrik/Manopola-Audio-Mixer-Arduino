@@ -5,7 +5,7 @@ MAMA is a physical USB audio mixer built with 2 Arduino Nano boards (master + sl
 This repository now includes:
 - firmware for 5 rotary encoders with push buttons
 - runtime daemon (`mama`) that applies volume actions
-- browser-based setup GUI (`mama-ui`) with visual knob identification
+- browser-based setup GUI (`mama-ui`) with visual knob identification and first-run guided wizard
 - collaboration and release documentation for contributors and maintainers
 
 ## Goals
@@ -24,6 +24,7 @@ This repository now includes:
   - `mic_in` and `line_in` adjust + mute toggle (Windows + Unix hosts with capture endpoint tooling available)
   - setup UI (`mama-ui`) to edit serial settings/mappings and save config
   - setup UI serial connection test button for validating port + baud before saving
+  - setup UI first-run guided wizard (detect board -> test port -> map knobs -> save -> verify)
   - setup UI live identify mode (rotate/press a knob and the matching indicator flashes)
   - setup API `/api/targets` now returns discovered backend targets (`discovered`) alongside compatibility fields (`known`, `supported`)
 - Additional target support:
@@ -103,7 +104,7 @@ scripts/firmware/run_i2c_robustness_test.sh
 - `run_encoder_stress_test.sh`: validates fast encoder spin + button debounce edge cases.
 - `run_i2c_robustness_test.sh`: validates slave I2C packet integrity under burst-load accumulator and button-edge churn.
 
-Then open the shown local URL, set serial port/baud, map knobs, and save.
+Then open the shown local URL and use the first-run wizard (or manual controls) to detect the board, test connection, map knobs, save, and verify.
 
 Start runtime daemon:
 
