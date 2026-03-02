@@ -1,0 +1,116 @@
+name: Release Signing and Notarization
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to process (required for manual runs)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  sign-release-artifacts:
+    name: sign-release-artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: release
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+          EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          tag="$EVENT_RELEASE_TAG"
+          if [ -z "$tag" ]; then
+            tag="$INPUT_RELEASE_TAG"
+          fi
+          if [ -z "$tag" ]; then
+            echo "release tag not provided" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          mkdir -p dist/release-assets
+          gh release download "$RELEASE_TAG" --dir dist/release-assets
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign release assets with keyless Sigstore
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: scripts/release/sign-artifacts.sh dist/release-assets
+
+      - name: Upload signatures and certificates to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          gh release upload "$RELEASE_TAG" dist/release-assets/*.sig dist/release-assets/*.pem --clobber
+
+  notarize-macos-artifacts:
+    name: notarize-macos-artifacts
+    runs-on: macos-latest
+    needs: sign-release-artifacts
+    if: ${{ secrets.APPLE_DEVELOPER_ID_APP != '' && secrets.APPLE_NOTARY_KEY_ID != '' && secrets.APPLE_NOTARY_ISSUER_ID != '' && secrets.APPLE_NOTARY_PRIVATE_KEY != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: release
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+          EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          tag="$EVENT_RELEASE_TAG"
+          if [ -z "$tag" ]; then
+            tag="$INPUT_RELEASE_TAG"
+          fi
+          if [ -z "$tag" ]; then
+            echo "release tag not provided" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          mkdir -p dist/release-assets
+          gh release download "$RELEASE_TAG" --dir dist/release-assets
+
+      - name: Notarize macOS artifacts (if present)
+        env:
+          APPLE_DEVELOPER_ID_APP: ${{ secrets.APPLE_DEVELOPER_ID_APP }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+          APPLE_NOTARY_PRIVATE_KEY: ${{ secrets.APPLE_NOTARY_PRIVATE_KEY }}
+        run: scripts/release/notarize-macos.sh dist/release-assets
+
+      - name: Upload notarized artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          if compgen -G "dist/release-assets/notarized/*.zip" > /dev/null; then
+            gh release upload "$RELEASE_TAG" dist/release-assets/notarized/*.zip --clobber
+          else
+            echo "no notarized zip artifacts produced"
+          fi

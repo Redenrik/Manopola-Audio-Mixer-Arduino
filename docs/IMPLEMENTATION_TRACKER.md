@@ -322,7 +322,20 @@ Legend:
     - `docs/RELEASE_REPRODUCIBLE_BUILDS.md`
     - `docs/INSTALLATION.md`
     - `README.md`
-- [ ] `TODO` Add signing/notarization workflow docs and automation.
+- [x] `DONE` Add signing/notarization workflow docs and automation.
+  - Implemented:
+    - Added a dedicated release-signing GitHub Actions workflow that signs published release assets with keyless Sigstore and uploads generated `*.sig`/`*.pem` artifacts back to each release.
+    - Added optional macOS notarization automation (conditional on Apple credentials) that codesigns, notarizes, staples, and re-uploads notarized zip artifacts.
+    - Added maintainer-facing signing/notarization documentation and reusable release scripts for local execution, plus release-doc checklist updates.
+  - Changed files/tests:
+    - `.github/workflows/release-signing.yml`
+    - `scripts/release/sign-artifacts.sh`
+    - `scripts/release/notarize-macos.sh`
+    - `docs/SIGNING_AND_NOTARIZATION.md`
+    - `docs/RELEASE_REPRODUCIBLE_BUILDS.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `README.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 - [ ] `TODO` Add optional installer/update path while preserving portable mode.
 - [ ] `TODO` Add automated changelog/release-notes generation.
 
@@ -387,6 +400,7 @@ Legend:
 - 2026-03-02: Added GitHub Actions CI matrix testing across Linux/Windows/macOS for the `mama` Go module, running `go test ./...` on push/PR, and documented the workflow in README. Verified locally with `cd mama && go test ./...`.
 
 - 2026-03-02: Extended `/api/targets` with structured backend discovery (`discovered` with id/type/name), kept backward-compatible `known`/`supported` fields, added UI endpoint tests, and updated backend discovery contracts. Verified with `cd mama && go test ./...`.
+- 2026-03-02: Added release signing/notarization workflow automation (`.github/workflows/release-signing.yml`), plus reusable signing/notarization scripts and maintainer docs. Updated release QA/reproducible-build docs and README references. Verified with `bash -n scripts/release/sign-artifacts.sh`, `bash -n scripts/release/notarize-macos.sh`, `cd mama && go test ./...`.
 
 - 2026-03-02: Added CI security scanning workflow (`.github/workflows/security-scan.yml`) covering dependency verification (`go mod verify` + tidy drift) and vulnerability scanning (`govulncheck ./...`), plus README CI documentation updates. Verified locally with `cd mama && go test ./...` and `cd mama && go mod verify`.
 
