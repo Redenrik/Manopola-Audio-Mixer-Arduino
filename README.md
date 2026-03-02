@@ -93,11 +93,15 @@ go test ./...
 go run ./cmd/mama-ui
 ```
 
-Firmware stress validation (fast encoder spin + button debounce edge cases):
+Firmware stress validation:
 
 ```bash
 scripts/firmware/run_encoder_stress_test.sh
+scripts/firmware/run_i2c_robustness_test.sh
 ```
+
+- `run_encoder_stress_test.sh`: validates fast encoder spin + button debounce edge cases.
+- `run_i2c_robustness_test.sh`: validates slave I2C packet integrity under burst-load accumulator and button-edge churn.
 
 Then open the shown local URL, set serial port/baud, map knobs, and save.
 

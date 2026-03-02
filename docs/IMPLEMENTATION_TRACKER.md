@@ -233,7 +233,17 @@ Legend:
     - `firmware/master/tests/encoder_logic_stress_test.cpp`
     - `scripts/firmware/run_encoder_stress_test.sh`
     - `README.md`
-- [ ] `TODO` Add I2C robustness checks for master/slave packet integrity under load.
+- [x] `DONE` Add I2C robustness checks for master/slave packet integrity under load.
+  - Implemented:
+    - Extracted slave I2C packet-build/consume behavior into `firmware/slave/i2c_packet.h` so runtime ISR logic and tests share the same packet accounting semantics.
+    - Added a native robustness test (`firmware/slave/tests/i2c_packet_integrity_test.cpp`) that validates fixed packet width, clamp/carry-over behavior under burst load, and press-edge reset semantics across repeated request cycles.
+    - Added a runnable validation script and README guidance for repeatable I2C integrity checks in firmware verification workflows.
+  - Changed files/tests:
+    - `firmware/slave/slave.ino`
+    - `firmware/slave/i2c_packet.h`
+    - `firmware/slave/tests/i2c_packet_integrity_test.cpp`
+    - `scripts/firmware/run_i2c_robustness_test.sh`
+    - `README.md`
 
 ---
 
@@ -353,6 +363,7 @@ Legend:
 - 2026-03-02: Implemented `group` target backend support via grouped app/session selector routing (Unix `pactl` sink-input control), including runtime selector token serialization, backend/controller contract tests, and documentation/support-matrix updates. Verified with `cd mama && go test ./...`.
 
 - 2026-03-02: Added firmware-side encoder stress validation by extracting shared encoder/button state logic (`firmware/master/encoder_logic.h`), adding native burst/debounce stress coverage (`firmware/master/tests/encoder_logic_stress_test.cpp`), and shipping a repeatable runner script + README guidance. Verified with `scripts/firmware/run_encoder_stress_test.sh` and `cd mama && go test ./...`.
+- 2026-03-02: Added I2C robustness validation for master/slave packet integrity by extracting shared slave packet accounting logic (`firmware/slave/i2c_packet.h`), adding burst-load packet integrity coverage (`firmware/slave/tests/i2c_packet_integrity_test.cpp`), and shipping a repeatable runner script (`scripts/firmware/run_i2c_robustness_test.sh`) with README guidance. Verified with `scripts/firmware/run_i2c_robustness_test.sh`, `scripts/firmware/run_encoder_stress_test.sh`, and `cd mama && go test ./...`.
 
 
 ---
