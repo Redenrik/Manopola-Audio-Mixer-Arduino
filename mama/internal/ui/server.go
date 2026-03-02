@@ -164,7 +164,7 @@ func (s *Server) handlePortTest(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleTargets(w http.ResponseWriter, r *http.Request) {
 	knownTargets := config.KnownTargets()
-	supported, err := s.backend.ListTargets()
+	discovered, err := s.backend.ListTargets()
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -175,9 +175,15 @@ func (s *Server) handleTargets(w http.ResponseWriter, r *http.Request) {
 		known = append(known, string(t))
 	}
 
+	supported := make([]string, 0, len(discovered))
+	for _, t := range discovered {
+		supported = append(supported, t.ID)
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
-		"known":     known,
-		"supported": supported,
+		"known":      known,
+		"supported":  supported,
+		"discovered": discovered,
 	})
 }
 

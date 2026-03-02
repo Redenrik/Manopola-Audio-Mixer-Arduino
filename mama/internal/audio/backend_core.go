@@ -59,6 +59,8 @@ func (b *baseBackend) ToggleMute(target config.TargetType, name string) error {
 	}
 }
 
-func (b *baseBackend) ListTargets() ([]string, error) {
-	return []string{"system:master_out"}, nil
+func (b *baseBackend) ListTargets() ([]DiscoveredTarget, error) {
+	return []DiscoveredTarget{
+		{ID: "system:master_out", Type: config.TargetMasterOut, Name: "System Output"},
+	}, nil
 }

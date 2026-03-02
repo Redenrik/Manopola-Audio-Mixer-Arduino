@@ -24,6 +24,7 @@ This repository now includes:
   - setup UI (`mama-ui`) to edit serial settings/mappings and save config
   - setup UI serial connection test button for validating port + baud before saving
   - setup UI live identify mode (rotate/press a knob and the matching indicator flashes)
+  - setup API `/api/targets` now returns discovered backend targets (`discovered`) alongside compatibility fields (`known`, `supported`)
 - Planned / not yet implemented in audio backend:
   - `mic_in`
   - `line_in`

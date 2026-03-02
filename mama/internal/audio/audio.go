@@ -11,7 +11,13 @@ type Backend interface {
 	// step is a scalar 0..1, e.g. 0.02 = 2%.
 	Adjust(target config.TargetType, name string, step float64, deltaSteps int) error
 	ToggleMute(target config.TargetType, name string) error
-	ListTargets() ([]string, error) // optional for UI later
+	ListTargets() ([]DiscoveredTarget, error)
+}
+
+type DiscoveredTarget struct {
+	ID   string            `json:"id"`
+	Type config.TargetType `json:"type"`
+	Name string            `json:"name,omitempty"`
 }
 
 func NewBackend() Backend {

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"mama/internal/audio"
 	"mama/internal/config"
 	"mama/internal/runtime"
 )
@@ -30,7 +31,7 @@ func (f *fakeBackend) ToggleMute(target config.TargetType, name string) error {
 	f.calls = append(f.calls, backendCall{op: "toggle", target: target, name: name})
 	return nil
 }
-func (f *fakeBackend) ListTargets() ([]string, error) { return nil, nil }
+func (f *fakeBackend) ListTargets() ([]audio.DiscoveredTarget, error) { return nil, nil }
 
 func TestRunSessionFromChannels_RecordedFixtureMixedBurst(t *testing.T) {
 	cfg := &config.Config{Mappings: []config.Mapping{{Knob: 1, Target: config.TargetMasterOut, Step: 0.02}}}
