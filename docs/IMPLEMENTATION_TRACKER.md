@@ -618,6 +618,21 @@ Legend:
   - Changed files/tests:
     - `docs/V1_READINESS_REVIEW.md`
     - `docs/RELEASE_QA_CHECKLIST.md`
+
+- [x] `DONE` Tighten manual evidence contract wording + refresh readiness/checklist evidence from this run.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` and isolate the highest-impact actionable in-repo gap: manual checklist evidence requirements were owner-tagged but did not consistently mandate explicit PASS/FAIL/BLOCKED outcome tokens.
+    2. Tighten manual-row evidence wording and Gate `G4.10`/Row `D2f` criteria so manual sign-off payload expectations are deterministic and command-verifiable.
+    3. Re-run automatable readiness/checklist commands (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift preflight, anchored `rg`, and Python ownership/evidence assertions) and refresh dated evidence snippets.
+    4. Recompute objective status snapshots, keep maintainer/hardware/release-only gates pending, and log shipped-vs-manual scope in the execution log.
+  - Implemented:
+    - Updated manual checklist evidence rows to explicitly require result tokens (`PASS`/`FAIL`/`BLOCKED`) in addition to owner-linked artifacts.
+    - Tightened readiness Gate `G4.10` and checklist row `D2f`/`E11` assertions to enforce owner + structured evidence + explicit result-token guidance.
+    - Refreshed automatable evidence timestamps/output snippets to the latest run window (`2026-03-03 16:05Z`) while preserving manual maintainer/hardware/workflow gates as pending.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 
 
@@ -635,7 +650,6 @@ Legend:
   - Changed files/tests:
     - `docs/V1_READINESS_REVIEW.md`
     - `docs/RELEASE_QA_CHECKLIST.md`
-    - `docs/IMPLEMENTATION_TRACKER.md`
 
 
 ---
@@ -654,7 +668,6 @@ Legend:
   - Changed files/tests:
     - `docs/V1_READINESS_REVIEW.md`
     - `docs/RELEASE_QA_CHECKLIST.md`
-    - `docs/IMPLEMENTATION_TRACKER.md`
 
 
 - [x] `DONE` Refresh readiness/checklist evidence run and fix accountability parser coverage for suffixed checklist IDs.
@@ -671,7 +684,6 @@ Legend:
   - Changed files/tests:
     - `docs/V1_READINESS_REVIEW.md`
     - `docs/RELEASE_QA_CHECKLIST.md`
-    - `docs/IMPLEMENTATION_TRACKER.md`
 
 
 - [x] `DONE` Resolve Gate-4 criteria/evidence mismatches and refresh readiness/checklist evidence window.
@@ -688,7 +700,6 @@ Legend:
   - Changed files/tests:
     - `docs/V1_READINESS_REVIEW.md`
     - `docs/RELEASE_QA_CHECKLIST.md`
-    - `docs/IMPLEMENTATION_TRACKER.md`
 
 - [x] `DONE` Close readiness evidence freshness loophole by rejecting future-dated timestamps and refreshing this-run proof.
   - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
@@ -704,7 +715,6 @@ Legend:
   - Changed files/tests:
     - `docs/V1_READINESS_REVIEW.md`
     - `docs/RELEASE_QA_CHECKLIST.md`
-    - `docs/IMPLEMENTATION_TRACKER.md`
 
 
 ## Execution Log
@@ -798,6 +808,8 @@ Legend:
 
 
 - 2026-03-03: Resolved remaining readiness/checklist ownership-proof reviewer gaps by promoting owner placeholders into first-class checklist table columns, tightening anchored doc-governance assertions to require `Execution type + Owner` headers, and refreshing automatable evidence from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`). Shipped scope is docs/evidence hardening only; manual maintainer/hardware/workflow gates remain pending by design.
+
+- 2026-03-03: Addressed remaining readiness/release checklist manual-evidence clarity gaps by requiring explicit manual result tokens (`PASS`/`FAIL`/`BLOCKED`) in checklist evidence payload guidance, tightening Gate `G4.10`/row `D2f` assertions accordingly, and refreshing automatable evidence from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift preflight, anchored `rg`, and Python checklist assertions). Shipped scope remains docs/evidence hardening only; manual maintainer/hardware/workflow/release-approval gates remain pending by design.
 
 
 ---
