@@ -621,10 +621,28 @@ Legend:
     - `docs/IMPLEMENTATION_TRACKER.md`
 
 
+- [x] `DONE` Add full automatable checklist evidence-linkage gate across Sections 1-4.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` and isolate the highest-impact remaining actionable in-repo reviewer gap: no deterministic assertion guaranteed that all automatable checklist rows (outside Gate 4) were complete and linked to valid evidence IDs.
+    2. Add a new objective readiness/checklist criterion (`G4.9` / `D2e`) with pass/fail wording and an evidence block that validates status + evidence-ID linkage for every automatable row in Sections 1-4.
+    3. Re-run automatable verification commands (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, ownership `awk`, timestamp sync `sed`, freshness `python3`, Gate-4 completeness `python3`, new full-linkage `python3`) and refresh this run's evidence timestamps/output snippets.
+    4. Keep all manual maintainer/hardware/workflow approvals pending, then update execution log with shipped scope vs manual remaining work.
+  - Implemented:
+    - Added readiness gate `G4.9` and checklist row `D2e` to require deterministic validation that every automatable checklist item is complete and references existing evidence IDs.
+    - Added evidence block `E10` (pipe-tolerant parser) to validate cross-section automatable row status/evidence linkage and refreshed readiness/checklist evidence to timestamp `2026-03-03 12:51Z`.
+    - Updated gate/checklist aggregate totals (`G4` automatable 7/7; overall automatable 14/14) while preserving objective `NO-GO` due to pending manual maintainer/hardware/workflow gates.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
+
 ---
 
 ## Execution Log
 
+- 2026-03-03: Closed the highest-impact remaining readiness/checklist reviewer gap by adding full automatable evidence-linkage coverage (`G4.9` / `D2e`) plus new evidence `E10` that verifies every automatable checklist row across Sections 1-4 is complete and references existing evidence IDs; refreshed this run's automatable evidence/status timestamps to `2026-03-03 12:51Z` (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`, freshness `python3`, Gate-4 completeness `python3`, full-linkage `python3`) while leaving manual maintainer/hardware/workflow sign-offs pending by design.
 - 2026-03-03: Closed the remaining actionable reviewer gap around Gate-4 documentation governance by adding deterministic checklist completeness validation (`G4.8` / `D2d`) with new `E9` parser-backed evidence, refreshed automatable evidence/status timestamps to `2026-03-03 12:32Z` (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`, freshness `python3`, Gate-4 completeness `python3`), and left all maintainer/hardware/workflow sign-offs pending by design.
 - 2026-03-03: Closed the remaining evidence-freshness reviewer gap by replacing hard-coded freshness baseline timestamps with runtime-derived `NOW_UTC` assertions in both readiness/checklist docs, then refreshed automatable evidence and statuses for this run (`2026-03-03 12:13Z`) using `cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`, and freshness `python3`; manual maintainer/hardware/workflow sign-offs remain pending by design.
 - 2026-03-03: Closed remaining readiness/checklist actionable gap around stale-but-synchronized evidence by adding deterministic freshness SLA coverage (`G4.7` / `D2c`) with command-verified age checks (`python3` reports `evidence_freshness_status=ok age_hours=0.00 threshold_hours=24 timestamp=2026-03-03 12:00Z`), refreshed automatable evidence/output timestamps from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`), and left manual maintainer/hardware/workflow gates pending by design.
