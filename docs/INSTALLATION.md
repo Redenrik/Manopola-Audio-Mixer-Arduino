@@ -17,7 +17,7 @@ User steps:
 5. (Optional) Enable **Launch mixer at OS startup** in Setup UI and click **Apply Startup Setting**.
 6. Double-click `Start Mixer.cmd`.
 
-No service installation required and no terminal commands are needed for this flow. Startup integration is available for Windows packaged launches.
+No service installation required and no terminal commands are needed for this flow. Startup integration is available for Windows/macOS packaged launches.
 
 ## Maintainer Build (Windows)
 

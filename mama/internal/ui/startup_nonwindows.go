@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build !windows && !darwin
 
 package ui
 
@@ -9,9 +9,9 @@ type startupStatus struct {
 }
 
 func startupStatusForConfig(_ string) (startupStatus, error) {
-	return startupStatus{Supported: false, Enabled: false, Message: "startup integration is currently available on Windows packages"}, nil
+	return startupStatus{Supported: false, Enabled: false, Message: "startup integration is currently available on Windows and macOS packages"}, nil
 }
 
 func configureStartupForConfig(_ string, _ bool) (startupStatus, error) {
-	return startupStatus{Supported: false, Enabled: false, Message: "startup integration is currently available on Windows packages"}, nil
+	return startupStatus{Supported: false, Enabled: false, Message: "startup integration is currently available on Windows and macOS packages"}, nil
 }

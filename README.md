@@ -257,7 +257,7 @@ Yes—there is a non-technical install path designed to avoid terminals/CLI.
 1. Download the **portable ZIP** from Releases.
 2. Extract it to a folder (for example `Desktop\MAMA`).
 3. Double-click `Open Setup UI.cmd` to configure port + knob mappings.
-4. (Optional) In Setup UI, enable **Launch mixer at OS startup** and click **Apply Startup Setting** for automatic login start on Windows packages.
+4. (Optional) In Setup UI, enable **Launch mixer at OS startup** and click **Apply Startup Setting** for automatic login start on Windows/macOS packages.
 5. Double-click `Start Mixer.cmd` to run the mixer.
 
 No service installation is required; uninstall is deleting the folder.
