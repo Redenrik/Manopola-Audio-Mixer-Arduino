@@ -18,25 +18,25 @@ A `v1.0.0` candidate is acceptable only when **all blocking gates** are complete
 
 | ID | Execution type | Verifiable criteria | Owner | Status | Evidence requirement |
 | --- | --- | --- | --- | --- | --- |
-| G1.1 | Automatable by Codex | `cd mama && go test ./...` completes successfully. | Codex | ✅ Complete (2026-03-03 12:13Z) | `E1` must show only `ok` or `[no test files]` package results and no failures. |
-| G1.2 | Automatable by Codex | Config compatibility behavior remains validated (`mama/internal/config` package covered). | Codex | ✅ Complete (2026-03-03 12:13Z) | `E1` must include `ok  mama/internal/config`. |
-| G1.3 | Automatable by Codex | API/runtime compatibility behavior remains validated (`mama/cmd/mama` package covered). | Codex | ✅ Complete (2026-03-03 12:13Z) | `E1` must include `ok  mama/cmd/mama`. |
+| G1.1 | Automatable by Codex | `cd mama && go test ./...` completes successfully. | Codex | ✅ Complete (2026-03-03 12:32Z) | `E1` must show only `ok` or `[no test files]` package results and no failures. |
+| G1.2 | Automatable by Codex | Config compatibility behavior remains validated (`mama/internal/config` package covered). | Codex | ✅ Complete (2026-03-03 12:32Z) | `E1` must include `ok  mama/internal/config`. |
+| G1.3 | Automatable by Codex | API/runtime compatibility behavior remains validated (`mama/cmd/mama` package covered). | Codex | ✅ Complete (2026-03-03 12:32Z) | `E1` must include `ok  mama/cmd/mama`. |
 | G1.4 | Manual/Maintainer required | Representative hardware flow executes all required steps with evidence-backed outcomes: detect board, test serial port, map at least 3 knobs, save config, and verify live output changes for `master_out`. | `@maintainer-<name>` | ⬜ Pending | Dated hardware run log: board model, firmware revision, host OS, serial port, observed behavior, and `PASS`/`FAIL`. |
 
 ### Gate 2 — Reliability and resilience (Blocking)
 
 | ID | Execution type | Verifiable criteria | Owner | Status | Evidence requirement |
 | --- | --- | --- | --- | --- | --- |
-| G2.1 | Automatable by Codex | Protocol compatibility handling remains covered by tests (`mama/internal/proto` package covered). | Codex | ✅ Complete (2026-03-03 12:13Z) | `E1` must include `ok  mama/internal/proto`. |
-| G2.2 | Automatable by Codex | Reconnect/backoff/metrics behavior remains covered by tests (`mama/internal/runtime` package covered). | Codex | ✅ Complete (2026-03-03 12:13Z) | `E1` must include `ok  mama/internal/runtime`. |
+| G2.1 | Automatable by Codex | Protocol compatibility handling remains covered by tests (`mama/internal/proto` package covered). | Codex | ✅ Complete (2026-03-03 12:32Z) | `E1` must include `ok  mama/internal/proto`. |
+| G2.2 | Automatable by Codex | Reconnect/backoff/metrics behavior remains covered by tests (`mama/internal/runtime` package covered). | Codex | ✅ Complete (2026-03-03 12:32Z) | `E1` must include `ok  mama/internal/runtime`. |
 | G2.3 | Manual/Maintainer required | Long-run soak completes exactly per `docs/SOAK_TEST_PLAN.md` minimum duration/cadence with artifact bundle proving zero unhandled runtime failures. | `@maintainer-<name>` | ⬜ Pending | Soak artifact bundle URL/path + run duration + explicit pass/fail summary. |
 
 ### Gate 3 — Platform and release quality (Blocking)
 
 | ID | Execution type | Verifiable criteria | Owner | Status | Evidence requirement |
 | --- | --- | --- | --- | --- | --- |
-| G3.1 | Automatable by Codex | Dependency verification and module drift preflight pass (`go mod verify` exits 0 and no local `go.mod`/`go.sum` drift). | Codex | ✅ Complete (2026-03-03 12:13Z) | `E2` must include `all modules verified`; `E4` must show explicit "no drift" confirmation output. |
-| G3.2 | Automatable by Codex (artifact preflight) | Release checksum script parses and smoke-checksum flow succeeds on staged files. | Codex | ✅ Complete (2026-03-03 12:13Z) | `E3` must include checksum generation path and `OK` verification lines. |
+| G3.1 | Automatable by Codex | Dependency verification and module drift preflight pass (`go mod verify` exits 0 and no local `go.mod`/`go.sum` drift). | Codex | ✅ Complete (2026-03-03 12:32Z) | `E2` must include `all modules verified`; `E4` must show explicit "no drift" confirmation output. |
+| G3.2 | Automatable by Codex (artifact preflight) | Release checksum script parses and smoke-checksum flow succeeds on staged files. | Codex | ✅ Complete (2026-03-03 12:32Z) | `E3` must include checksum generation path and `OK` verification lines. |
 | G3.3 | Manual/Maintainer required | CI matrix (`.github/workflows/ci.yml`) is green for release commit on Linux/Windows/macOS. | `@maintainer-<name>` | ⬜ Pending | Workflow URL + run ID + commit SHA + final conclusion. |
 | G3.4 | Manual/Maintainer required | Security scan (`.github/workflows/security-scan.yml`) is green for release commit. | `@maintainer-<name>` | ⬜ Pending | Workflow URL + run ID + commit SHA + final conclusion. |
 | G3.5 | Manual/Maintainer required | Release assets published with checksums/signing artifacts (`*.sig`, `*.pem`) and verification output. | `@maintainer-<name>` | ⬜ Pending | Release asset links + verification command snippet + result. |
@@ -46,17 +46,18 @@ A `v1.0.0` candidate is acceptable only when **all blocking gates** are complete
 
 | ID | Execution type | Verifiable criteria | Owner | Status | Evidence requirement |
 | --- | --- | --- | --- | --- | --- |
-| G4.1 | Automatable by Codex | `docs/RELEASE_QA_CHECKLIST.md` contains section-level automation labels plus per-row `Execution type`, `Owner`, and evidence-format columns for all checklist tables. | Codex | ✅ Complete (2026-03-03 12:13Z) | `E5` must confirm section ownership heading, section classification headings, and item execution/owner/evidence columns. |
-| G4.2 | Automatable by Codex | This document defines objective gate-based GO/NO-GO criteria tied to blocking items. | Codex | ✅ Complete (2026-03-03 12:13Z) | `E5` must confirm GO/NO-GO heading and objective blocker rule text exists. |
-| G4.5 | Automatable by Codex | Every checklist data row includes explicit `Execution type` and `Owner` values (no blank accountability fields). | Codex | ✅ Complete (2026-03-03 12:13Z) | `E6` must report `missing_rows=0` across all checklist item rows. |
-| G4.6 | Automatable by Codex | Readiness/checklist evidence-run timestamps are synchronized so both docs reference the same latest execution window. | Codex | ✅ Complete (2026-03-03 12:13Z) | `E7` must report `evidence_timestamp_sync=ok` with identical timestamp values. |
-| G4.7 | Automatable by Codex | The shared readiness/checklist evidence timestamp is fresh (no older than 24 hours from this run). | Codex | ✅ Complete (2026-03-03 12:13Z) | `E8` must report `evidence_freshness_status=ok` and `age_hours<=24`. |
+| G4.1 | Automatable by Codex | `docs/RELEASE_QA_CHECKLIST.md` contains section-level automation labels plus per-row `Execution type`, `Owner`, and evidence-format columns for all checklist tables. | Codex | ✅ Complete (2026-03-03 12:32Z) | `E5` must confirm section ownership heading, section classification headings, and item execution/owner/evidence columns. |
+| G4.2 | Automatable by Codex | This document defines objective gate-based GO/NO-GO criteria tied to blocking items. | Codex | ✅ Complete (2026-03-03 12:32Z) | `E5` must confirm GO/NO-GO heading and objective blocker rule text exists. |
+| G4.5 | Automatable by Codex | Every checklist data row includes explicit `Execution type` and `Owner` values (no blank accountability fields). | Codex | ✅ Complete (2026-03-03 12:32Z) | `E6` must report `missing_rows=0` across all checklist item rows. |
+| G4.6 | Automatable by Codex | Readiness/checklist evidence-run timestamps are synchronized so both docs reference the same latest execution window. | Codex | ✅ Complete (2026-03-03 12:32Z) | `E7` must report `evidence_timestamp_sync=ok` with identical timestamp values. |
+| G4.7 | Automatable by Codex | The shared readiness/checklist evidence timestamp is fresh (no older than 24 hours from this run). | Codex | ✅ Complete (2026-03-03 12:32Z) | `E8` must report `evidence_freshness_status=ok` and `age_hours<=24`. |
+| G4.8 | Automatable by Codex | Checklist automatable rows mapped to Gate 4 (`D1`, `D2`, `D2a`, `D2b`, `D2c`, `D2d`) are all marked `✅ Complete` with non-empty evidence references. | Codex | ✅ Complete (2026-03-03 12:32Z) | `E9` must report `automatable_gate4_rows=6`, `incomplete_rows=0`, and `missing_evidence_refs=0`. |
 | G4.3 | Manual/Maintainer required | Support/security policy review recorded against `docs/SUPPORT_POLICY.md` and `SECURITY.md`. | `@maintainer-<name>` | ⬜ Pending | Reviewer name + date + approval note/link. |
 | G4.4 | Manual/Maintainer required | Release notes generated/reviewed and deferred non-blocking follow-ups tracked as issues. | `@maintainer-<name>` | ⬜ Pending | Release-notes artifact URL + sign-off + issue links/milestones. |
 
 ---
 
-## Evidence Register (This Run — 2026-03-03 12:13Z)
+## Evidence Register (This Run — 2026-03-03 12:32Z)
 
 | Evidence ID | Execution type | Command(s) | Outcome | Supports gates |
 | --- | --- | --- | --- | --- |
@@ -68,19 +69,20 @@ A `v1.0.0` candidate is acceptable only when **all blocking gates** are complete
 | E6 | Automatable by Codex | checklist accountability-field completeness assertion (`awk`) | Pass | G4.5 |
 | E7 | Automatable by Codex | cross-doc evidence timestamp sync assertion (`sed`) | Pass | G4.6 |
 | E8 | Automatable by Codex | cross-doc evidence freshness threshold assertion (`python3`) | Pass | G4.7 |
+| E9 | Automatable by Codex | Gate-4 automatable checklist status/evidence completeness assertion (`python3`) | Pass | G4.8 |
 
 ### E1 — Host test suite
 
 ```bash
 $ cd mama && go test ./...
-ok  	mama/cmd/mama	(cached)
+ok  	mama/cmd/mama	0.033s
 ?   	mama/cmd/mama-ui	[no test files]
-ok  	mama/internal/audio	(cached)
-ok  	mama/internal/config	(cached)
-ok  	mama/internal/proto	(cached)
-ok  	mama/internal/runtime	(cached)
+ok  	mama/internal/audio	0.017s
+ok  	mama/internal/config	0.027s
+ok  	mama/internal/proto	0.014s
+ok  	mama/internal/runtime	0.018s
 ?   	mama/internal/serial	[no test files]
-ok  	mama/internal/ui	(cached)
+ok  	mama/internal/ui	0.027s
 ```
 
 ### E2 — Module dependency verification
@@ -116,8 +118,8 @@ no go module drift in working tree
 ```bash
 $ rg -n "^## Acceptance Gates$|^## Evidence Register \(This Run|^## Objective GO/NO-GO Decision$" docs/V1_READINESS_REVIEW.md
 15:## Acceptance Gates
-59:## Evidence Register (This Run — 2026-03-03 12:13Z)
-203:## Objective GO/NO-GO Decision
+60:## Evidence Register (This Run — 2026-03-03 12:32Z)
+239:## Objective GO/NO-GO Decision
 $ rg -n "^## Section ownership and automation boundary$|^## [1-5]\) .*\((Mixed|Manual/Maintainer required)\)$|^\| ID \| Readiness gate mapping \| Execution type \| Owner \|" docs/RELEASE_QA_CHECKLIST.md
 9:## Section ownership and automation boundary
 21:## 1) Build & Test Baseline (Mixed)
@@ -128,15 +130,15 @@ $ rg -n "^## Section ownership and automation boundary$|^## [1-5]\) .*\((Mixed|M
 48:| ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Command/reference | Current status | Evidence / required format |
 62:## 4) Documentation and Governance (Mixed)
 64:| ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Command/reference | Current status | Evidence / required format |
-79:## 5) Final Sign-off (Manual/Maintainer required)
-81:| ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Current status | Evidence / required format |
+80:## 5) Final Sign-off (Manual/Maintainer required)
+82:| ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Current status | Evidence / required format |
 ```
 
 ### E6 — Checklist accountability-field completeness assertion
 
 ```bash
 $ awk -F'|' 'BEGIN{rows=0;bad=0} /^\| [A-Z][0-9] / {rows++; et=$4; ow=$5; gsub(/^ +| +$/,"",et); gsub(/^ +| +$/,"",ow); if(et==""||ow==""){bad++; print "missing execution/owner on row: "$0}} END{print "checked_rows=" rows ", missing_rows=" bad; exit bad}' docs/RELEASE_QA_CHECKLIST.md
-checked_rows=37, missing_rows=0
+checked_rows=38, missing_rows=0
 ```
 
 ### E7 — Cross-document evidence timestamp synchronization assertion
@@ -150,7 +152,7 @@ $ if [ "$ts1" = "$ts2" ] && [ -n "$ts1" ]; then
 >   echo "evidence_timestamp_sync=fail (readiness='$ts1' checklist='$ts2')"
 >   exit 1
 > fi
-evidence_timestamp_sync=ok (2026-03-03 12:13Z)
+evidence_timestamp_sync=ok (2026-03-03 12:32Z)
 ```
 
 ### E8 — Cross-document evidence freshness threshold assertion
@@ -183,7 +185,41 @@ if age_hours > threshold:
     raise SystemExit(f"evidence_freshness_status=fail age_hours={age_hours:.2f} threshold_hours={threshold} timestamp={ts1_raw}")
 print(f"evidence_freshness_status=ok age_hours={age_hours:.2f} threshold_hours={threshold} timestamp={ts1_raw} now_utc={os.environ['NOW_UTC']}")
 PY
-evidence_freshness_status=ok age_hours=0.08 threshold_hours=24 timestamp=2026-03-03 12:13Z now_utc=2026-03-03 12:18Z
+evidence_freshness_status=ok age_hours=0.03 threshold_hours=24 timestamp=2026-03-03 12:32Z now_utc=2026-03-03 12:34Z
+```
+
+### E9 — Gate-4 automatable checklist status/evidence completeness assertion
+
+```bash
+$ python3 - <<'PY'
+from pathlib import Path
+
+rows = []
+for line in Path("docs/RELEASE_QA_CHECKLIST.md").read_text().splitlines():
+    if not line.startswith("| D") or "| Automatable by Codex" not in line:
+        continue
+    trimmed = line.strip()
+    if trimmed.endswith("|"):
+        trimmed = trimmed[:-1]
+    row_id = trimmed.split("|", 2)[1].strip()
+    _, status, evidence = trimmed.rsplit("|", 2)
+    rows.append((row_id, status.strip(), evidence.strip()))
+
+incomplete = [r for r in rows if not r[1].startswith("✅ Complete")]
+missing_evidence = [r for r in rows if r[2] in ("", "-")]
+print(f"automatable_gate4_rows={len(rows)} incomplete_rows={len(incomplete)} missing_evidence_refs={len(missing_evidence)}")
+for row_id, status, evidence in rows:
+    print(f"{row_id}: status={status}; evidence={evidence}")
+if incomplete or missing_evidence:
+    raise SystemExit(1)
+PY
+automatable_gate4_rows=6 incomplete_rows=0 missing_evidence_refs=0
+D1: status=✅ Complete (2026-03-03 12:32Z); evidence=Section 6 `E5` must show both anchors.
+D2: status=✅ Complete (2026-03-03 12:32Z); evidence=Section 6 `E5` must show section ownership heading, section classification headings, and table header anchors.
+D2a: status=✅ Complete (2026-03-03 12:32Z); evidence=Section 6 `E6` must report `missing_rows=0`.
+D2b: status=✅ Complete (2026-03-03 12:32Z); evidence=Section 6 `E7` must report `evidence_timestamp_sync=ok (...)`.
+D2c: status=✅ Complete (2026-03-03 12:32Z); evidence=Section 6 `E8` must report `evidence_freshness_status=ok` with `age_hours<=24`.
+D2d: status=✅ Complete (2026-03-03 12:32Z); evidence=Section 6 `E9` must report `automatable_gate4_rows=6`, `incomplete_rows=0`, and `missing_evidence_refs=0`.
 ```
 
 ### Manual evidence template (all pending manual gates)
@@ -212,12 +248,12 @@ Notes:
 | Gate 1 — Product functionality baseline | 3 / 3 | 0 / 1 | `G1.4` |
 | Gate 2 — Reliability and resilience | 2 / 2 | 0 / 1 | `G2.3` |
 | Gate 3 — Platform and release quality | 2 / 2 | 0 / 4 | `G3.3`, `G3.4`, `G3.5`, `G3.6` |
-| Gate 4 — Documentation and governance readiness | 5 / 5 | 0 / 2 | `G4.3`, `G4.4` |
+| Gate 4 — Documentation and governance readiness | 6 / 6 | 0 / 2 | `G4.3`, `G4.4` |
 
 ### Current decision snapshot (from this run)
 
 - **Decision:** `NO-GO (expected in-repo pre-release state)`
-- **Automatable gates summary:** 12/12 complete (`G1.1-G1.3`, `G2.1-G2.2`, `G3.1-G3.2`, `G4.1-G4.2`, `G4.5-G4.7`) based on `E1-E8`.
+- **Automatable gates summary:** 13/13 complete (`G1.1-G1.3`, `G2.1-G2.2`, `G3.1-G3.2`, `G4.1-G4.2`, `G4.5-G4.8`) based on `E1-E9`.
 - **Manual gates summary:** 0/8 complete (`G1.4`, `G2.3`, `G3.3-G3.6`, `G4.3-G4.4`).
 - **Objective blockers:** `G1.4`, `G2.3`, `G3.3`, `G3.4`, `G3.5`, `G3.6`, `G4.3`, `G4.4`.
 

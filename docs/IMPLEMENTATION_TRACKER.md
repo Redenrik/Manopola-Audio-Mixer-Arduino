@@ -604,10 +604,28 @@ Legend:
 
 
 
+- [x] `DONE` Close remaining reviewer gap: assert Gate-4 automatable checklist status/evidence completeness.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` and isolate the highest-impact remaining actionable in-repo gap from reviewer feedback: Gate-4 automatable rows lacked a deterministic self-check proving all mapped checklist items were complete with evidence references.
+    2. Add a new automatable gate/checklist criterion (`G4.8` / `D2d`) with pass/fail wording and explicit command evidence requirements.
+    3. Re-run automatable verification commands (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`, freshness `python3`, and new Gate-4 completeness `python3`) and refresh this run's evidence blocks.
+    4. Keep all manual maintainer/hardware/workflow approvals pending, then update execution log with shipped scope and remaining manual work.
+  - Implemented:
+    - Added readiness gate `G4.8` and checklist row `D2d` to require deterministic verification that all Gate-4 automatable checklist rows are marked complete with non-empty evidence references.
+    - Added new evidence block `E9` (robust Python parser that tolerates command-column pipe characters) and refreshed evidence timestamps/statuses across both docs to this run (`2026-03-03 12:32Z`).
+    - Updated objective readiness snapshot totals to include the new automatable gate while preserving `NO-GO` status because maintainer-only/hardware/release approvals remain pending.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
+
 ---
 
 ## Execution Log
 
+- 2026-03-03: Closed the remaining actionable reviewer gap around Gate-4 documentation governance by adding deterministic checklist completeness validation (`G4.8` / `D2d`) with new `E9` parser-backed evidence, refreshed automatable evidence/status timestamps to `2026-03-03 12:32Z` (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`, freshness `python3`, Gate-4 completeness `python3`), and left all maintainer/hardware/workflow sign-offs pending by design.
 - 2026-03-03: Closed the remaining evidence-freshness reviewer gap by replacing hard-coded freshness baseline timestamps with runtime-derived `NOW_UTC` assertions in both readiness/checklist docs, then refreshed automatable evidence and statuses for this run (`2026-03-03 12:13Z`) using `cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`, and freshness `python3`; manual maintainer/hardware/workflow sign-offs remain pending by design.
 - 2026-03-03: Closed remaining readiness/checklist actionable gap around stale-but-synchronized evidence by adding deterministic freshness SLA coverage (`G4.7` / `D2c`) with command-verified age checks (`python3` reports `evidence_freshness_status=ok age_hours=0.00 threshold_hours=24 timestamp=2026-03-03 12:00Z`), refreshed automatable evidence/output timestamps from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`), and left manual maintainer/hardware/workflow gates pending by design.
 - 2026-03-03: Closed remaining readiness/checklist freshness-governance gap by adding deterministic cross-document timestamp synchronization checks (`G4.6` / `D2b`) backed by command evidence (`sed` equality assertion reports `evidence_timestamp_sync=ok (2026-03-03 11:52Z)`), refreshed automatable evidence/status timestamps from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`), and left manual maintainer/hardware/workflow gates pending by design.
