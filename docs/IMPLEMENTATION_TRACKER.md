@@ -472,6 +472,22 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 
+- [x] `DONE` Address second-pass readiness/checklist PR inline comments (anchored doc assertions + fresh evidence sync).
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` and isolate the highest-impact actionable gap: doc-structure checks vulnerable to false-positive matches from embedded command snippets.
+    2. Tighten automatable checklist/readiness criteria to use anchored assertions and align gate/checklist evidence mapping (`go mod verify` + module-drift preflight).
+    3. Re-run automatable in-repo commands (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`) and refresh dated evidence blocks.
+    4. Recompute status snapshots and record shipped-vs-manual boundary explicitly in the execution log.
+  - Implemented:
+    - Hardened doc-governance checks in readiness/checklist docs with anchored regex assertions so section/header checks validate document structure instead of matching quoted command text.
+    - Updated readiness Gate `G3.1` criteria to require both dependency verification and module-drift preflight evidence, matching checklist `B2` + `B5` objective expectations.
+    - Refreshed all automatable evidence timestamps/output snippets from this run and kept manual maintainer/hardware/workflow sign-offs pending.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
 ---
 
 ## Execution Log
@@ -542,6 +558,8 @@ Legend:
 - 2026-03-03: Closed remaining readiness/release-doc reviewer follow-ups by tightening objective pass criteria and owner/evidence payload rules in `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md`, then refreshing evidence from this run. Shipped automatable evidence updates only (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke); manual maintainer/hardware/workflow sign-offs remain pending by design.
 
 - 2026-03-03: Finalized the remaining in-repo readiness/checklist gap by adding an explicit evidence freshness contract, converting dependency-drift and documentation-governance checks into command-verifiable rows, and refreshing automatable evidence from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module-drift preflight, and doc-anchor assertions). Manual maintainer-only gates (hardware, CI/release workflows, and final approvals) remain pending by design.
+
+- 2026-03-03: Addressed follow-up inline doc-review comments by replacing broad doc-anchor checks with anchored structural assertions, aligning readiness Gate `G3.1` to require both `go mod verify` and module-drift preflight evidence, and refreshing automatable evidence blocks from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`). Manual maintainer-only gates remain pending by design.
 
 
 ---
