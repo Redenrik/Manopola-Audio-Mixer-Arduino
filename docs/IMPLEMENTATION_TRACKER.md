@@ -656,7 +656,26 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 
+
+- [x] `DONE` Refresh readiness/checklist evidence run and fix accountability parser coverage for suffixed checklist IDs.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` and isolate the highest-impact actionable in-repo gap from latest review feedback: accountability parser did not scan suffixed row IDs (for example `D2a`) and could under-report missing ownership fields.
+    2. Replace the Gate-4 accountability parser with a suffixed-ID aware implementation and tighten checklist wording/evidence expectations to require full non-evidence row coverage.
+    3. Re-run automatable readiness checks, refresh this run's dated evidence outputs in readiness/checklist docs, and keep manual maintainer/hardware/workflow gates pending.
+    4. Recompute objective GO/NO-GO with updated evidence while explicitly logging shipped-vs-manual scope.
+  - Implemented:
+    - Replaced checklist/readiness accountability check command (`E6` / `D2a` / `G4.5`) with a Python parser that includes suffixed IDs and excludes evidence-table rows, yielding deterministic `checked_rows=35, missing_rows=0` coverage.
+    - Refreshed readiness/checklist automatable statuses and evidence timestamps to this run (`2026-03-03 13:49Z`) and preserved all manual maintainer-owned gates as pending.
+    - Kept objective decision `NO-GO` because remaining blockers are manual-only gates.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
 ## Execution Log
+
+- 2026-03-03: Refreshed readiness/checklist evidence to `2026-03-03 13:49Z` and fixed the highest-impact remaining in-repo governance gap by replacing the `E6` accountability parser with a suffixed-ID aware Python assertion (`checked_rows=35, missing_rows=0`), ensuring rows like `D2a` are validated. Re-ran automatable checks (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, doc-structure/timestamp/freshness/linkage/manual-format assertions) and kept manual maintainer/hardware/workflow gates pending by design.
 
 - 2026-03-03: Closed the latest readiness/checklist inline-review gap by adding deterministic manual-row accountability enforcement (`G4.10` / `D2f` / `E11`) that validates maintainer-owner placeholders and structured evidence payload format for all manual checklist rows. Refreshed automatable evidence from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, doc-structure/accountability/timestamp/freshness/linkage checks, manual-row parser assertion). Shipped scope is docs/evidence hardening only; manual maintainer/hardware/workflow approvals remain pending by design.
 

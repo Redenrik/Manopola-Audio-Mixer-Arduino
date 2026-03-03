@@ -22,11 +22,11 @@ Use this checklist before tagging or publishing a release artifact.
 
 | ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Command/reference | Current status | Evidence / required format |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| B1 | G1.1, G1.2, G1.3, G2.1, G2.2 | Automatable by Codex | Codex | Run host test suite; pass only if all packages are `ok` or `[no test files]` and zero failing packages. | `cd mama && go test ./...` | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E1` must include `mama/cmd/mama`, `mama/internal/config`, `mama/internal/proto`, `mama/internal/runtime`. |
-| B2 | G3.1 | Automatable by Codex | Codex | Verify module dependency checksums; pass only if command exits 0 and prints `all modules verified`. | `cd mama && go mod verify` | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E2` with exact success line. |
+| B1 | G1.1, G1.2, G1.3, G2.1, G2.2 | Automatable by Codex | Codex | Run host test suite; pass only if all packages are `ok` or `[no test files]` and zero failing packages. | `cd mama && go test ./...` | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E1` must include `mama/cmd/mama`, `mama/internal/config`, `mama/internal/proto`, `mama/internal/runtime`. |
+| B2 | G3.1 | Automatable by Codex | Codex | Verify module dependency checksums; pass only if command exits 0 and prints `all modules verified`. | `cd mama && go mod verify` | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E2` with exact success line. |
 | B3 | G3.3 | Manual/Maintainer required | @maintainer-<name> | Confirm CI matrix workflow passed for release commit across Linux/Windows/macOS. | `.github/workflows/ci.yml` | ⬜ Pending | Owner `@maintainer-<name>` + workflow URL + run ID + commit SHA + conclusion. |
 | B4 | G3.4 | Manual/Maintainer required | @maintainer-<name> | Confirm security scan workflow passed for release commit. | `.github/workflows/security-scan.yml` | ⬜ Pending | Owner `@maintainer-<name>` + workflow URL + run ID + commit SHA + conclusion. |
-| B5 | G3.1 | Automatable by Codex | Codex | Confirm working tree has no unexpected local module drift before release verification. Pass only if exit code is 0. | `git diff --exit-code -- mama/go.mod mama/go.sum` | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E4` with explicit "no drift" confirmation output. |
+| B5 | G3.1 | Automatable by Codex | Codex | Confirm working tree has no unexpected local module drift before release verification. Pass only if exit code is 0. | `git diff --exit-code -- mama/go.mod mama/go.sum` | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E4` with explicit "no drift" confirmation output. |
 
 ---
 
@@ -34,8 +34,8 @@ Use this checklist before tagging or publishing a release artifact.
 
 | ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Command/reference | Current status | Evidence / required format |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| R1 | G2.1 | Automatable by Codex | Codex | Confirm protocol compatibility behavior remains test-covered. | `cd mama && go test ./...` (must include `mama/internal/proto`) | ✅ Complete (2026-03-03 13:02Z) | Reuse Section 6 `E1`. |
-| R2 | G1.2 | Automatable by Codex | Codex | Confirm config compatibility aliases/precedence remain test-covered. | `cd mama && go test ./...` (must include `mama/internal/config`) | ✅ Complete (2026-03-03 13:02Z) | Reuse Section 6 `E1`. |
+| R1 | G2.1 | Automatable by Codex | Codex | Confirm protocol compatibility behavior remains test-covered. | `cd mama && go test ./...` (must include `mama/internal/proto`) | ✅ Complete (2026-03-03 13:49Z) | Reuse Section 6 `E1`. |
+| R2 | G1.2 | Automatable by Codex | Codex | Confirm config compatibility aliases/precedence remain test-covered. | `cd mama && go test ./...` (must include `mama/internal/config`) | ✅ Complete (2026-03-03 13:49Z) | Reuse Section 6 `E1`. |
 | R3 | G1.4 | Manual/Maintainer required | @maintainer-<name> | Verify setup UI round-trip works end-to-end: load page, modify at least one mapping row, save config, restart host, and confirm persisted value is reloaded. | `mama-ui` runtime smoke | ⬜ Pending | Owner `@maintainer-<name>` + OS/browser + executed steps + saved `config.yaml` snippet/path + result. |
 | R4 | G1.4 | Manual/Maintainer required | @maintainer-<name> | Verify serial connection against representative board/firmware with deterministic handshake evidence (`V:1` seen + `K:` events received). | Hardware smoke test | ⬜ Pending | Owner `@maintainer-<name>` + board model + firmware revision + serial port + log excerpt + result. |
 | R5 | G1.4 | Manual/Maintainer required | @maintainer-<name> | Verify live interaction semantics: one clockwise detent increases `master_out`, one counter-clockwise detent decreases it, and button press toggles mute state. | Hardware interaction test | ⬜ Pending | Owner `@maintainer-<name>` + timestamped video/log/screenshot + observed transitions + result. |
@@ -47,9 +47,9 @@ Use this checklist before tagging or publishing a release artifact.
 
 | ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Command/reference | Current status | Evidence / required format |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| A1 | G3.2 | Automatable by Codex (artifact preflight) | Codex | Validate release checksum script syntax. | `bash -n scripts/release/generate-checksums.sh` | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E3` preflight command must exit without syntax errors. |
-| A2 | G3.2 | Automatable by Codex (artifact preflight) | Codex | Smoke-test checksum generation on local staged files. | `scripts/release/generate-checksums.sh <artifact_dir>` | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E3` must include `wrote checksums: .../SHA256SUMS.txt`. |
-| A3 | G3.2 | Automatable by Codex (artifact preflight) | Codex | Verify generated checksum manifest against staged files. | `(cd <artifact_dir> && sha256sum -c SHA256SUMS.txt)` | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E3` must show `OK` for each staged file. |
+| A1 | G3.2 | Automatable by Codex (artifact preflight) | Codex | Validate release checksum script syntax. | `bash -n scripts/release/generate-checksums.sh` | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E3` preflight command must exit without syntax errors. |
+| A2 | G3.2 | Automatable by Codex (artifact preflight) | Codex | Smoke-test checksum generation on local staged files. | `scripts/release/generate-checksums.sh <artifact_dir>` | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E3` must include `wrote checksums: .../SHA256SUMS.txt`. |
+| A3 | G3.2 | Automatable by Codex (artifact preflight) | Codex | Verify generated checksum manifest against staged files. | `(cd <artifact_dir> && sha256sum -c SHA256SUMS.txt)` | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E3` must show `OK` for each staged file. |
 | A4 | G3.5 | Manual/Maintainer required | @maintainer-<name> | Confirm intended platform artifacts were published for every declared target OS/arch in release plan. | GitHub Release assets | ⬜ Pending | Owner `@maintainer-<name>` + release URL + platform coverage note. |
 | A5 | G3.5 | Manual/Maintainer required | @maintainer-<name> | Confirm signing artifacts (`*.sig`, `*.pem`) are attached and valid. | Signing workflow / `scripts/release/sign-artifacts.sh` | ⬜ Pending | Owner `@maintainer-<name>` + workflow/log URL + asset links + verification output + result. |
 | A6 | G3.5 | Manual/Maintainer required | @maintainer-<name> | If macOS app artifacts are shipped, confirm notarized/stapled zips are attached. | Notarization workflow / `scripts/release/notarize-macos.sh` | ⬜ Pending | Owner `@maintainer-<name>` + notarization ticket/log + asset links + result. |
@@ -63,14 +63,14 @@ Use this checklist before tagging or publishing a release artifact.
 
 | ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Command/reference | Current status | Evidence / required format |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| D1 | G4.2 | Automatable by Codex | Codex | Confirm readiness doc defines objective gates and GO/NO-GO criteria. Pass only if `rg` finds gate and GO/NO-GO section anchors. | `rg -n "^## Acceptance Gates$|^## Objective GO/NO-GO Decision$|^## Evidence Register" docs/V1_READINESS_REVIEW.md` | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E5` must show both anchors. |
-| D2 | G4.1 | Automatable by Codex | Codex | Confirm this checklist labels each section/item with execution type and evidence payload requirements. Pass only if section ownership heading, all section classification headings, and `Execution type` + `Owner` table columns are present. | `rg -n "^## Section ownership and automation boundary$|^## [1-5]\) .*\((Mixed|Manual/Maintainer required)\)$|^\| ID \| Readiness gate mapping \| Execution type \| Owner \|" docs/RELEASE_QA_CHECKLIST.md` | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E5` must show section ownership heading, section classification headings, and table header anchors. |
-| D2a | G4.5 | Automatable by Codex | Codex | Confirm every checklist item row has explicit accountability fields populated. Pass only if data-row scan reports zero missing `Execution type`/`Owner` cells. | `awk -F'|' 'BEGIN{rows=0;bad=0} /^\| [A-Z][0-9] / {rows++; et=$4; ow=$5; gsub(/^ +| +$/,"",et); gsub(/^ +| +$/,"",ow); if(et==""||ow==""){bad++; print "missing execution/owner on row: "$0}} END{print "checked_rows=" rows ", missing_rows=" bad; exit bad}' docs/RELEASE_QA_CHECKLIST.md` | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E6` must report `missing_rows=0`. |
-| D2b | G4.6 | Automatable by Codex | Codex | Confirm readiness/checklist evidence timestamps match the same run window. Pass only if extracted timestamps are identical and non-empty. | `sed` timestamp extraction + equality assertion across readiness/checklist docs | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E7` must report `evidence_timestamp_sync=ok (...)`. |
-| D2c | G4.7 | Automatable by Codex | Codex | Confirm shared evidence timestamp is fresh for this iteration. Pass only if cross-doc timestamp age is `<=24h` and timestamps match exactly. | `python3` timestamp age assertion across readiness/checklist docs | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E8` must report `evidence_freshness_status=ok` with `age_hours<=24`. |
-| D2d | G4.8 | Automatable by Codex | Codex | Confirm all Gate-4 automatable checklist rows are complete and include non-empty evidence references. Pass only if parser reports seven automatable rows with zero incomplete rows and zero missing evidence references. | `python3` checklist-row status/evidence assertion for Gate-4 automatable items | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E9` must report `automatable_gate4_rows=8`, `incomplete_rows=0`, and `missing_evidence_refs=0`. |
-| D2e | G4.9 | Automatable by Codex | Codex | Confirm every automatable checklist row across Sections 1-4 is complete and mapped to an existing evidence ID from Section 6. Pass only if parser reports zero incomplete rows and zero missing/unknown evidence IDs. | `python3` full automatable-row evidence linkage assertion | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E10` must report `automatable_rows=16`, `incomplete_rows=0`, `missing_evidence_ids=0`, and `unknown_evidence_ids=0`. |
-| D2f | G4.10 | Automatable by Codex | Codex | Confirm every manual checklist row uses explicit maintainer owner placeholder and structured evidence payload format. Pass only if parser reports zero bad owner cells and zero malformed manual evidence fields. | `python3` manual-row owner/evidence-format assertion | ✅ Complete (2026-03-03 13:02Z) | Section 6 `E11` must report `manual_rows=19`, `bad_owner=0`, and `bad_evidence_format=0`. |
+| D1 | G4.2 | Automatable by Codex | Codex | Confirm readiness doc defines objective gates and GO/NO-GO criteria. Pass only if `rg` finds gate and GO/NO-GO section anchors. | `rg -n "^## Acceptance Gates$|^## Objective GO/NO-GO Decision$|^## Evidence Register" docs/V1_READINESS_REVIEW.md` | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E5` must show both anchors. |
+| D2 | G4.1 | Automatable by Codex | Codex | Confirm this checklist labels each section/item with execution type and evidence payload requirements. Pass only if section ownership heading, all section classification headings, and `Execution type` + `Owner` table columns are present. | `rg -n "^## Section ownership and automation boundary$|^## [1-5]\) .*\((Mixed|Manual/Maintainer required)\)$|^\| ID \| Readiness gate mapping \| Execution type \| Owner \|" docs/RELEASE_QA_CHECKLIST.md` | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E5` must show section ownership heading, section classification headings, and table header anchors. |
+| D2a | G4.5 | Automatable by Codex | Codex | Confirm every checklist item row has explicit accountability fields populated. Pass only if parser scans all non-evidence checklist rows (including suffixed IDs like `D2a`) and reports zero missing `Execution type`/`Owner` cells. | `python3` checklist accountability-field completeness assertion | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E6` must report `checked_rows=35` and `missing_rows=0`. |
+| D2b | G4.6 | Automatable by Codex | Codex | Confirm readiness/checklist evidence timestamps match the same run window. Pass only if extracted timestamps are identical and non-empty. | `sed` timestamp extraction + equality assertion across readiness/checklist docs | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E7` must report `evidence_timestamp_sync=ok (...)`. |
+| D2c | G4.7 | Automatable by Codex | Codex | Confirm shared evidence timestamp is fresh for this iteration. Pass only if cross-doc timestamp age is `<=24h` and timestamps match exactly. | `python3` timestamp age assertion across readiness/checklist docs | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E8` must report `evidence_freshness_status=ok` with `age_hours<=24`. |
+| D2d | G4.8 | Automatable by Codex | Codex | Confirm all Gate-4 automatable checklist rows are complete and include non-empty evidence references. Pass only if parser reports seven automatable rows with zero incomplete rows and zero missing evidence references. | `python3` checklist-row status/evidence assertion for Gate-4 automatable items | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E9` must report `automatable_gate4_rows=8`, `incomplete_rows=0`, and `missing_evidence_refs=0`. |
+| D2e | G4.9 | Automatable by Codex | Codex | Confirm every automatable checklist row across Sections 1-4 is complete and mapped to an existing evidence ID from Section 6. Pass only if parser reports zero incomplete rows and zero missing/unknown evidence IDs. | `python3` full automatable-row evidence linkage assertion | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E10` must report `automatable_rows=16`, `incomplete_rows=0`, `missing_evidence_ids=0`, and `unknown_evidence_ids=0`. |
+| D2f | G4.10 | Automatable by Codex | Codex | Confirm every manual checklist row uses explicit maintainer owner placeholder and structured evidence payload format. Pass only if parser reports zero bad owner cells and zero malformed manual evidence fields. | `python3` manual-row owner/evidence-format assertion | ✅ Complete (2026-03-03 13:49Z) | Section 6 `E11` must report `manual_rows=19`, `bad_owner=0`, and `bad_evidence_format=0`. |
 | D3 | G4.4 | Manual/Maintainer required | @maintainer-<name> | Generate/review release notes and validate they include breaking-change callouts, upgrade steps, and linked issue references when applicable. | `scripts/release/generate-release-notes.sh` + release PR review | ⬜ Pending | Owner `@maintainer-<name>` + generated notes artifact URL + reviewer sign-off. |
 | D4 | G4.3 | Manual/Maintainer required | @maintainer-<name> | Record support/deprecation review against `docs/SUPPORT_POLICY.md`. | Support review note | ⬜ Pending | Owner `@maintainer-<name>` + reviewer + date + approval note/link. |
 | D5 | G4.3 | Manual/Maintainer required | @maintainer-<name> | Record security-impacting changes review against `SECURITY.md`. | Security review note | ⬜ Pending | Owner `@maintainer-<name>` + reviewer + date + approval note/link. |
@@ -88,7 +88,7 @@ Use this checklist before tagging or publishing a release artifact.
 
 ---
 
-## 6) Evidence Captured This Run (2026-03-03 13:02Z)
+## 6) Evidence Captured This Run (2026-03-03 13:49Z)
 
 | Evidence ID | Command(s) | Outcome | Used by checklist IDs |
 | --- | --- | --- | --- |
@@ -97,7 +97,7 @@ Use this checklist before tagging or publishing a release artifact.
 | E3 | `bash -n scripts/release/generate-checksums.sh` + checksum smoke flow | Pass | A1, A2, A3 |
 | E4 | `git diff --exit-code -- mama/go.mod mama/go.sum` | Pass | B5 |
 | E5 | anchored `rg` assertions for readiness/checklist structural requirements | Pass | D1, D2 |
-| E6 | checklist accountability-field completeness assertion (`awk`) | Pass | D2a |
+| E6 | checklist accountability-field completeness assertion (`python3`) | Pass | D2a |
 | E7 | cross-doc evidence timestamp sync assertion (`sed`) | Pass | D2b |
 | E8 | cross-doc evidence freshness threshold assertion (`python3`) | Pass | D2c |
 | E9 | Gate-4 automatable checklist status/evidence completeness assertion (`python3`) | Pass | D2d |
@@ -151,7 +151,7 @@ no go module drift in working tree
 ```bash
 $ rg -n "^## Acceptance Gates$|^## Objective GO/NO-GO Decision$|^## Evidence Register" docs/V1_READINESS_REVIEW.md
 15:## Acceptance Gates
-61:## Evidence Register (This Run — 2026-03-03 13:02Z)
+61:## Evidence Register (This Run — 2026-03-03 13:49Z)
 239:## Objective GO/NO-GO Decision
 $ rg -n "^## Section ownership and automation boundary$|^## [1-5]\) .*\((Mixed|Manual/Maintainer required)\)$|^\| ID \| Readiness gate mapping \| Execution type \| Owner \|" docs/RELEASE_QA_CHECKLIST.md
 9:## Section ownership and automation boundary
@@ -170,8 +170,34 @@ $ rg -n "^## Section ownership and automation boundary$|^## [1-5]\) .*\((Mixed|M
 ### E6 — Checklist accountability-field completeness assertion
 
 ```bash
-$ awk -F'|' 'BEGIN{rows=0;bad=0} /^\| [A-Z][0-9] / {rows++; et=$4; ow=$5; gsub(/^ +| +$/,"",et); gsub(/^ +| +$/,"",ow); if(et==""||ow==""){bad++; print "missing execution/owner on row: "$0}} END{print "checked_rows=" rows ", missing_rows=" bad; exit bad}' docs/RELEASE_QA_CHECKLIST.md
-checked_rows=38, missing_rows=0
+$ python3 - <<'PY'
+from pathlib import Path
+import re
+
+rows = []
+for line in Path("docs/RELEASE_QA_CHECKLIST.md").read_text().splitlines():
+    m = re.match(r"^\| ([A-Z][0-9][a-z]?) \|", line)
+    if not m:
+        continue
+    row_id = m.group(1)
+    if row_id.startswith("E"):
+        continue
+    trimmed = line.strip()
+    if trimmed.endswith("|"):
+        trimmed = trimmed[:-1]
+    parts = [part.strip() for part in trimmed.split("|")[1:]]
+    if len(parts) < 7:
+        continue
+    rows.append((row_id, parts[2], parts[3]))
+
+bad = [r for r in rows if not r[1] or not r[2]]
+print(f"checked_rows={len(rows)}, missing_rows={len(bad)}")
+for row_id, execution_type, owner in rows:
+    print(f"{row_id}: execution_type={execution_type}; owner={owner}")
+if bad:
+    raise SystemExit(1)
+PY
+checked_rows=35, missing_rows=0
 ```
 
 ### E7 — Cross-document evidence timestamp synchronization assertion
@@ -185,7 +211,7 @@ $ if [ "$ts1" = "$ts2" ] && [ -n "$ts1" ]; then
 >   echo "evidence_timestamp_sync=fail (readiness='$ts1' checklist='$ts2')"
 >   exit 1
 > fi
-evidence_timestamp_sync=ok (2026-03-03 13:02Z)
+evidence_timestamp_sync=ok (2026-03-03 13:49Z)
 ```
 
 ### E8 — Cross-document evidence freshness threshold assertion
@@ -218,7 +244,7 @@ if age_hours > threshold:
     raise SystemExit(f"evidence_freshness_status=fail age_hours={age_hours:.2f} threshold_hours={threshold} timestamp={ts1_raw}")
 print(f"evidence_freshness_status=ok age_hours={age_hours:.2f} threshold_hours={threshold} timestamp={ts1_raw} now_utc={os.environ['NOW_UTC']}")
 PY
-evidence_freshness_status=ok age_hours=0.05 threshold_hours=24 timestamp=2026-03-03 13:02Z now_utc=2026-03-03 13:05Z
+evidence_freshness_status=ok age_hours=0.08 threshold_hours=24 timestamp=2026-03-03 13:49Z now_utc=2026-03-03 13:54Z
 ```
 
 ### E9 — Gate-4 automatable checklist status/evidence completeness assertion
@@ -247,14 +273,14 @@ if incomplete or missing_evidence:
     raise SystemExit(1)
 PY
 automatable_gate4_rows=8 incomplete_rows=0 missing_evidence_refs=0
-D1: status=✅ Complete (2026-03-03 13:02Z); evidence=Section 6 `E5` must show both anchors.
-D2: status=✅ Complete (2026-03-03 13:02Z); evidence=Section 6 `E5` must show section ownership heading, section classification headings, and table header anchors.
-D2a: status=✅ Complete (2026-03-03 13:02Z); evidence=Section 6 `E6` must report `missing_rows=0`.
-D2b: status=✅ Complete (2026-03-03 13:02Z); evidence=Section 6 `E7` must report `evidence_timestamp_sync=ok (...)`.
-D2c: status=✅ Complete (2026-03-03 13:02Z); evidence=Section 6 `E8` must report `evidence_freshness_status=ok` with `age_hours<=24`.
-D2d: status=✅ Complete (2026-03-03 13:02Z); evidence=Section 6 `E9` must report `automatable_gate4_rows=8`, `incomplete_rows=0`, and `missing_evidence_refs=0`.
-D2e: status=✅ Complete (2026-03-03 13:02Z); evidence=Section 6 `E10` must report `automatable_rows=16`, `incomplete_rows=0`, `missing_evidence_ids=0`, and `unknown_evidence_ids=0`.
-D2f: status=✅ Complete (2026-03-03 13:02Z); evidence=Section 6 `E11` must report `manual_rows=19`, `bad_owner=0`, and `bad_evidence_format=0`.
+D1: status=✅ Complete (2026-03-03 13:49Z); evidence=Section 6 `E5` must show both anchors.
+D2: status=✅ Complete (2026-03-03 13:49Z); evidence=Section 6 `E5` must show section ownership heading, section classification headings, and table header anchors.
+D2a: status=✅ Complete (2026-03-03 13:49Z); evidence=Section 6 `E6` must report `missing_rows=0`.
+D2b: status=✅ Complete (2026-03-03 13:49Z); evidence=Section 6 `E7` must report `evidence_timestamp_sync=ok (...)`.
+D2c: status=✅ Complete (2026-03-03 13:49Z); evidence=Section 6 `E8` must report `evidence_freshness_status=ok` with `age_hours<=24`.
+D2d: status=✅ Complete (2026-03-03 13:49Z); evidence=Section 6 `E9` must report `automatable_gate4_rows=8`, `incomplete_rows=0`, and `missing_evidence_refs=0`.
+D2e: status=✅ Complete (2026-03-03 13:49Z); evidence=Section 6 `E10` must report `automatable_rows=16`, `incomplete_rows=0`, `missing_evidence_ids=0`, and `unknown_evidence_ids=0`.
+D2f: status=✅ Complete (2026-03-03 13:49Z); evidence=Section 6 `E11` must report `manual_rows=19`, `bad_owner=0`, and `bad_evidence_format=0`.
 ```
 
 ### E10 — Full automatable-row evidence linkage assertion
@@ -304,22 +330,22 @@ if incomplete or missing_ids or unknown:
     raise SystemExit(1)
 PY
 automatable_rows=16 incomplete_rows=0 missing_evidence_ids=0 unknown_evidence_ids=0
-B1: status=✅ Complete (2026-03-03 13:02Z); refs=E1
-B2: status=✅ Complete (2026-03-03 13:02Z); refs=E2
-B5: status=✅ Complete (2026-03-03 13:02Z); refs=E4
-R1: status=✅ Complete (2026-03-03 13:02Z); refs=E1
-R2: status=✅ Complete (2026-03-03 13:02Z); refs=E1
-A1: status=✅ Complete (2026-03-03 13:02Z); refs=E3
-A2: status=✅ Complete (2026-03-03 13:02Z); refs=E3
-A3: status=✅ Complete (2026-03-03 13:02Z); refs=E3
-D1: status=✅ Complete (2026-03-03 13:02Z); refs=E5
-D2: status=✅ Complete (2026-03-03 13:02Z); refs=E5
-D2a: status=✅ Complete (2026-03-03 13:02Z); refs=E6
-D2b: status=✅ Complete (2026-03-03 13:02Z); refs=E7
-D2c: status=✅ Complete (2026-03-03 13:02Z); refs=E8
-D2d: status=✅ Complete (2026-03-03 13:02Z); refs=E9
-D2e: status=✅ Complete (2026-03-03 13:02Z); refs=E10
-D2f: status=✅ Complete (2026-03-03 13:02Z); refs=E11
+B1: status=✅ Complete (2026-03-03 13:49Z); refs=E1
+B2: status=✅ Complete (2026-03-03 13:49Z); refs=E2
+B5: status=✅ Complete (2026-03-03 13:49Z); refs=E4
+R1: status=✅ Complete (2026-03-03 13:49Z); refs=E1
+R2: status=✅ Complete (2026-03-03 13:49Z); refs=E1
+A1: status=✅ Complete (2026-03-03 13:49Z); refs=E3
+A2: status=✅ Complete (2026-03-03 13:49Z); refs=E3
+A3: status=✅ Complete (2026-03-03 13:49Z); refs=E3
+D1: status=✅ Complete (2026-03-03 13:49Z); refs=E5
+D2: status=✅ Complete (2026-03-03 13:49Z); refs=E5
+D2a: status=✅ Complete (2026-03-03 13:49Z); refs=E6
+D2b: status=✅ Complete (2026-03-03 13:49Z); refs=E7
+D2c: status=✅ Complete (2026-03-03 13:49Z); refs=E8
+D2d: status=✅ Complete (2026-03-03 13:49Z); refs=E9
+D2e: status=✅ Complete (2026-03-03 13:49Z); refs=E10
+D2f: status=✅ Complete (2026-03-03 13:49Z); refs=E11
 ```
 
 ### E11 — Manual-row ownership/evidence-format assertion
