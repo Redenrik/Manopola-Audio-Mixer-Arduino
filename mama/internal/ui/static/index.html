@@ -379,6 +379,7 @@
       config: null,
       knownTargets: ["master_out", "mic_in", "line_in", "app", "group"],
       identifyES: null,
+      manualPortDirty: false,
       language: "en",
       wizard: {
         active: false,
@@ -540,8 +541,9 @@
 
     function effectivePort() {
       const manual = $("portInput").value.trim();
-      if (manual) return manual;
-      return $("portSelect").value.trim();
+      const selected = $("portSelect").value.trim();
+      if (state.manualPortDirty && manual) return manual;
+      return selected || manual;
     }
 
 
@@ -740,6 +742,7 @@
       $("debugInput").checked = !!cfg.debug;
       $("baudInput").value = String(serial.baud || 115200);
       $("portInput").value = serial.port || "";
+      state.manualPortDirty = (serial.port || "").trim().length > 0;
       renderMappings(cfg.mappings || []);
     }
 
@@ -800,12 +803,13 @@
       }
 
       let selected = ports[0];
-      if (manual && ports.includes(manual)) selected = manual;
+      if (state.manualPortDirty && manual && ports.includes(manual)) selected = manual;
       else if (previous && ports.includes(previous)) selected = previous;
       select.value = selected;
 
-      if (selected && (!manual || ports.includes(manual))) {
+      if (selected && (!state.manualPortDirty || !manual || ports.includes(manual))) {
         $("portInput").value = selected;
+        state.manualPortDirty = false;
       }
     }
 
@@ -929,6 +933,13 @@
       setStatus("identifyStatus", state.language === "it" ? "Identificazione arrestata" : "Identify stopped");
     }
 
+    function syncManualPortFromSelect() {
+      const selected = $("portSelect").value.trim();
+      if (!selected) return;
+      $("portInput").value = selected;
+      state.manualPortDirty = false;
+    }
+
     async function startIdentify() {
       const port = effectivePort();
       const baud = parseInt($("baudInput").value, 10) || 115200;
@@ -978,9 +989,13 @@
 
       es.onerror = () => {
         if (state.identifyES !== es) return;
-        es.close();
-        state.identifyES = null;
-        setStatus("identifyStatus", state.language === "it" ? "Stream identificazione disconnesso" : "Identify stream disconnected", "error");
+        if (es.readyState === EventSource.CLOSED) {
+          es.close();
+          state.identifyES = null;
+          setStatus("identifyStatus", state.language === "it" ? "Stream identificazione disconnesso" : "Identify stream disconnected", "error");
+          return;
+        }
+        setStatus("identifyStatus", state.language === "it" ? "Connessione stream persa, nuova connessione in corso..." : "Identify stream connection lost, reconnecting...", "error");
       };
     }
 
@@ -1017,16 +1032,18 @@
     }
 
     function bindEvents() {
-      $("portSelect").addEventListener("change", () => {
-        const selected = $("portSelect").value.trim();
-        if (selected) $("portInput").value = selected;
-      });
+      $("portSelect").addEventListener("change", syncManualPortFromSelect);
+      $("portSelect").addEventListener("input", syncManualPortFromSelect);
       $("portInput").addEventListener("input", () => {
         const manual = $("portInput").value.trim();
+        state.manualPortDirty = manual.length > 0;
         if (!manual) return;
         const select = $("portSelect");
         const hasMatch = Array.from(select.options).some((o) => o.value === manual);
-        if (hasMatch) select.value = manual;
+        if (hasMatch) {
+          select.value = manual;
+          state.manualPortDirty = false;
+        }
       });
       $("refreshPorts").addEventListener("click", () => loadPorts().then(() => {
         if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "detect") {
