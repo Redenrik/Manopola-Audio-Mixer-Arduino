@@ -554,10 +554,28 @@ Legend:
     - `docs/IMPLEMENTATION_TRACKER.md`
 
 
+- [x] `DONE` Add cross-document evidence freshness synchronization gate for readiness/checklist docs.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` to isolate highest-impact actionable in-repo gap from reviewer feedback: stale evidence windows could drift across documents without deterministic detection.
+    2. Add explicit automatable gate/checklist criteria for cross-doc evidence timestamp synchronization and map it to a command-verifiable evidence block.
+    3. Re-run automatable readiness commands (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`) and refresh inline evidence timestamps/output snippets.
+    4. Recompute objective readiness snapshot and log shipped-vs-manual scope without claiming maintainer/hardware/workflow completion.
+  - Implemented:
+    - Added readiness Gate `G4.6` and checklist row `D2b` to require synchronized evidence timestamps across readiness/checklist docs with deterministic `sed` equality assertion output (`evidence_timestamp_sync=ok`).
+    - Refreshed both docs to the latest run timestamp (`2026-03-03 11:52Z`), updated automatable status rows/evidence tables, and preserved explicit manual-owner placeholders for all maintainer-only gates.
+    - Kept `NO-GO` decision objective by marking only automatable gates complete and leaving manual hardware/workflow/release approvals pending.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
+
 ---
 
 ## Execution Log
 
+- 2026-03-03: Closed remaining readiness/checklist freshness-governance gap by adding deterministic cross-document timestamp synchronization checks (`G4.6` / `D2b`) backed by command evidence (`sed` equality assertion reports `evidence_timestamp_sync=ok (2026-03-03 11:52Z)`), refreshed automatable evidence/status timestamps from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`), and left manual maintainer/hardware/workflow gates pending by design.
 - 2026-03-03: Closed remaining in-repo readiness/checklist accountability gap by adding deterministic row-level ownership assertions (`G4.5` / `D2a`) backed by command evidence (`awk` reports `checked_rows=35, missing_rows=0`), refreshed automatable evidence timestamps/outputs from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`), and kept all manual maintainer/hardware/workflow gates explicitly pending.
 - 2026-03-03: Tightened remaining ambiguous manual readiness/checklist criteria into verifiable pass conditions (explicit hardware handshake/event expectations, interaction semantics, soak duration/cadence, release artifact coverage, and release-note content requirements), refreshed automatable evidence timestamps/outputs from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift preflight, anchored `rg`), and kept manual maintainer/hardware/workflow gates pending by design.
 - 2026-03-01: Tracker created from roadmap gaps; all items initialized as `TODO`.
