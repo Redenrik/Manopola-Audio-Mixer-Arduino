@@ -440,7 +440,21 @@ Legend:
     - `docs/V1_READINESS_REVIEW.md`
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
-
+- [x] `DONE` Close remaining readiness-review doc gaps from prior PR inline comments (fresh evidence + deterministic ownership mapping).
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-audit `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` for residual non-deterministic wording still called out in prior PR inline comments (especially evidence freshness and owner mapping clarity).
+    2. Tighten each automatable and manual row into explicit pass conditions with owner placeholders and required evidence payload shape.
+    3. Re-run in-repo automatable readiness commands, record dated outputs inline, and update statuses based on this run only.
+    4. Recompute GO/NO-GO from objective gate completion and document exactly what shipped versus what remains manual.
+  - Implemented:
+    - Refactored `docs/V1_READINESS_REVIEW.md` into owner-aware gate tables with refreshed dated statuses, an evidence register, and explicit objective blocker mapping for GO/NO-GO.
+    - Refined `docs/RELEASE_QA_CHECKLIST.md` into stricter pass/fail wording per row, expanded section automation-boundary matrix, and added evidence-to-checklist traceability table.
+    - Refreshed automatable evidence from this run (`go test`, `go mod verify`, checksum script preflight/smoke), while keeping manual/hardware/release gates pending and unclaimed.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
 
 ---
 
@@ -508,6 +522,9 @@ Legend:
 - 2026-03-02: Reconciled readiness/release QA docs with explicit readiness-gate mapping per checklist item, refreshed evidence-driven automatable outputs from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum syntax/smoke/verify), and standardized manual owner/evidence templates. GO/NO-GO remains `NO-GO` strictly due to pending manual maintainer/hardware/workflow gates.
 
 - 2026-03-02: Resolved remaining readiness/checklist reviewer gaps by converting readiness/checklist rows to objective evidence IDs, adding explicit section-level automation ownership in the QA checklist, and refreshing inline command evidence from this run while keeping all manual/hardware/release approvals pending. Verified with `cd mama && go test ./...`, `cd mama && go mod verify`, and `bash -n scripts/release/generate-checksums.sh` plus smoke checksum validation.
+
+- 2026-03-03: Closed remaining readiness/release-doc reviewer follow-ups by tightening objective pass criteria and owner/evidence payload rules in `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md`, then refreshing evidence from this run. Shipped automatable evidence updates only (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke); manual maintainer/hardware/workflow sign-offs remain pending by design.
+
 
 ---
 
