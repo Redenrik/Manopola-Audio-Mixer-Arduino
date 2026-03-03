@@ -25,6 +25,21 @@ go run ./cmd/mama
 - `firmware/slave/slave.ino` -> flash to I2C slave board.
 - Confirm baud is `115200` and I2C address is `0x12`.
 
+### Preferred command entrypoint
+
+Use `make help` to discover common tasks. Preferred wrappers:
+
+```bash
+make test
+make verify
+make smoke
+make firmware-smoke
+make run-ui
+make run-daemon
+```
+
+These wrappers mirror CI/security and smoke flows, reducing command drift across contributors.
+
 ## PR Checklist
 
 - Use issue/PR templates for consistent problem statements, validation notes, and risk callouts.

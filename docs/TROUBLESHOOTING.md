@@ -40,3 +40,20 @@ Common causes:
 - Press action emits `B<id>:1` only.
 - Release events are intentionally ignored.
 - Confirm your mapping target is currently supported (`master_out`, plus `mic_in` / `line_in` when capture tooling is available, and `app` on Unix hosts with `pactl`).
+
+## `scripts/quickstart.sh` fails immediately
+
+Common causes and fixes:
+- `error: Go toolchain not found in PATH...` -> install Go and retry (`go version` should work).
+- `expected Go module directory ... was not found` -> run the script from this repository checkout (do not copy script alone).
+- Permission denied on launchers -> ensure files are executable (`chmod +x dist/mama-quickstart/*.sh`).
+
+## Security scan commands fail with `403 Forbidden`
+
+If `go mod tidy` / `go install ... govulncheck` cannot download modules, your network/proxy may block outbound access to `proxy.golang.org` or GitHub.
+
+- Validate connectivity or set your corporate `GOPROXY`.
+- Re-run:
+  - `cd mama && go mod tidy && git diff --exit-code -- go.mod go.sum`
+  - `cd mama && go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...`
+
