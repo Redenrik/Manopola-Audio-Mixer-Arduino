@@ -52,3 +52,43 @@ func TestParseLineButtonReleaseRejected(t *testing.T) {
 		t.Fatal("expected error for unsupported button value")
 	}
 }
+
+func TestParseLineEncoderRelaxedFormatting(t *testing.T) {
+	ev, err := ParseLine(" e2 : + 3 ")
+	if err != nil {
+		t.Fatalf("ParseLine returned error: %v", err)
+	}
+	if ev.Kind != EventEncoderDelta || ev.KnobID != 2 || ev.Delta != 3 {
+		t.Fatalf("unexpected event: %+v", ev)
+	}
+}
+
+func TestParseLineLegacyKEncoder(t *testing.T) {
+	ev, err := ParseLine("K4:-2")
+	if err != nil {
+		t.Fatalf("ParseLine returned error: %v", err)
+	}
+	if ev.Kind != EventEncoderDelta || ev.KnobID != 4 || ev.Delta != -2 {
+		t.Fatalf("unexpected event: %+v", ev)
+	}
+}
+
+func TestParseLineLegacyKButtonPress(t *testing.T) {
+	ev, err := ParseLine("k3:press")
+	if err != nil {
+		t.Fatalf("ParseLine returned error: %v", err)
+	}
+	if ev.Kind != EventButtonPress || ev.KnobID != 3 {
+		t.Fatalf("unexpected event: %+v", ev)
+	}
+}
+
+func TestParseLineEmbeddedToken(t *testing.T) {
+	ev, err := ParseLine("rx[serial]: E7:+1")
+	if err != nil {
+		t.Fatalf("ParseLine returned error: %v", err)
+	}
+	if ev.Kind != EventEncoderDelta || ev.KnobID != 7 || ev.Delta != 1 {
+		t.Fatalf("unexpected event: %+v", ev)
+	}
+}

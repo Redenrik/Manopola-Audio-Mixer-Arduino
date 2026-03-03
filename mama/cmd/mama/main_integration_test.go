@@ -129,3 +129,30 @@ func TestBackendTargetName_GroupSelectors(t *testing.T) {
 		t.Fatalf("unexpected selectors payload: %#v", selectors)
 	}
 }
+
+func TestRunSessionFromChannels_ProtocolMismatchBestEffort(t *testing.T) {
+	cfg := &config.Config{Mappings: []config.Mapping{{Knob: 1, Target: config.TargetMasterOut, Step: 0.02}}}
+	backend := &fakeBackend{}
+	metrics := runtime.NewMetrics()
+
+	lineCh := make(chan string)
+	readErrCh := make(chan error, 1)
+	go func() {
+		defer close(lineCh)
+		lineCh <- "V:2"
+		lineCh <- "E1:+1"
+		lineCh <- "B1:1"
+		readErrCh <- nil
+	}()
+
+	if err := runSessionFromChannels(context.Background(), cfg, backend, metrics, lineCh, readErrCh); err != nil {
+		t.Fatalf("runSessionFromChannels returned error: %v", err)
+	}
+
+	if len(backend.calls) != 2 {
+		t.Fatalf("expected 2 backend calls, got %d", len(backend.calls))
+	}
+	if backend.calls[0].op != "adjust" || backend.calls[1].op != "toggle" {
+		t.Fatalf("unexpected backend call sequence: %+v", backend.calls)
+	}
+}

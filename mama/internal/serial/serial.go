@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strings"
 	"time"
 
 	"go.bug.st/serial"
@@ -89,7 +88,7 @@ func (r *Reader) ReadLines(ctx context.Context, out chan<- string) error {
 		}
 		data := chunk[:n]
 		for len(data) > 0 {
-			i := bytes.IndexByte(data, '\n')
+			i := bytes.IndexAny(data, "\n\r\x00")
 			if i < 0 {
 				if _, werr := pending.Write(data); werr != nil {
 					return werr
@@ -107,14 +106,20 @@ func (r *Reader) ReadLines(ctx context.Context, out chan<- string) error {
 				return fmt.Errorf("serial line too long (> %d bytes)", maxLineBytes)
 			}
 
-			line := strings.TrimSuffix(pending.String(), "\r")
+			line := pending.String()
 			select {
 			case out <- line:
 			case <-ctx.Done():
 				return ctx.Err()
 			}
 			pending.Reset()
+
+			delimiter := data[i]
 			data = data[i+1:]
+			// Normalize CRLF / LFCR pairs as a single separator.
+			if len(data) > 0 && ((delimiter == '\r' && data[0] == '\n') || (delimiter == '\n' && data[0] == '\r')) {
+				data = data[1:]
+			}
 		}
 	}
 }

@@ -115,9 +115,6 @@ func runSession(ctx context.Context, r *serialx.Reader, cfg *config.Config, b au
 func runSessionFromChannels(ctx context.Context, cfg *config.Config, b audio.Backend, metrics *runtime.Metrics, lines <-chan string, readErrC <-chan error) error {
 	defer runtime.Log("runtime_metrics", runtime.Fields{"snapshot": metrics.Snapshot()})
 
-	protocolAnnounced := false
-	protocolCompatible := true
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -153,20 +150,10 @@ func runSessionFromChannels(ctx context.Context, cfg *config.Config, b audio.Bac
 			}
 
 			if ev.Kind == proto.EventProtocolHello {
-				protocolAnnounced = true
-				protocolCompatible = proto.IsProtocolCompatible(ev.ProtocolVersion)
-				if protocolCompatible {
+				if proto.IsProtocolCompatible(ev.ProtocolVersion) {
 					runtime.Log("protocol_negotiated", runtime.Fields{"firmware": ev.ProtocolVersion, "host": proto.HostProtocolVersion})
 				} else {
-					runtime.Log("protocol_mismatch", runtime.Fields{"firmware": ev.ProtocolVersion, "host": proto.HostProtocolVersion, "note": "dropping_control_events"})
-				}
-				continue
-			}
-
-			if protocolAnnounced && !protocolCompatible {
-				metrics.IncDroppedEvents()
-				if cfg.Debug {
-					runtime.Log("event_dropped", runtime.Fields{"line": line, "reason": "incompatible_protocol"})
+					runtime.Log("protocol_mismatch", runtime.Fields{"firmware": ev.ProtocolVersion, "host": proto.HostProtocolVersion, "note": "processing_parseable_events_best_effort"})
 				}
 				continue
 			}

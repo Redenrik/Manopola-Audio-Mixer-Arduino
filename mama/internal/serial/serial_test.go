@@ -127,6 +127,44 @@ func TestReadLinesBacksOffOnZeroByteReads(t *testing.T) {
 	}
 }
 
+func TestReadLinesSupportsCRAndNulDelimiters(t *testing.T) {
+	port := &fakePort{results: []readResult{
+		{data: []byte("E1:+1\rB1:1\x00V:1\r\n")},
+	}, defaultErr: io.ErrNoProgress}
+
+	r := &Reader{
+		port: port,
+		sleep: func(time.Duration) {
+			// no-op
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	out := make(chan string, 8)
+	errC := make(chan error, 1)
+	go func() {
+		errC <- r.ReadLines(ctx, out)
+	}()
+
+	var got []string
+	for line := range out {
+		got = append(got, line)
+		if len(got) == 3 {
+			cancel()
+		}
+	}
+
+	if !errors.Is(<-errC, context.Canceled) {
+		t.Fatalf("expected context cancellation")
+	}
+
+	want := []string{"E1:+1", "B1:1", "V:1"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected lines: got %v, want %v", got, want)
+	}
+}
+
 func TestIsIdleReadError(t *testing.T) {
 	timeoutErr := &net.DNSError{IsTimeout: true}
 	temporaryErr := temporaryReadError{}
