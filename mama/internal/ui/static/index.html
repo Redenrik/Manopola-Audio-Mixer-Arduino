@@ -763,6 +763,15 @@
 
     async function loadTargets() {
       const body = await fetchJSON("/api/targets");
+      if (Array.isArray(body.discovered) && body.discovered.length > 0) {
+        const discoveredTypes = Array.from(new Set(body.discovered
+          .map((entry) => entry && typeof entry === "object" ? entry.type : "")
+          .filter((type) => typeof type === "string" && type.trim().length > 0)));
+        if (discoveredTypes.length > 0) {
+          state.knownTargets = discoveredTypes;
+          return;
+        }
+      }
       if (Array.isArray(body.known) && body.known.length > 0) {
         state.knownTargets = body.known;
       }
@@ -771,7 +780,8 @@
     async function loadPorts() {
       const body = await fetchJSON("/api/ports");
       const select = $("portSelect");
-      const previous = select.value;
+      const previous = select.value.trim();
+      const manual = $("portInput").value.trim();
       select.innerHTML = "";
       const ports = Array.isArray(body.ports) ? body.ports : [];
 
@@ -788,7 +798,15 @@
         o.textContent = p;
         select.appendChild(o);
       }
-      if (ports.includes(previous)) select.value = previous;
+
+      let selected = ports[0];
+      if (manual && ports.includes(manual)) selected = manual;
+      else if (previous && ports.includes(previous)) selected = previous;
+      select.value = selected;
+
+      if (selected && (!manual || ports.includes(manual))) {
+        $("portInput").value = selected;
+      }
     }
 
     async function testConnection() {
@@ -911,25 +929,41 @@
       setStatus("identifyStatus", state.language === "it" ? "Identificazione arrestata" : "Identify stopped");
     }
 
-    function startIdentify() {
+    async function startIdentify() {
       const port = effectivePort();
       const baud = parseInt($("baudInput").value, 10) || 115200;
       if (!port) {
         setStatus("identifyStatus", state.language === "it" ? "Seleziona o inserisci prima una porta seriale" : "Select or type a serial port first", "error");
         return;
       }
+      try {
+        await fetchJSON("/api/port-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ port, baud })
+        });
+      } catch (err) {
+        setStatus("identifyStatus", err.message, "error");
+        return;
+      }
       stopIdentify();
       const url = "/api/identify?port=" + encodeURIComponent(port) + "&baud=" + encodeURIComponent(String(baud));
       const es = new EventSource(url);
       state.identifyES = es;
-      setStatus("identifyStatus", (state.language === "it" ? "In ascolto su " : "Listening on ") + port + " @ " + baud, "ok");
+      setStatus("identifyStatus", state.language === "it" ? "Connessione stream identificazione..." : "Connecting identify stream...", "ok");
       if (state.wizard.active) {
         const stepID = state.wizard.steps[state.wizard.index].id;
         if (stepID === "map") setStatus("wizardStatus", state.language === "it" ? "Identificazione attiva. Ruota e premi ogni manopola, poi clicca Passo successivo." : "Identify is running. Rotate and press each knob, then click Next Step.", "ok");
         if (stepID === "verify") setStatus("wizardStatus", state.language === "it" ? "Verifica attiva. Conferma che gli eventi lampeggiano per ogni manopola." : "Verification active. Confirm events are flashing for each knob.", "ok");
       }
 
+      es.onopen = () => {
+        if (state.identifyES !== es) return;
+        setStatus("identifyStatus", (state.language === "it" ? "In ascolto su " : "Listening on ") + port + " @ " + baud, "ok");
+      };
+
       es.onmessage = (msg) => {
+        if (state.identifyES !== es) return;
         try {
           const ev = JSON.parse(msg.data);
           if (ev.type === "event") {
@@ -943,6 +977,9 @@
       };
 
       es.onerror = () => {
+        if (state.identifyES !== es) return;
+        es.close();
+        state.identifyES = null;
         setStatus("identifyStatus", state.language === "it" ? "Stream identificazione disconnesso" : "Identify stream disconnected", "error");
       };
     }
@@ -980,6 +1017,17 @@
     }
 
     function bindEvents() {
+      $("portSelect").addEventListener("change", () => {
+        const selected = $("portSelect").value.trim();
+        if (selected) $("portInput").value = selected;
+      });
+      $("portInput").addEventListener("input", () => {
+        const manual = $("portInput").value.trim();
+        if (!manual) return;
+        const select = $("portSelect");
+        const hasMatch = Array.from(select.options).some((o) => o.value === manual);
+        if (hasMatch) select.value = manual;
+      });
       $("refreshPorts").addEventListener("click", () => loadPorts().then(() => {
         if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "detect") {
           const hasPort = $("portSelect").value.trim() || $("portInput").value.trim();

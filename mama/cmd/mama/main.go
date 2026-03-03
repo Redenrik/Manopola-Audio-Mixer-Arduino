@@ -95,10 +95,19 @@ func main() {
 func runSession(ctx context.Context, r *serialx.Reader, cfg *config.Config, b audio.Backend, metrics *runtime.Metrics) error {
 	lines := make(chan string, 128)
 	readErrC := make(chan error, 1)
+	stopClose := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = r.Close()
+		case <-stopClose:
+		}
+	}()
 	go func() {
 		readErrC <- r.ReadLines(ctx, lines)
 	}()
 
+	defer close(stopClose)
 	defer func() { _ = r.Close() }()
 	return runSessionFromChannels(ctx, cfg, b, metrics, lines, readErrC)
 }

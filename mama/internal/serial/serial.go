@@ -24,6 +24,10 @@ func Open(portName string, baud int) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := p.SetReadTimeout(serial.NoTimeout); err != nil {
+		_ = p.Close()
+		return nil, err
+	}
 	// Some boards reset on open; short grace helps.
 	time.Sleep(1200 * time.Millisecond)
 
