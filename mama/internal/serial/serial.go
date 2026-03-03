@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"strings"
 	"time"
 
@@ -13,7 +14,13 @@ import (
 )
 
 type Reader struct {
-	port serial.Port
+	port  lineReaderPort
+	sleep func(time.Duration)
+}
+
+type lineReaderPort interface {
+	Read(p []byte) (n int, err error)
+	Close() error
 }
 
 const (
@@ -39,7 +46,7 @@ func Open(portName string, baud int) (*Reader, error) {
 	// Some boards reset on open; short grace helps.
 	time.Sleep(1200 * time.Millisecond)
 
-	return &Reader{port: p}, nil
+	return &Reader{port: p, sleep: time.Sleep}, nil
 }
 
 func Probe(portName string, baud int) error {
@@ -67,13 +74,17 @@ func (r *Reader) ReadLines(ctx context.Context, out chan<- string) error {
 
 		n, err := r.port.Read(chunk)
 		if err != nil {
+			if isIdleReadError(err) {
+				r.idlePause()
+				continue
+			}
 			if errors.Is(err, io.EOF) {
 				return fmt.Errorf("serial closed")
 			}
 			return err
 		}
 		if n == 0 {
-			time.Sleep(idleReadDelay)
+			r.idlePause()
 			continue
 		}
 		data := chunk[:n]
@@ -106,4 +117,45 @@ func (r *Reader) ReadLines(ctx context.Context, out chan<- string) error {
 			data = data[i+1:]
 		}
 	}
+}
+
+func (r *Reader) idlePause() {
+	if r.sleep != nil {
+		r.sleep(idleReadDelay)
+		return
+	}
+	time.Sleep(idleReadDelay)
+}
+
+func isIdleReadError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, io.ErrNoProgress) {
+		return true
+	}
+
+	var timeoutErr interface{ Timeout() bool }
+	if errors.As(err, &timeoutErr) && timeoutErr.Timeout() {
+		return true
+	}
+
+	var portErr *serial.PortError
+	if errors.As(err, &portErr) {
+		if portErr.Code() == serial.PortClosed {
+			return false
+		}
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+
+	var temporaryErr interface{ Temporary() bool }
+	if errors.As(err, &temporaryErr) && temporaryErr.Temporary() {
+		return true
+	}
+
+	return false
 }

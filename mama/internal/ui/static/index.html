@@ -343,6 +343,7 @@
 
     <section class="panel">
       <h2 id="mappingsHeading">Mappings</h2>
+      <p class="hint" id="windowsTargetWarning"></p>
       <div class="actions templates">
         <label style="min-width: 250px; margin: 0;">
           <span id="mappingTemplateLabel">Mapping Template</span>
@@ -465,7 +466,7 @@
         wizardStart: "Start Wizard", wizardNext: "Next Step", wizardReset: "Reset",
         connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
         identifyHeading: "Knob Identification", identifyIntro: "Click Start Identify then rotate or press any physical knob. Matching indicator flashes below.", startIdentify: "Start Identify", stopIdentify: "Stop",
-        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name (app/group)", headerStep: "Step (0..1)", addMapping: "Add Mapping", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config",
+        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name (app/group)", headerStep: "Step (0..1)", addMapping: "Add Mapping", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).",
         noPorts: "No ports detected", waiting: "waiting...", buttonPress: "button press", delta: "delta",
         wizardSteps: { detect: { title: "Detect board", hint: "Refresh detected serial ports and select your board." }, test: { title: "Test port", hint: "Run Test Connection to ensure the board is reachable." }, map: { title: "Map knobs", hint: "Use Start Identify and rotate/press knobs to confirm IDs before editing mappings." }, save: { title: "Save config", hint: "Persist serial + mapping configuration." }, verify: { title: "Verify", hint: "Run identify again to confirm knob events after save." } }
       },
@@ -480,7 +481,7 @@
         wizardStart: "Avvia procedura", wizardNext: "Passo successivo", wizardReset: "Reimposta",
         connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
         identifyHeading: "Identificazione manopole", identifyIntro: "Fai clic su Avvia identificazione, poi ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
-        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome (app/gruppo)", headerStep: "Step (0..1)", addMapping: "Aggiungi mappatura", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config",
+        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome (app/gruppo)", headerStep: "Step (0..1)", addMapping: "Aggiungi mappatura", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).",
         noPorts: "Nessuna porta rilevata", waiting: "in attesa...", buttonPress: "pressione tasto", delta: "delta",
         wizardSteps: { detect: { title: "Rileva scheda", hint: "Aggiorna le porte seriali rilevate e seleziona la tua scheda." }, test: { title: "Test porta", hint: "Esegui Test connessione per verificare che la scheda sia raggiungibile." }, map: { title: "Mappa manopole", hint: "Usa Avvia identificazione e ruota/premi le manopole per confermare gli ID prima di modificare le mappature." }, save: { title: "Salva config", hint: "Salva la configurazione seriale e delle mappature." }, verify: { title: "Verifica", hint: "Avvia di nuovo l'identificazione per confermare gli eventi dopo il salvataggio." } }
       }
@@ -501,7 +502,7 @@
         wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
         manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", mappingsHeading: "mappingsHeading",
         mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep",
-        addMapping: "addMapping", saveConfig: "saveConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify"
+        addMapping: "addMapping", saveConfig: "saveConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning"
       };
       for (const [id, key] of Object.entries(bindings)) {
         const el = $(id);
@@ -521,6 +522,12 @@
       renderWizard();
       renderTemplateOptions();
       createKnobCards();
+      updatePlatformWarnings();
+    }
+
+    function updatePlatformWarnings() {
+      const isWindows = navigator.platform.toLowerCase().includes("win");
+      $("windowsTargetWarning").textContent = isWindows ? t("windowsTargetWarning") : "";
     }
 
     function setStatus(id, text, cls = "") {
@@ -656,10 +663,10 @@
 
       const target = document.createElement("select");
       target.setAttribute("aria-label", "Mapping target");
-      for (const t of state.knownTargets) {
+      for (const targetID of state.knownTargets) {
         const o = document.createElement("option");
-        o.value = t;
-        o.textContent = t;
+        o.value = targetID;
+        o.textContent = targetID;
         target.appendChild(o);
       }
       target.value = mapping.target || "master_out";
@@ -732,6 +739,10 @@
         debug: $("debugInput").checked,
         mappings: collectMappings()
       };
+    }
+
+    function isWindowsPlatform() {
+      return navigator.platform.toLowerCase().includes("win");
     }
 
     function applyConfigToForm(cfg) {

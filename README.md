@@ -190,6 +190,12 @@ and after saving your mappings, run:
 ./dist/mama-quickstart/start-mixer.sh
 ```
 
+## Troubleshooting (Windows)
+
+- Close Arduino Serial Monitor (and any other terminal/serial tools) before starting `mama` or `mama-ui`; only one app can hold the COM port at a time.
+- If your Arduino sends events only when knobs move (quiet while idle), that is normal. MAMA now treats idle serial silence as a healthy connection state.
+- On Windows, `app` and `group` targets work against active audio sessions (the target app must currently be producing audio to appear/discover and be controllable).
+
 ## Config Behavior
 
 Config path auto-resolution:
