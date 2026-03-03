@@ -456,6 +456,22 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 
+- [x] `DONE` Finalize readiness/checklist objective evidence contract for this iteration.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` as the source of truth and isolate the highest-impact remaining in-repo gap: missing freshness contract + non-commanded doc-structure checks.
+    2. Convert remaining vague checklist wording into executable criteria where possible, including automatable module-drift and doc-structure assertions.
+    3. Re-run required automatable commands (`go test`, `go mod verify`, checksum preflight/smoke) and append fresh dated evidence blocks.
+    4. Recompute readiness/checklist statuses from this run, keep manual gates pending, and log shipped-vs-manual scope.
+  - Implemented:
+    - Added evidence freshness rules plus command-backed doc-structure assertions in the readiness review, and refreshed all automatable gate timestamps from this run.
+    - Tightened release QA checklist wording by converting dependency-drift validation into an automatable preflight check and command-anchoring documentation governance checks.
+    - Captured fresh evidence for all automatable checks (`go test`, `go mod verify`, checksum preflight/smoke, module-drift, doc-anchor assertions) while preserving all manual maintainer/hardware gates as pending.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
 ---
 
 ## Execution Log
@@ -524,6 +540,8 @@ Legend:
 - 2026-03-02: Resolved remaining readiness/checklist reviewer gaps by converting readiness/checklist rows to objective evidence IDs, adding explicit section-level automation ownership in the QA checklist, and refreshing inline command evidence from this run while keeping all manual/hardware/release approvals pending. Verified with `cd mama && go test ./...`, `cd mama && go mod verify`, and `bash -n scripts/release/generate-checksums.sh` plus smoke checksum validation.
 
 - 2026-03-03: Closed remaining readiness/release-doc reviewer follow-ups by tightening objective pass criteria and owner/evidence payload rules in `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md`, then refreshing evidence from this run. Shipped automatable evidence updates only (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke); manual maintainer/hardware/workflow sign-offs remain pending by design.
+
+- 2026-03-03: Finalized the remaining in-repo readiness/checklist gap by adding an explicit evidence freshness contract, converting dependency-drift and documentation-governance checks into command-verifiable rows, and refreshing automatable evidence from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module-drift preflight, and doc-anchor assertions). Manual maintainer-only gates (hardware, CI/release workflows, and final approvals) remain pending by design.
 
 
 ---
