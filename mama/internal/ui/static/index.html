@@ -318,6 +318,14 @@
         <div class="actions">
           <button type="button" id="testConnection">Test Connection</button>
         </div>
+        <div class="actions" style="margin-top:8px; align-items:center;">
+          <label style="display:flex; gap:8px; align-items:center; margin:0;">
+            <input id="startupEnabled" type="checkbox" aria-label="Launch mixer at OS startup">
+            <span id="startupLabel">Launch mixer at OS startup</span>
+          </label>
+          <button type="button" id="applyStartup">Apply Startup Setting</button>
+        </div>
+        <p class="status" id="startupStatus" role="status" aria-live="polite"></p>
         <p class="status" id="connectionStatus" role="status" aria-live="polite"></p>
       </div>
 
@@ -454,7 +462,7 @@
         wizardHeading: "First-Run Wizard",
         wizardIntro: "Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.",
         wizardStart: "Start Wizard", wizardNext: "Next Step", wizardReset: "Reset",
-        connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", testConnection: "Test Connection",
+        connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
         identifyHeading: "Knob Identification", identifyIntro: "Click Start Identify then rotate or press any physical knob. Matching indicator flashes below.", startIdentify: "Start Identify", stopIdentify: "Stop",
         mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name (app/group)", headerStep: "Step (0..1)", addMapping: "Add Mapping", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config",
         noPorts: "No ports detected", waiting: "waiting...", buttonPress: "button press", delta: "delta",
@@ -469,7 +477,7 @@
         wizardHeading: "Procedura guidata iniziale",
         wizardIntro: "Segui questa procedura per rilevare la scheda, confermare la seriale, mappare le manopole, salvare e verificare gli eventi live.",
         wizardStart: "Avvia procedura", wizardNext: "Passo successivo", wizardReset: "Reimposta",
-        connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", testConnection: "Test connessione",
+        connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
         identifyHeading: "Identificazione manopole", identifyIntro: "Fai clic su Avvia identificazione, poi ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
         mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome (app/gruppo)", headerStep: "Step (0..1)", addMapping: "Aggiungi mappatura", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config",
         noPorts: "Nessuna porta rilevata", waiting: "in attesa...", buttonPress: "pressione tasto", delta: "delta",
@@ -490,7 +498,7 @@
       const bindings = {
         titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
         wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
-        manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", testConnection: "testConnection", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", mappingsHeading: "mappingsHeading",
+        manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", mappingsHeading: "mappingsHeading",
         mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep",
         addMapping: "addMapping", saveConfig: "saveConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify"
       };
@@ -939,6 +947,38 @@
       };
     }
 
+
+    async function loadStartupStatus() {
+      const data = await fetchJSON("/api/startup");
+      const checkbox = $("startupEnabled");
+      const button = $("applyStartup");
+      checkbox.checked = !!data.enabled;
+      if (!data.supported) {
+        checkbox.disabled = true;
+        button.disabled = true;
+        setStatus("startupStatus", data.message || (state.language === "it" ? "Avvio automatico non supportato su questo sistema." : "Startup integration is not supported on this system."));
+        return;
+      }
+      checkbox.disabled = false;
+      button.disabled = false;
+      setStatus("startupStatus", data.enabled ? (state.language === "it" ? "Avvio automatico attivo." : "Startup launch is enabled.") : (state.language === "it" ? "Avvio automatico disattivato." : "Startup launch is disabled."), "ok");
+    }
+
+    async function applyStartupSetting() {
+      const enabled = $("startupEnabled").checked;
+      try {
+        const data = await fetchJSON("/api/startup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled })
+        });
+        $("startupEnabled").checked = !!data.enabled;
+        setStatus("startupStatus", data.message || (data.enabled ? (state.language === "it" ? "Avvio automatico attivo." : "Startup launch is enabled.") : (state.language === "it" ? "Avvio automatico disattivato." : "Startup launch is disabled.")), "ok");
+      } catch (err) {
+        setStatus("startupStatus", err.message, "error");
+      }
+    }
+
     function bindEvents() {
       $("refreshPorts").addEventListener("click", () => loadPorts().then(() => {
         if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "detect") {
@@ -947,6 +987,7 @@
         }
       }).catch(err => setStatus("saveStatus", err.message, "error")));
       $("testConnection").addEventListener("click", testConnection);
+      $("applyStartup").addEventListener("click", applyStartupSetting);
       $("addMapping").addEventListener("click", () => $("mappings").appendChild(mappingRow()));
       $("applyTemplate").addEventListener("click", applyTemplate);
       $("saveConfig").addEventListener("click", saveConfig);
@@ -975,7 +1016,7 @@
       try {
         await loadStatus();
         await loadTargets();
-        await Promise.all([loadPorts(), loadConfig()]);
+        await Promise.all([loadPorts(), loadConfig(), loadStartupStatus()]);
       } catch (err) {
         setStatus("saveStatus", err.message, "error");
       }

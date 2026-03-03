@@ -16,10 +16,10 @@ A finished MAMA release should provide:
 ## 2) Current Major Gaps
 
 ### 2.1 Feature completeness gaps
-- audio backend currently supports `master_out` only; other targets are placeholders
-- no in-app discovery/selection workflow for per-app targets and groups
-- no profile system (use-case presets, multi-layout setups)
-- no firmware/host protocol version negotiation
+- cross-platform parity gap remains for `app`/`group` targets (currently Unix-first via `pactl`)
+- target discovery exists, but user-facing selector authoring/validation can still be improved for non-technical users
+- profile system exists, but profile-level UX polish and conflict explainability remain ongoing
+- protocol compatibility checks exist, but forward/backward migration policy should be continuously validated for future protocol revisions
 
 ### 2.2 Reliability and quality gaps
 - no hardware-in-the-loop automated test suite
@@ -27,20 +27,17 @@ A finished MAMA release should provide:
 - no resilience features (auto reconnect backoff strategy visibility, health telemetry)
 
 ### 2.3 Packaging and operations gaps
-- Windows-first packaging exists, but no parity scripts/pipelines for Linux/macOS
-- no code signing / notarization process documented or automated
-- no installer + updater path for mainstream users
+- release artifact automation exists, but Linux/macOS packaging parity and signing operations still need maintainer-run hardening
+- signing/notarization workflows are documented and automated, but require maintainers to verify credentials, rotation, and release-run evidence
+- optional installer/update artifacts exist; broader user-validation coverage is still needed before claiming mainstream readiness
 
 ### 2.4 Product and UX gaps
-- setup UI is functional but not yet guided/onboarding-first
-- no backup/restore/import/export of configuration in UI
-- no localization framework implementation yet
-- no accessibility checklist or formal UX acceptance criteria
+- setup UI has guided onboarding, templates, identify mode, backup/restore, import/export, localization seed (EN/IT), and baseline accessibility
+- remaining UX gap is broader usability validation on fresh machines and more complete localization/accessibility audits
 
 ### 2.5 Security and governance gaps
-- no explicit threat model or security policy document
-- no dependency/vulnerability scanning pipeline
-- no clear support lifecycle/versioning policy
+- security/support policies and dependency scanning workflow are in place
+- remaining governance gap is maintainer execution cadence: recurring security triage, lifecycle review checkpoints, and release sign-off evidence discipline
 
 ---
 

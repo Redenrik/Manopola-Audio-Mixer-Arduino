@@ -94,3 +94,27 @@ func TestHandleIndex_IncludesWizard(t *testing.T) {
 		t.Fatalf("expected keyboard focus-visible styling in index html")
 	}
 }
+
+func TestHandleStartup_Get(t *testing.T) {
+	s := New("config.yaml")
+	req := httptest.NewRequest(http.MethodGet, "/api/startup", nil)
+	rr := httptest.NewRecorder()
+
+	s.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rr.Code)
+	}
+}
+
+func TestHandleStartup_PostUnsupportedOnNonWindows(t *testing.T) {
+	s := New("config.yaml")
+	req := httptest.NewRequest(http.MethodPost, "/api/startup", strings.NewReader(`{"enabled":true}`))
+	rr := httptest.NewRecorder()
+
+	s.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected %d, got %d", http.StatusBadRequest, rr.Code)
+	}
+}

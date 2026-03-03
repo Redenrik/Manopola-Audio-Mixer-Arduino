@@ -46,12 +46,17 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/port-test", s.handlePortTest)
 	mux.HandleFunc("/api/targets", s.handleTargets)
 	mux.HandleFunc("/api/identify", s.handleIdentify)
+	mux.HandleFunc("/api/startup", s.handleStartup)
 	return mux
 }
 
 type portTestRequest struct {
 	Port string `json:"port"`
 	Baud int    `json:"baud"`
+}
+
+type startupRequest struct {
+	Enabled bool `json:"enabled"`
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -185,6 +190,38 @@ func (s *Server) handleTargets(w http.ResponseWriter, r *http.Request) {
 		"supported":  supported,
 		"discovered": discovered,
 	})
+}
+
+func (s *Server) handleStartup(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		status, err := startupStatusForConfig(s.cfgPath)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, status)
+	case http.MethodPost:
+		var in startupRequest
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("invalid json: %v", err)})
+			return
+		}
+		status, err := configureStartupForConfig(s.cfgPath, in.Enabled)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		if !status.Supported {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": status.Message})
+			return
+		}
+		writeJSON(w, http.StatusOK, status)
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+	}
 }
 
 func (s *Server) handleIdentify(w http.ResponseWriter, r *http.Request) {
