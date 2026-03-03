@@ -35,6 +35,12 @@ This repository now includes:
   - `app` per-session volume + mute on Unix hosts with `pactl` sink-input controls
   - `group` grouped app/session volume + mute on Unix hosts with `pactl` sink-input controls
 
+## Release Readiness Snapshot
+
+Current repo state is **feature-rich but pre-release**: automatable in-repo gates are green, while final `v1.0.0` publication still depends on maintainer-run/manual evidence (hardware validation, soak execution, CI/security workflow sign-off for release commit, signing/notarization artifacts, and final approvals). See:
+- `docs/V1_READINESS_REVIEW.md` for objective GO/NO-GO gates
+- `docs/RELEASE_QA_CHECKLIST.md` for owner-assigned release evidence
+
 ## Repository Layout
 
 - `firmware/master/master.ino`: USB-connected master Arduino firmware (encoders 1-3 + I2C poll for 4-5).
@@ -92,13 +98,22 @@ Compatibility rule:
 
 ## Quick Start (Developer)
 
+Run host tests and the setup UI from the `mama/` module directory:
+
 ```bash
 cd mama
 go test ./...
 go run ./cmd/mama-ui
 ```
 
-Firmware stress validation:
+From a second terminal (still in `mama/`), run the runtime daemon:
+
+```bash
+cd mama
+go run ./cmd/mama
+```
+
+Firmware stress validation scripts are run from the **repository root**:
 
 ```bash
 scripts/firmware/run_encoder_stress_test.sh
@@ -109,12 +124,6 @@ scripts/firmware/run_i2c_robustness_test.sh
 - `run_i2c_robustness_test.sh`: validates slave I2C packet integrity under burst-load accumulator and button-edge churn.
 
 Then open the shown local URL and use the first-run wizard (or manual controls) to detect the board, test connection, optionally apply a mapping template (streaming/conferencing/music/gaming), map knobs, and save. You can also create a browser-local backup snapshot, restore it, or import/export JSON config files before persisting with **Save Config**. The setup UI supports keyboard-first navigation with visible focus states, announces status updates for assistive technologies, and provides a top-level language selector with initial English/Italian coverage.
-
-Start runtime daemon:
-
-```bash
-go run ./cmd/mama
-```
 
 ## Config Behavior
 
@@ -241,18 +250,26 @@ Release note automation is implemented in `.github/workflows/release-notes.yml` 
 
 Release signing/notarization automation and maintainer setup details are documented in [docs/SIGNING_AND_NOTARIZATION.md](docs/SIGNING_AND_NOTARIZATION.md) and implemented in `.github/workflows/release-signing.yml`.
 
-## Non-Terminal User Flow
+## No-Command-Line Install (Windows End Users)
 
-See [docs/INSTALLATION.md](docs/INSTALLATION.md) for packaging and release instructions.
+Yes—there is a non-technical install path designed to avoid terminals/CLI.
 
-Recommended end-user artifacts:
+1. Download the **portable ZIP** from Releases.
+2. Extract it to a folder (for example `Desktop\MAMA`).
+3. Double-click `Open Setup UI.cmd` to configure port + knob mappings.
+4. (Optional) In Setup UI, enable **Launch mixer at OS startup** and click **Apply Startup Setting** for automatic login start on Windows/macOS packages.
+5. Double-click `Start Mixer.cmd` to run the mixer.
+
+No service installation is required; uninstall is deleting the folder.
+
+Recommended end-user files inside the package:
 - `mama.exe` (runtime daemon)
 - `mama-ui.exe` (settings GUI)
 - `Open Setup UI.cmd` (double-click launcher)
 - `Start Mixer.cmd` (double-click launcher)
 - `config.yaml` (portable side-by-side config)
 
-This keeps configuration and binaries in one folder and avoids installing system services by default.
+For maintainers, optional installer generation (`.exe`) and packaging details are documented in [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
 ## Documentation Index
 
