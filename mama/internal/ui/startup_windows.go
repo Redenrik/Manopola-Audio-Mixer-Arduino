@@ -12,12 +12,6 @@ import (
 
 const startupScriptName = "MAMA Start Mixer.cmd"
 
-type startupStatus struct {
-	Supported bool   `json:"supported"`
-	Enabled   bool   `json:"enabled"`
-	Message   string `json:"message,omitempty"`
-}
-
 func startupStatusForConfig(cfgPath string) (startupStatus, error) {
 	scriptPath, err := startupScriptPath()
 	if err != nil {
