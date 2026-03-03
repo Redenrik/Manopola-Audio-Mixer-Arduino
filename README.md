@@ -96,6 +96,44 @@ Compatibility rule:
 - if firmware announces an incompatible version, host logs mismatch and drops control events
 - if no hello is present (older firmware), host keeps legacy behavior for backward compatibility
 
+## Verified Quickstart (DX)
+
+The commands below were executed in this repository during the latest DX remediation pass.
+
+```bash
+make quickstart
+./dist/mama-quickstart/mama --help
+./dist/mama-quickstart/mama-ui --help
+make test
+make verify
+make smoke
+make firmware-smoke
+```
+
+If you cannot use `make`, run the equivalent scripts directly:
+
+```bash
+scripts/quickstart.sh
+cd mama && go test ./...
+cd mama && go mod verify
+scripts/quickstart-smoke-test.sh
+scripts/firmware/run_encoder_stress_test.sh
+scripts/firmware/run_i2c_robustness_test.sh
+```
+
+## Common Developer Commands
+
+A repository `Makefile` provides one-entrypoint commands:
+
+- `make test` – run `go test ./...`
+- `make verify` – run `go mod verify`
+- `make mod-tidy-check` – enforce `go mod tidy` drift check
+- `make govulncheck` – install/run vulnerability scanner
+- `make smoke` – quickstart packaging smoke test
+- `make firmware-smoke` – firmware protocol stress tests
+- `make run-ui` / `make run-daemon` – run local apps
+- `make ci-local` – local CI-equivalent sequence
+
 ## Quick Start (Developer)
 
 Run host tests and the setup UI from the `mama/` module directory:
