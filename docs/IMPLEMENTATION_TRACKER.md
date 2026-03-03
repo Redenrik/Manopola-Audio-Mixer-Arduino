@@ -673,7 +673,26 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 
+
+- [x] `DONE` Resolve Gate-4 criteria/evidence mismatches and refresh readiness/checklist evidence window.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` as the source of truth, then isolate the highest-impact in-repo reviewer gap: Gate-4 acceptance text did not match parser outputs (row-count/list mismatch) and manual-row totals were stale.
+    2. Correct objective criteria wording so Gate-4 row coverage and manual accountability counts are internally consistent with parser logic/results.
+    3. Re-run automatable checks (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift preflight, doc-structure and parser assertions) and refresh both docs to a single evidence timestamp.
+    4. Keep all hardware/maintainer/release-workflow sign-offs pending and update execution log with shipped-vs-manual scope.
+  - Implemented:
+    - Fixed Gate-4 criteria consistency by aligning readiness `G4.8` row coverage with checklist rows (`D1`, `D2`, `D2a`-`D2f`) and correcting checklist `D2d` wording to require eight automatable rows.
+    - Refreshed both readiness/checklist evidence windows and automatable statuses to `2026-03-03 14:11Z` using this run's command outputs.
+    - Corrected manual accountability evidence expectations to match actual parser coverage (`manual_rows=17`), preserving deterministic owner/evidence-format validation.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
 ## Execution Log
+
+- 2026-03-03: Closed highest-impact remaining in-repo readiness doc gap by reconciling Gate-4 criteria with parser evidence (`G4.8`/`D2d` now explicitly cover eight automatable rows) and correcting manual-accountability expectations to actual parser coverage (`manual_rows=17`). Refreshed automatable evidence/status timestamps to `2026-03-03 14:11Z` from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, `rg` anchors, and parser assertions). Manual maintainer/hardware/workflow release gates remain pending by design.
 
 - 2026-03-03: Refreshed readiness/checklist evidence to `2026-03-03 13:49Z` and fixed the highest-impact remaining in-repo governance gap by replacing the `E6` accountability parser with a suffixed-ID aware Python assertion (`checked_rows=35, missing_rows=0`), ensuring rows like `D2a` are validated. Re-ran automatable checks (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, doc-structure/timestamp/freshness/linkage/manual-format assertions) and kept manual maintainer/hardware/workflow gates pending by design.
 
