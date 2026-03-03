@@ -537,10 +537,28 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 
+
+- [x] `DONE` Strengthen readiness/checklist accountability verification with row-level ownership assertions and refreshed evidence.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` and isolate the highest-impact actionable in-repo gap from recent review feedback: checklist structure checks did not explicitly assert non-empty per-row accountability fields.
+    2. Add a deterministic automatable check that fails when any checklist row omits `Execution type` or `Owner`, then map it to readiness/checklist gates with evidence IDs.
+    3. Refresh automatable command evidence (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`) and update objective GO/NO-GO summaries without claiming manual maintainer/hardware completion.
+  - Implemented:
+    - Added readiness Gate `G4.5` plus evidence `E6` for deterministic row-level accountability verification (`missing_rows=0`) across checklist item rows.
+    - Added checklist row `D2a` and evidence block `E6` so ownership completeness is command-verifiable alongside existing structure anchors.
+    - Refreshed this run's timestamps/evidence snapshots and added a gate-completion snapshot table while preserving manual maintainer/hardware/workflow gates as pending blockers.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
+
 ---
 
 ## Execution Log
 
+- 2026-03-03: Closed remaining in-repo readiness/checklist accountability gap by adding deterministic row-level ownership assertions (`G4.5` / `D2a`) backed by command evidence (`awk` reports `checked_rows=35, missing_rows=0`), refreshed automatable evidence timestamps/outputs from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`), and kept all manual maintainer/hardware/workflow gates explicitly pending.
 - 2026-03-03: Tightened remaining ambiguous manual readiness/checklist criteria into verifiable pass conditions (explicit hardware handshake/event expectations, interaction semantics, soak duration/cadence, release artifact coverage, and release-note content requirements), refreshed automatable evidence timestamps/outputs from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift preflight, anchored `rg`), and kept manual maintainer/hardware/workflow gates pending by design.
 - 2026-03-01: Tracker created from roadmap gaps; all items initialized as `TODO`.
 - 2026-03-01: Implemented protocol versioning handshake (`V:1`) and host compatibility checks. Updated firmware boot output, host parser/runtime gating, setup UI event labeling, and parser tests. Verified with `go test ./...`.
