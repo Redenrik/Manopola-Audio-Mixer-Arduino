@@ -520,10 +520,28 @@ Legend:
     - `docs/IMPLEMENTATION_TRACKER.md`
 
 
+
+- [x] `DONE` Refresh readiness/checklist evidence run and tighten remaining ambiguous manual criteria.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` as source of truth, then isolate the highest-impact actionable gap: remaining manual checklist rows that were owner-labeled but still too vague to verify consistently.
+    2. Convert those rows into explicit pass conditions with required observable outputs/evidence payload formats while preserving manual ownership boundaries.
+    3. Re-run automatable readiness commands (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift preflight, anchored `rg`) and refresh inline evidence timestamps/output snippets.
+    4. Recompute objective readiness snapshot and log exactly what shipped versus what remains maintainer-only.
+  - Implemented:
+    - Tightened remaining manual readiness/checklist language into deterministic acceptance criteria (hardware handshake/events, interaction semantics, soak duration/cadence, artifact coverage, and release-notes completeness expectations).
+    - Refreshed automatable gate/checklist evidence timestamps and status rows from this run while keeping manual maintainer/workflow/hardware gates explicitly pending.
+    - Preserved `NO-GO` decision semantics by tying blockers only to unresolved manual gates and not claiming external sign-offs.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
 ---
 
 ## Execution Log
 
+- 2026-03-03: Tightened remaining ambiguous manual readiness/checklist criteria into verifiable pass conditions (explicit hardware handshake/event expectations, interaction semantics, soak duration/cadence, release artifact coverage, and release-note content requirements), refreshed automatable evidence timestamps/outputs from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift preflight, anchored `rg`), and kept manual maintainer/hardware/workflow gates pending by design.
 - 2026-03-01: Tracker created from roadmap gaps; all items initialized as `TODO`.
 - 2026-03-01: Implemented protocol versioning handshake (`V:1`) and host compatibility checks. Updated firmware boot output, host parser/runtime gating, setup UI event labeling, and parser tests. Verified with `go test ./...`.
 - 2026-03-01: Implemented serial reconnect strategy with bounded exponential backoff and clear runtime state logs in host runtime. Added dedicated backoff unit tests and verified with `go test ./...`.
