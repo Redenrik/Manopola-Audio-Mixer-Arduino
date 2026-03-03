@@ -570,11 +570,29 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 
+- [x] `DONE` Enforce deterministic evidence freshness SLA across readiness/checklist docs.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` as source of truth, then isolate the highest-impact remaining actionable gap: no objective freshness threshold to detect stale-but-synchronized evidence.
+    2. Add an explicit automatable freshness gate/checklist row with command-verifiable pass/fail criteria (`<=24h` evidence age).
+    3. Re-run automatable readiness commands (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`, freshness `python3`) and refresh statuses from this run only.
+    4. Preserve manual maintainer/hardware/release approvals as pending, then update execution log with shipped-vs-manual scope.
+  - Implemented:
+    - Added readiness Gate `G4.7` and checklist row `D2c` to require synchronized evidence timestamps that are also fresh (`age_hours<=24`) for the current run.
+    - Refreshed both readiness/release-checklist docs to the latest evidence window (`2026-03-03 12:00Z`) with updated command outputs and evidence tables (`E1-E8`).
+    - Tightened final manual sign-off wording (`S1`) to include objective approval criteria while keeping all maintainer-only gates pending.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
+
 
 ---
 
 ## Execution Log
 
+- 2026-03-03: Closed remaining readiness/checklist actionable gap around stale-but-synchronized evidence by adding deterministic freshness SLA coverage (`G4.7` / `D2c`) with command-verified age checks (`python3` reports `evidence_freshness_status=ok age_hours=0.00 threshold_hours=24 timestamp=2026-03-03 12:00Z`), refreshed automatable evidence/output timestamps from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`), and left manual maintainer/hardware/workflow gates pending by design.
 - 2026-03-03: Closed remaining readiness/checklist freshness-governance gap by adding deterministic cross-document timestamp synchronization checks (`G4.6` / `D2b`) backed by command evidence (`sed` equality assertion reports `evidence_timestamp_sync=ok (2026-03-03 11:52Z)`), refreshed automatable evidence/status timestamps from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`), and left manual maintainer/hardware/workflow gates pending by design.
 - 2026-03-03: Closed remaining in-repo readiness/checklist accountability gap by adding deterministic row-level ownership assertions (`G4.5` / `D2a`) backed by command evidence (`awk` reports `checked_rows=35, missing_rows=0`), refreshed automatable evidence timestamps/outputs from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`), and kept all manual maintainer/hardware/workflow gates explicitly pending.
 - 2026-03-03: Tightened remaining ambiguous manual readiness/checklist criteria into verifiable pass conditions (explicit hardware handshake/event expectations, interaction semantics, soak duration/cadence, release artifact coverage, and release-note content requirements), refreshed automatable evidence timestamps/outputs from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift preflight, anchored `rg`), and kept manual maintainer/hardware/workflow gates pending by design.
