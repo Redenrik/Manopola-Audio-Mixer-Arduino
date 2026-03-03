@@ -503,6 +503,23 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 
+- [x] `DONE` Resolve remaining readiness/checklist ownership-proof gaps (explicit owner column + fresh evidence sync).
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` and isolate the highest-impact actionable in-repo gap: owner placeholders were embedded in free-text evidence notes but not first-class checklist columns.
+    2. Add explicit per-item owner fields to checklist tables and tighten readiness/checklist objective assertions so owner-column presence is command-verifiable.
+    3. Re-run automatable readiness commands (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`) and refresh dated evidence/status blocks from this run.
+    4. Recompute readiness snapshot and log exactly what shipped versus what remains manual maintainer sign-off.
+  - Implemented:
+    - Added explicit `Owner` columns across release checklist sections so each automatable/manual row has a direct accountable owner placeholder (`Codex` or `@maintainer-<name>`).
+    - Tightened readiness/checklist structural assertions to require `Execution type + Owner` table anchors for governance verification.
+    - Refreshed automatable evidence blocks with this run's command outputs/timestamps while keeping manual maintainer/hardware/workflow approvals pending.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
+
 ---
 
 ## Execution Log
@@ -577,6 +594,9 @@ Legend:
 - 2026-03-03: Addressed follow-up inline doc-review comments by replacing broad doc-anchor checks with anchored structural assertions, aligning readiness Gate `G3.1` to require both `go mod verify` and module-drift preflight evidence, and refreshing automatable evidence blocks from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`). Manual maintainer-only gates remain pending by design.
 
 - 2026-03-03: Closed latest readiness/release checklist reviewer follow-ups by adding explicit section-level execution ownership labels directly in checklist headings, tightening doc-governance anchor checks to assert those ownership markers, and refreshing all automatable evidence from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`). Shipped scope is docs/evidence hardening only; manual maintainer/hardware/workflow gates remain pending by design.
+
+
+- 2026-03-03: Resolved remaining readiness/checklist ownership-proof reviewer gaps by promoting owner placeholders into first-class checklist table columns, tightening anchored doc-governance assertions to require `Execution type + Owner` headers, and refreshing automatable evidence from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`). Shipped scope is docs/evidence hardening only; manual maintainer/hardware/workflow gates remain pending by design.
 
 
 ---

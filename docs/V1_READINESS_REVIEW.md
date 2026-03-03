@@ -18,25 +18,25 @@ A `v1.0.0` candidate is acceptable only when **all blocking gates** are complete
 
 | ID | Execution type | Verifiable criteria | Owner | Status | Evidence requirement |
 | --- | --- | --- | --- | --- | --- |
-| G1.1 | Automatable by Codex | `cd mama && go test ./...` completes successfully. | Codex | ✅ Complete (2026-03-03 01:30Z) | `E1` must show only `ok` or `[no test files]` package results and no failures. |
-| G1.2 | Automatable by Codex | Config compatibility behavior remains validated (`mama/internal/config` package covered). | Codex | ✅ Complete (2026-03-03 01:30Z) | `E1` must include `ok  mama/internal/config`. |
-| G1.3 | Automatable by Codex | API/runtime compatibility behavior remains validated (`mama/cmd/mama` package covered). | Codex | ✅ Complete (2026-03-03 01:30Z) | `E1` must include `ok  mama/cmd/mama`. |
+| G1.1 | Automatable by Codex | `cd mama && go test ./...` completes successfully. | Codex | ✅ Complete (2026-03-03 01:44Z) | `E1` must show only `ok` or `[no test files]` package results and no failures. |
+| G1.2 | Automatable by Codex | Config compatibility behavior remains validated (`mama/internal/config` package covered). | Codex | ✅ Complete (2026-03-03 01:44Z) | `E1` must include `ok  mama/internal/config`. |
+| G1.3 | Automatable by Codex | API/runtime compatibility behavior remains validated (`mama/cmd/mama` package covered). | Codex | ✅ Complete (2026-03-03 01:44Z) | `E1` must include `ok  mama/cmd/mama`. |
 | G1.4 | Manual/Maintainer required | Representative hardware flow succeeds: detect board → test port → map knobs → save → verify output changes. | `@maintainer-<name>` | ⬜ Pending | Dated hardware run log: board model, firmware revision, host OS, serial port, observed behavior, and `PASS`/`FAIL`. |
 
 ### Gate 2 — Reliability and resilience (Blocking)
 
 | ID | Execution type | Verifiable criteria | Owner | Status | Evidence requirement |
 | --- | --- | --- | --- | --- | --- |
-| G2.1 | Automatable by Codex | Protocol compatibility handling remains covered by tests (`mama/internal/proto` package covered). | Codex | ✅ Complete (2026-03-03 01:30Z) | `E1` must include `ok  mama/internal/proto`. |
-| G2.2 | Automatable by Codex | Reconnect/backoff/metrics behavior remains covered by tests (`mama/internal/runtime` package covered). | Codex | ✅ Complete (2026-03-03 01:30Z) | `E1` must include `ok  mama/internal/runtime`. |
+| G2.1 | Automatable by Codex | Protocol compatibility handling remains covered by tests (`mama/internal/proto` package covered). | Codex | ✅ Complete (2026-03-03 01:44Z) | `E1` must include `ok  mama/internal/proto`. |
+| G2.2 | Automatable by Codex | Reconnect/backoff/metrics behavior remains covered by tests (`mama/internal/runtime` package covered). | Codex | ✅ Complete (2026-03-03 01:44Z) | `E1` must include `ok  mama/internal/runtime`. |
 | G2.3 | Manual/Maintainer required | Long-run soak for release candidate completed according to `docs/SOAK_TEST_PLAN.md`. | `@maintainer-<name>` | ⬜ Pending | Soak artifact bundle URL/path + run duration + explicit pass/fail summary. |
 
 ### Gate 3 — Platform and release quality (Blocking)
 
 | ID | Execution type | Verifiable criteria | Owner | Status | Evidence requirement |
 | --- | --- | --- | --- | --- | --- |
-| G3.1 | Automatable by Codex | Dependency verification and module drift preflight pass (`go mod verify` exits 0 and no local `go.mod`/`go.sum` drift). | Codex | ✅ Complete (2026-03-03 01:30Z) | `E2` must include `all modules verified`; `E4` must show explicit "no drift" confirmation output. |
-| G3.2 | Automatable by Codex (artifact preflight) | Release checksum script parses and smoke-checksum flow succeeds on staged files. | Codex | ✅ Complete (2026-03-03 01:30Z) | `E3` must include checksum generation path and `OK` verification lines. |
+| G3.1 | Automatable by Codex | Dependency verification and module drift preflight pass (`go mod verify` exits 0 and no local `go.mod`/`go.sum` drift). | Codex | ✅ Complete (2026-03-03 01:44Z) | `E2` must include `all modules verified`; `E4` must show explicit "no drift" confirmation output. |
+| G3.2 | Automatable by Codex (artifact preflight) | Release checksum script parses and smoke-checksum flow succeeds on staged files. | Codex | ✅ Complete (2026-03-03 01:44Z) | `E3` must include checksum generation path and `OK` verification lines. |
 | G3.3 | Manual/Maintainer required | CI matrix (`.github/workflows/ci.yml`) is green for release commit on Linux/Windows/macOS. | `@maintainer-<name>` | ⬜ Pending | Workflow URL + run ID + commit SHA + final conclusion. |
 | G3.4 | Manual/Maintainer required | Security scan (`.github/workflows/security-scan.yml`) is green for release commit. | `@maintainer-<name>` | ⬜ Pending | Workflow URL + run ID + commit SHA + final conclusion. |
 | G3.5 | Manual/Maintainer required | Release assets published with checksums/signing artifacts (`*.sig`, `*.pem`) and verification output. | `@maintainer-<name>` | ⬜ Pending | Release asset links + verification command snippet + result. |
@@ -46,14 +46,14 @@ A `v1.0.0` candidate is acceptable only when **all blocking gates** are complete
 
 | ID | Execution type | Verifiable criteria | Owner | Status | Evidence requirement |
 | --- | --- | --- | --- | --- | --- |
-| G4.1 | Automatable by Codex | `docs/RELEASE_QA_CHECKLIST.md` labels each checklist section/item as automatable vs manual and defines evidence payloads. | Codex | ✅ Complete (2026-03-03 01:30Z) | `E5` must confirm section ownership heading, section classification headings, and item execution/evidence columns. |
-| G4.2 | Automatable by Codex | This document defines objective gate-based GO/NO-GO criteria tied to blocking items. | Codex | ✅ Complete (2026-03-03 01:30Z) | `E5` must confirm GO/NO-GO heading and objective blocker rule text exists. |
+| G4.1 | Automatable by Codex | `docs/RELEASE_QA_CHECKLIST.md` labels each checklist section/item as automatable vs manual, includes explicit owner placeholders, and defines evidence payloads. | Codex | ✅ Complete (2026-03-03 01:44Z) | `E5` must confirm section ownership heading, section classification headings, and item execution/owner/evidence columns. |
+| G4.2 | Automatable by Codex | This document defines objective gate-based GO/NO-GO criteria tied to blocking items. | Codex | ✅ Complete (2026-03-03 01:44Z) | `E5` must confirm GO/NO-GO heading and objective blocker rule text exists. |
 | G4.3 | Manual/Maintainer required | Support/security policy review recorded against `docs/SUPPORT_POLICY.md` and `SECURITY.md`. | `@maintainer-<name>` | ⬜ Pending | Reviewer name + date + approval note/link. |
 | G4.4 | Manual/Maintainer required | Release notes generated/reviewed and deferred non-blocking follow-ups tracked as issues. | `@maintainer-<name>` | ⬜ Pending | Release-notes artifact URL + sign-off + issue links/milestones. |
 
 ---
 
-## Evidence Register (This Run — 2026-03-03 01:30Z)
+## Evidence Register (This Run — 2026-03-03 01:44Z)
 
 | Evidence ID | Execution type | Command(s) | Outcome | Supports gates |
 | --- | --- | --- | --- | --- |
@@ -67,14 +67,14 @@ A `v1.0.0` candidate is acceptable only when **all blocking gates** are complete
 
 ```bash
 $ cd mama && go test ./...
-ok  	mama/cmd/mama	0.014s
+ok  	mama/cmd/mama	0.011s
 ?   	mama/cmd/mama-ui	[no test files]
-ok  	mama/internal/audio	0.022s
-ok  	mama/internal/config	0.031s
-ok  	mama/internal/proto	0.018s
-ok  	mama/internal/runtime	0.019s
+ok  	mama/internal/audio	0.016s
+ok  	mama/internal/config	0.021s
+ok  	mama/internal/proto	0.014s
+ok  	mama/internal/runtime	0.010s
 ?   	mama/internal/serial	[no test files]
-ok  	mama/internal/ui	0.025s
+ok  	mama/internal/ui	0.016s
 ```
 
 ### E2 — Module dependency verification
@@ -110,20 +110,20 @@ no go module drift in working tree
 ```bash
 $ rg -n "^## Acceptance Gates$|^## Objective GO/NO-GO Decision$|^## Evidence Register" docs/V1_READINESS_REVIEW.md
 15:## Acceptance Gates
-56:## Evidence Register (This Run — 2026-03-03 01:30Z)
+56:## Evidence Register (This Run — 2026-03-03 01:44Z)
 143:## Objective GO/NO-GO Decision
-$ rg -n "^## Section ownership and automation boundary$|^## [1-5]\) .*\((Mixed|Manual/Maintainer required)\)$|^\| ID \| Readiness gate mapping \| Execution type \|" docs/RELEASE_QA_CHECKLIST.md
+$ rg -n "^## Section ownership and automation boundary$|^## [1-5]\) .*\((Mixed|Manual/Maintainer required)\)$|^\| ID \| Readiness gate mapping \| Execution type \| Owner \|" docs/RELEASE_QA_CHECKLIST.md
 9:## Section ownership and automation boundary
 21:## 1) Build & Test Baseline (Mixed)
-23:| ID | Readiness gate mapping | Execution type | Actionable verification step | Command/reference | Current status | Evidence / required format |
+23:| ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Command/reference | Current status | Evidence / required format |
 33:## 2) Runtime and Config Verification (Mixed)
-35:| ID | Readiness gate mapping | Execution type | Actionable verification step | Command/reference | Current status | Evidence / required format |
+35:| ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Command/reference | Current status | Evidence / required format |
 46:## 3) Release Artifacts and Integrity (Mixed)
-48:| ID | Readiness gate mapping | Execution type | Actionable verification step | Command/reference | Current status | Evidence / required format |
+48:| ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Command/reference | Current status | Evidence / required format |
 62:## 4) Documentation and Governance (Mixed)
-64:| ID | Readiness gate mapping | Execution type | Actionable verification step | Command/reference | Current status | Evidence / required format |
+64:| ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Command/reference | Current status | Evidence / required format |
 76:## 5) Final Sign-off (Manual/Maintainer required)
-78:| ID | Readiness gate mapping | Execution type | Actionable verification step | Current status | Evidence / required format |
+78:| ID | Readiness gate mapping | Execution type | Owner | Actionable verification step | Current status | Evidence / required format |
 ```
 
 ### Manual evidence template (all pending manual gates)
