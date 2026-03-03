@@ -5,18 +5,18 @@
 - End users: should not need terminal usage.
 - Maintainers: generate release artifacts from source.
 
-## End User Install (Planned Release UX)
+## End User Install (No Terminal)
 
 Recommended distribution format: portable ZIP.
 
 User steps:
-1. Download release ZIP.
+1. Download release ZIP from the project Releases page.
 2. Extract to any folder (for example `Desktop\MAMA`).
 3. Double-click `Open Setup UI.cmd`.
 4. Select serial port, assign mappings, save.
 5. Double-click `Start Mixer.cmd`.
 
-No service installation required.
+No service installation required and no terminal commands are needed for this flow.
 
 ## Maintainer Build (Windows)
 
