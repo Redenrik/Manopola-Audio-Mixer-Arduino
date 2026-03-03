@@ -252,13 +252,20 @@ Release signing/notarization automation and maintainer setup details are documen
 
 ## No-Command-Line Install (Windows End Users)
 
-Yes—there is a non-technical install path designed to avoid terminals/CLI.
+Yes - there is a non-technical install path designed to avoid terminals/CLI.
 
-1. Download the **portable ZIP** from Releases.
+1. Open **Releases -> Assets** and download the Windows portable package (`mama-windows-amd64-portable.zip`).
+   Do **not** download GitHub's auto-generated `Source code (zip)`: that archive is source-only and does not contain `.exe` or `.cmd` launchers.
+   If the extracted folder is named `Manopola-Audio-Mixer-Arduino`, you downloaded the source archive by mistake.
+   Quick check: if you see folders like `firmware`, `mama`, and `scripts`, you are in the source archive, not the end-user package.
 2. Extract it to a folder (for example `Desktop\MAMA`).
-3. Double-click `Open Setup UI.cmd` to configure port + knob mappings.
-4. (Optional) In Setup UI, enable **Launch mixer at OS startup** and click **Apply Startup Setting** for automatic login start on Windows/macOS packages.
-5. Double-click `Start Mixer.cmd` to run the mixer.
+3. Open the extracted folder and find the clickable setup files:
+   - `Desktop\MAMA\Open Setup UI.cmd`
+   - `Desktop\MAMA\Start Mixer.cmd`
+   If extraction creates an inner folder (for example `Desktop\MAMA\mama-windows-amd64-portable`), open that inner folder and use the same two files there.
+4. Double-click `Open Setup UI.cmd` to configure port + knob mappings.
+5. (Optional) In Setup UI, enable **Launch mixer at OS startup** and click **Apply Startup Setting** for automatic login start on Windows/macOS packages.
+6. Double-click `Start Mixer.cmd` to run the mixer.
 
 No service installation is required; uninstall is deleting the folder.
 

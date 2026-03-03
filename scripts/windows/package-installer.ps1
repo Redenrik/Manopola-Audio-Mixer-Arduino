@@ -25,12 +25,15 @@ New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
 $installerPath = Join-Path $outDir "MAMA-Setup-$AppVersion.exe"
 
-& $iscc.Source \
-    "/DMyAppVersion=$AppVersion" \
-    "/DSourceDir=$portablePath" \
-    "/DOutputDir=$outDir" \
-    "/DOutputBaseFilename=MAMA-Setup-$AppVersion" \
+$isccArgs = @(
+    "/DMyAppVersion=$AppVersion"
+    "/DSourceDir=$portablePath"
+    "/DOutputDir=$outDir"
+    "/DOutputBaseFilename=MAMA-Setup-$AppVersion"
     $issPath
+)
+
+& $iscc.Source @isccArgs
 
 if (-not (Test-Path $installerPath)) {
     throw "Installer generation failed: $installerPath was not created."
