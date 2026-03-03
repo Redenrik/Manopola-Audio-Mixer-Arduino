@@ -640,7 +640,26 @@ Legend:
 
 ---
 
+- [x] `DONE` Close remaining readiness/checklist inline-review gap: enforce manual-row owner/evidence formatting contract.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` and isolate the highest-impact actionable in-repo gap from inline comments: manual checklist accountability requirements existed but lacked an explicit deterministic parser gate.
+    2. Add a new automatable Gate 4/checklist criterion that validates all manual rows keep the maintainer owner placeholder and structured evidence payload format.
+    3. Re-run automatable readiness commands (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, doc-structure/assertion commands, manual-row parser assertion) and refresh evidence timestamps/statuses from this run.
+    4. Recompute objective GO/NO-GO snapshot, preserving manual maintainer/hardware/workflow sign-offs as pending.
+  - Implemented:
+    - Added readiness gate `G4.10` plus checklist row `D2f` and evidence `E11` to assert manual-row owner/evidence formatting (`manual_rows=19`, `bad_owner=0`, `bad_evidence_format=0`).
+    - Refreshed readiness/checklist evidence windows and automatable status rows to the latest run while preserving manual gates as pending and `NO-GO` by objective blocker policy.
+    - Updated Gate 4/automatable totals to include the new deterministic governance check (`G4.5-G4.10`, `E1-E11`).
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
 ## Execution Log
+
+- 2026-03-03: Closed the latest readiness/checklist inline-review gap by adding deterministic manual-row accountability enforcement (`G4.10` / `D2f` / `E11`) that validates maintainer-owner placeholders and structured evidence payload format for all manual checklist rows. Refreshed automatable evidence from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, doc-structure/accountability/timestamp/freshness/linkage checks, manual-row parser assertion). Shipped scope is docs/evidence hardening only; manual maintainer/hardware/workflow approvals remain pending by design.
+
 
 - 2026-03-03: Closed the highest-impact remaining readiness/checklist reviewer gap by adding full automatable evidence-linkage coverage (`G4.9` / `D2e`) plus new evidence `E10` that verifies every automatable checklist row across Sections 1-4 is complete and references existing evidence IDs; refreshed this run's automatable evidence/status timestamps to `2026-03-03 12:51Z` (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`, freshness `python3`, Gate-4 completeness `python3`, full-linkage `python3`) while leaving manual maintainer/hardware/workflow sign-offs pending by design.
 - 2026-03-03: Closed the remaining actionable reviewer gap around Gate-4 documentation governance by adding deterministic checklist completeness validation (`G4.8` / `D2d`) with new `E9` parser-backed evidence, refreshed automatable evidence/status timestamps to `2026-03-03 12:32Z` (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`, freshness `python3`, Gate-4 completeness `python3`), and left all maintainer/hardware/workflow sign-offs pending by design.
