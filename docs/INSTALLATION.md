@@ -19,6 +19,22 @@ User steps:
 
 No service installation required and no terminal commands are needed for this flow. Startup integration is available for Windows/macOS packaged launches.
 
+## Quick Start Bundle (Repository Checkout)
+
+For users running from a local source checkout on Linux/macOS, a one-command quick-start bundle is available:
+
+```bash
+scripts/quickstart.sh
+```
+
+This writes `dist/mama-quickstart/` with both binaries, config, and launchers (`open-setup-ui.sh` and `start-mixer.sh`).
+
+Optional smoke validation:
+
+```bash
+scripts/quickstart-smoke-test.sh
+```
+
 ## Maintainer Build (Windows)
 
 From repo root:
@@ -92,6 +108,5 @@ This writes `update-manifest.json` with version, URL, checksum, and size metadat
 Current scripts target Windows first.
 
 For Linux/macOS maintainers:
-- build `mama` and `mama-ui` with `go build`
-- place both binaries and `config.yaml` in one directory
+- run `scripts/quickstart.sh` to build `mama` and `mama-ui` and assemble a portable directory automatically
 - create desktop launchers (`.desktop`/app bundle) if needed

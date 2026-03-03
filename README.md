@@ -125,6 +125,33 @@ scripts/firmware/run_i2c_robustness_test.sh
 
 Then open the shown local URL and use the first-run wizard (or manual controls) to detect the board, test connection, optionally apply a mapping template (streaming/conferencing/music/gaming), map knobs, and save. You can also create a browser-local backup snapshot, restore it, or import/export JSON config files before persisting with **Save Config**. The setup UI supports keyboard-first navigation with visible focus states, announces status updates for assistive technologies, and provides a top-level language selector with initial English/Italian coverage.
 
+## Quick Install / Start (Average Users from Source)
+
+If you have this repository checked out and just want a simple runnable folder without manual setup steps:
+
+```bash
+scripts/quickstart.sh
+```
+
+This creates `dist/mama-quickstart/` with:
+- `mama` runtime binary
+- `mama-ui` setup UI binary
+- `config.yaml`
+- `open-setup-ui.sh`
+- `start-mixer.sh`
+
+Then run:
+
+```bash
+./dist/mama-quickstart/open-setup-ui.sh
+```
+
+and after saving your mappings, run:
+
+```bash
+./dist/mama-quickstart/start-mixer.sh
+```
+
 ## Config Behavior
 
 Config path auto-resolution:
