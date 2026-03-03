@@ -586,12 +586,29 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 
+- [x] `DONE` Replace static freshness-proof timestamping with runtime-derived assertions and refresh readiness/checklist evidence.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` to address the highest-impact in-repo reviewer gap: freshness evidence currently embeds a fixed timestamp instead of consuming runtime UTC from the command invocation.
+    2. Update automatable freshness evidence snippets/criteria so the timestamp-age check consumes shell-captured `now_utc` at execution time, then refresh gate/checklist statuses and evidence tables from this run.
+    3. Re-run automatable verification commands (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, ownership `awk`, timestamp sync `sed`, freshness `python3`) and record outputs inline.
+    4. Preserve manual maintainer/hardware/release approvals as pending and append an execution-log note describing shipped scope versus remaining manual sign-offs.
+  - Implemented:
+    - Replaced the freshness evidence Python snippet in both readiness docs so it consumes shell-provided runtime UTC (`NOW_UTC`) rather than a hard-coded timestamp baseline.
+    - Refreshed automatable gate/checklist statuses and evidence outputs for this run (`2026-03-03 12:13Z`) including updated test, checksum, timestamp sync, and freshness command results.
+    - Kept all manual/hardware/workflow/release sign-off rows explicitly pending with owner placeholders and required evidence payload formats.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
 
 
 ---
 
 ## Execution Log
 
+- 2026-03-03: Closed the remaining evidence-freshness reviewer gap by replacing hard-coded freshness baseline timestamps with runtime-derived `NOW_UTC` assertions in both readiness/checklist docs, then refreshed automatable evidence and statuses for this run (`2026-03-03 12:13Z`) using `cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`, and freshness `python3`; manual maintainer/hardware/workflow sign-offs remain pending by design.
 - 2026-03-03: Closed remaining readiness/checklist actionable gap around stale-but-synchronized evidence by adding deterministic freshness SLA coverage (`G4.7` / `D2c`) with command-verified age checks (`python3` reports `evidence_freshness_status=ok age_hours=0.00 threshold_hours=24 timestamp=2026-03-03 12:00Z`), refreshed automatable evidence/output timestamps from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`, timestamp sync `sed`), and left manual maintainer/hardware/workflow gates pending by design.
 - 2026-03-03: Closed remaining readiness/checklist freshness-governance gap by adding deterministic cross-document timestamp synchronization checks (`G4.6` / `D2b`) backed by command evidence (`sed` equality assertion reports `evidence_timestamp_sync=ok (2026-03-03 11:52Z)`), refreshed automatable evidence/status timestamps from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`, row-level `awk`), and left manual maintainer/hardware/workflow gates pending by design.
 - 2026-03-03: Closed remaining in-repo readiness/checklist accountability gap by adding deterministic row-level ownership assertions (`G4.5` / `D2a`) backed by command evidence (`awk` reports `checked_rows=35, missing_rows=0`), refreshed automatable evidence timestamps/outputs from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, anchored `rg`), and kept all manual maintainer/hardware/workflow gates explicitly pending.
@@ -694,4 +711,3 @@ Constraints:
 - If you discover prerequisites, add them as new checklist entries before continuing.
 - Preserve backward compatibility unless the tracker item explicitly says otherwise.
 ```
-
