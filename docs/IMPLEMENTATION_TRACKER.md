@@ -690,7 +690,26 @@ Legend:
     - `docs/RELEASE_QA_CHECKLIST.md`
     - `docs/IMPLEMENTATION_TRACKER.md`
 
+- [x] `DONE` Close readiness evidence freshness loophole by rejecting future-dated timestamps and refreshing this-run proof.
+  - Status history: `IN_PROGRESS` (2026-03-03) -> `DONE` (2026-03-03).
+  - Implementation plan (executed this iteration):
+    1. Re-open `docs/V1_READINESS_REVIEW.md` and `docs/RELEASE_QA_CHECKLIST.md` and isolate the highest-impact actionable in-repo gap from inline comments: freshness validation currently allows future-dated evidence timestamps to pass.
+    2. Tighten freshness criteria wording and parser logic so evidence is valid only when timestamps are synchronized, not in the future, and within the 24-hour window.
+    3. Re-run automatable readiness checks (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, structure/accountability parsers), then refresh evidence outputs/status timestamps in both docs.
+    4. Recompute GO/NO-GO blocker snapshot and record shipped-vs-manual scope in the execution log.
+  - Implemented:
+    - Hardened Gate `G4.7` / checklist `D2c` freshness acceptance wording so timestamps must be synchronized, non-future, and no older than 24 hours.
+    - Updated shared `E8` freshness parser snippet to fail with explicit `reason=future_timestamp` for negative ages and `reason=stale_timestamp` for >24h ages.
+    - Refreshed this-run readiness/checklist evidence statuses to `2026-03-03 15:03Z` using current command outputs, including updated manual-row accountability totals.
+  - Changed files/tests:
+    - `docs/V1_READINESS_REVIEW.md`
+    - `docs/RELEASE_QA_CHECKLIST.md`
+    - `docs/IMPLEMENTATION_TRACKER.md`
+
+
 ## Execution Log
+
+- 2026-03-03: Closed the highest-impact remaining in-repo readiness-doc gap by hardening freshness validation against future-dated timestamps (`G4.7`/`D2c`/`E8`) and refreshing automatable evidence/status timestamps to `2026-03-03 15:03Z`. Re-ran checks from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift preflight, and documentation/accountability parser assertions). Manual maintainer/hardware/workflow gates remain pending by design.
 
 - 2026-03-03: Closed highest-impact remaining in-repo readiness doc gap by reconciling Gate-4 criteria with parser evidence (`G4.8`/`D2d` now explicitly cover eight automatable rows) and correcting manual-accountability expectations to actual parser coverage (`manual_rows=17`). Refreshed automatable evidence/status timestamps to `2026-03-03 14:11Z` from this run (`cd mama && go test ./...`, `cd mama && go mod verify`, checksum preflight/smoke, module drift, `rg` anchors, and parser assertions). Manual maintainer/hardware/workflow release gates remain pending by design.
 
