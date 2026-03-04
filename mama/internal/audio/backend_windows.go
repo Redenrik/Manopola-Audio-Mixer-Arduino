@@ -23,7 +23,7 @@ func (b *windowsBackend) Adjust(target config.TargetType, name string, step floa
 		return err
 	}
 	if target == config.TargetMasterOut && strings.TrimSpace(name) == "" {
-		showWindowsVolumeFlyout(b.baseBackend.master)
+		showWindowsVolumeFlyoutForAdjust(b.baseBackend.master)
 	}
 	return nil
 }
@@ -33,7 +33,7 @@ func (b *windowsBackend) ToggleMute(target config.TargetType, name string) error
 		return err
 	}
 	if target == config.TargetMasterOut && strings.TrimSpace(name) == "" {
-		showWindowsVolumeFlyout(b.baseBackend.master)
+		showWindowsVolumeFlyoutForMuteToggle(b.baseBackend.master)
 	}
 	return nil
 }

@@ -7,9 +7,13 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"go.bug.st/serial"
+	"mama/internal/proto"
 )
 
 type Reader struct {
@@ -23,9 +27,16 @@ type lineReaderPort interface {
 }
 
 const (
-	maxLineBytes  = 1024 * 1024
-	readChunkSize = 256
-	idleReadDelay = 5 * time.Millisecond
+	maxLineBytes                = 1024 * 1024
+	readChunkSize               = 256
+	idleReadDelay               = 5 * time.Millisecond
+	defaultProbeProtocolTimeout = 2500 * time.Millisecond
+	probeReadTimeout            = 80 * time.Millisecond
+)
+
+var (
+	mamaHelloLinePattern  = regexp.MustCompile(`(?i)^mama\s*[:=]\s*(?:hello|protocol|v)\s*[:=]\s*([0-9]+)\s*$`)
+	mamaHelloTokenPattern = regexp.MustCompile(`(?i)\bmama\s*[:=]\s*(?:hello|protocol|v)\s*[:=]\s*([0-9]+)\b`)
 )
 
 func ListPorts() ([]string, error) {
@@ -55,6 +66,126 @@ func Probe(portName string, baud int) error {
 		return err
 	}
 	return p.Close()
+}
+
+// ProbeProtocolHello opens a serial port and waits for a protocol hello line (V:<n>).
+// It returns the firmware protocol version when compatible with this host.
+func ProbeProtocolHello(portName string, baud int, timeout time.Duration) (int, error) {
+	portName = strings.TrimSpace(portName)
+	if portName == "" {
+		return 0, fmt.Errorf("port is required")
+	}
+	if baud <= 0 {
+		return 0, fmt.Errorf("baud must be > 0")
+	}
+	if timeout <= 0 {
+		timeout = defaultProbeProtocolTimeout
+	}
+
+	mode := &serial.Mode{BaudRate: baud}
+	p, err := serial.Open(portName, mode)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = p.Close() }()
+
+	if err := p.SetReadTimeout(probeReadTimeout); err != nil {
+		return 0, err
+	}
+
+	version, err := probeProtocolVersion(p, timeout)
+	if err != nil {
+		return 0, err
+	}
+	if !proto.IsProtocolCompatible(version) {
+		return 0, fmt.Errorf("protocol mismatch: firmware=%d host=%d", version, proto.HostProtocolVersion)
+	}
+	return version, nil
+}
+
+func probeProtocolVersion(port lineReaderPort, timeout time.Duration) (int, error) {
+	deadline := time.Now().Add(timeout)
+	chunk := make([]byte, readChunkSize)
+	var pending bytes.Buffer
+
+	for time.Now().Before(deadline) {
+		n, err := port.Read(chunk)
+		if err != nil {
+			if isIdleReadError(err) {
+				time.Sleep(idleReadDelay)
+				continue
+			}
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return 0, err
+		}
+		if n == 0 {
+			time.Sleep(idleReadDelay)
+			continue
+		}
+
+		data := chunk[:n]
+		for len(data) > 0 {
+			i := bytes.IndexAny(data, "\n\r\x00")
+			if i < 0 {
+				if _, werr := pending.Write(data); werr != nil {
+					return 0, werr
+				}
+				if pending.Len() > maxLineBytes {
+					return 0, fmt.Errorf("serial line too long (> %d bytes)", maxLineBytes)
+				}
+				break
+			}
+
+			if _, werr := pending.Write(data[:i]); werr != nil {
+				return 0, werr
+			}
+			if pending.Len() > maxLineBytes {
+				return 0, fmt.Errorf("serial line too long (> %d bytes)", maxLineBytes)
+			}
+
+			line := pending.String()
+			pending.Reset()
+
+			if version, ok, err := parseMAMAProtocolVersion(line, mamaHelloLinePattern); ok || err != nil {
+				if err != nil {
+					return 0, err
+				}
+				return version, nil
+			}
+			if version, ok, err := parseMAMAProtocolVersion(line, mamaHelloTokenPattern); ok || err != nil {
+				if err != nil {
+					return 0, err
+				}
+				return version, nil
+			}
+
+			delimiter := data[i]
+			data = data[i+1:]
+			if len(data) > 0 && ((delimiter == '\r' && data[0] == '\n') || (delimiter == '\n' && data[0] == '\r')) {
+				data = data[1:]
+			}
+		}
+	}
+
+	return 0, fmt.Errorf("no MAMA protocol hello detected")
+}
+
+func parseMAMAProtocolVersion(line string, pattern *regexp.Regexp) (int, bool, error) {
+	line = strings.TrimSpace(strings.ReplaceAll(line, "\x00", ""))
+	matches := pattern.FindStringSubmatch(line)
+	if len(matches) != 2 {
+		return 0, false, nil
+	}
+	version, err := strconv.Atoi(strings.TrimSpace(matches[1]))
+	if err != nil {
+		return 0, true, fmt.Errorf("bad MAMA protocol version: %q", line)
+	}
+	if version <= 0 {
+		return 0, true, fmt.Errorf("bad MAMA protocol version: %q", line)
+	}
+	return version, true, nil
 }
 
 func (r *Reader) Close() error { return r.port.Close() }

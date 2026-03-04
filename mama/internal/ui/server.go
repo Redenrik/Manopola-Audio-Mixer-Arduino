@@ -22,14 +22,18 @@ import (
 var staticAssets embed.FS
 
 type Server struct {
-	cfgPath string
-	backend audio.Backend
+	cfgPath            string
+	backend            audio.Backend
+	listPorts          func() ([]string, error)
+	probeProtocolHello func(string, int, time.Duration) (int, error)
 }
 
 func New(cfgPath string) *Server {
 	return &Server{
-		cfgPath: cfgPath,
-		backend: audio.NewBackend(),
+		cfgPath:            cfgPath,
+		backend:            audio.NewBackend(),
+		listPorts:          serialx.ListPorts,
+		probeProtocolHello: serialx.ProbeProtocolHello,
 	}
 }
 
@@ -44,6 +48,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/config", s.handleConfig)
 	mux.HandleFunc("/api/ports", s.handlePorts)
 	mux.HandleFunc("/api/port-test", s.handlePortTest)
+	mux.HandleFunc("/api/port-autodetect", s.handlePortAutoDetect)
 	mux.HandleFunc("/api/targets", s.handleTargets)
 	mux.HandleFunc("/api/identify", s.handleIdentify)
 	mux.HandleFunc("/api/startup", s.handleStartup)
@@ -118,7 +123,7 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePorts(w http.ResponseWriter, r *http.Request) {
-	ports, err := serialx.ListPorts()
+	ports, err := s.listPorts()
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -154,16 +159,81 @@ func (s *Server) handlePortTest(w http.ResponseWriter, r *http.Request) {
 		in.Baud = config.DefaultBaud
 	}
 
-	if err := serialx.Probe(in.Port, in.Baud); err != nil {
+	version, err := s.probeProtocolHello(in.Port, in.Baud, 0)
+	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":      true,
-		"port":    in.Port,
-		"baud":    in.Baud,
-		"message": "serial port is reachable",
+		"ok":              true,
+		"port":            in.Port,
+		"baud":            in.Baud,
+		"protocolVersion": version,
+		"message":         fmt.Sprintf("MAMA device detected (protocol v%d)", version),
+	})
+}
+
+func (s *Server) handlePortAutoDetect(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	baud := config.DefaultBaud
+	if rawBaud := strings.TrimSpace(r.URL.Query().Get("baud")); rawBaud != "" {
+		v, err := strconv.Atoi(rawBaud)
+		if err != nil || v <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid baud query parameter"})
+			return
+		}
+		baud = v
+	}
+
+	ports, err := s.listPorts()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if ports == nil {
+		ports = []string{}
+	}
+
+	attempts := make([]map[string]any, 0, len(ports))
+	for _, port := range ports {
+		attempt := map[string]any{
+			"port": port,
+		}
+		version, probeErr := s.probeProtocolHello(port, baud, 0)
+		if probeErr != nil {
+			attempt["ok"] = false
+			attempt["error"] = probeErr.Error()
+			attempts = append(attempts, attempt)
+			continue
+		}
+
+		attempt["ok"] = true
+		attempt["protocolVersion"] = version
+		attempts = append(attempts, attempt)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":              true,
+			"ports":           ports,
+			"attempts":        attempts,
+			"detected":        port,
+			"baud":            baud,
+			"protocolVersion": version,
+			"message":         fmt.Sprintf("MAMA device detected on %s (protocol v%d)", port, version),
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":       true,
+		"ports":    ports,
+		"attempts": attempts,
+		"detected": "",
+		"baud":     baud,
+		"message":  "no MAMA device detected on available serial ports",
 	})
 }
 

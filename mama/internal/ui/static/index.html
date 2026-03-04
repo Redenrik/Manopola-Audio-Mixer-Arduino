@@ -185,6 +185,9 @@
       border: 4px solid #87a89d;
       position: relative;
       background: #fff;
+      transform: rotate(0deg);
+      transition: transform 120ms ease;
+      transform-origin: 50% 50%;
     }
 
     .knob .dial::after {
@@ -346,18 +349,6 @@
       </div>
     </section>
 
-    <section class="panel">
-      <h2 id="wizardHeading">First-Run Wizard</h2>
-      <p id="wizardIntro">Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.</p>
-      <div class="actions">
-        <button class="btn-primary" id="wizardStart" type="button">Start Wizard</button>
-        <button id="wizardNext" type="button">Next Step</button>
-        <button id="wizardReset" type="button">Reset</button>
-      </div>
-      <ol class="wizard-steps" id="wizardSteps"></ol>
-      <p class="status" id="wizardStatus" role="status" aria-live="polite"></p>
-    </section>
-
     <section class="panel split">
       <div>
         <h2 id="connectionHeading">Connection</h2>
@@ -380,9 +371,6 @@
           <input id="debugInput" type="checkbox" aria-label="Enable debug logs">
           <span id="debugLabel">Debug logs enabled</span>
         </label>
-        <div class="actions">
-          <button type="button" id="testConnection">Test Connection</button>
-        </div>
         <div class="actions" style="margin-top:8px; align-items:center;">
           <label style="display:flex; gap:8px; align-items:center; margin:0;">
             <input id="startupEnabled" type="checkbox" aria-label="Launch mixer at OS startup">
@@ -396,11 +384,7 @@
 
       <div>
         <h2 id="identifyHeading">Knob Identification</h2>
-        <p id="identifyIntro">Click <strong>Start Identify</strong> then rotate or press any physical knob. Matching indicator flashes below.</p>
-        <div class="actions">
-          <button class="btn-secondary" id="startIdentify" type="button">Start Identify</button>
-          <button id="stopIdentify" type="button">Stop</button>
-        </div>
+        <p id="identifyIntro">Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.</p>
         <div class="knobs" id="knobGrid"></div>
         <p class="status" id="identifyStatus" role="status" aria-live="polite"></p>
       </div>
@@ -469,6 +453,12 @@
       knownTargets: ["master_out", "mic_in", "line_in", "app", "group"],
       discoveredTargets: [],
       identifyES: null,
+      identifyPort: "",
+      identifyBaud: 0,
+      identifyStartTimer: null,
+      identifyRetryTimer: null,
+      autoApplyingPort: false,
+      userPortOverride: false,
       manualPortDirty: false,
       language: "en",
       groupEditor: {
@@ -545,6 +535,7 @@
 
     const knobCount = 5;
     const knobTimers = new Map();
+    const knobPressTimers = new Map();
     const backupStorageKey = "mama.setup.config.backup.v1";
 
     const languageStorageKey = "mama.setup.language.v1";
@@ -559,7 +550,7 @@
         wizardIntro: "Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.",
         wizardStart: "Start Wizard", wizardNext: "Next Step", wizardReset: "Reset",
         connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
-        identifyHeading: "Knob Identification", identifyIntro: "Click Start Identify then rotate or press any physical knob. Matching indicator flashes below.", startIdentify: "Start Identify", stopIdentify: "Stop",
+        identifyHeading: "Knob Identification", identifyIntro: "Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.", startIdentify: "Start Identify", stopIdentify: "Stop",
         mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerStep: "Step (0..1)", addMapping: "Add Mapping", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).",
         groupEditButton: "Edit",
         groupEditorTitle: "Group Editor",
@@ -592,7 +583,7 @@
         wizardIntro: "Segui questa procedura per rilevare la scheda, confermare la seriale, mappare le manopole, salvare e verificare gli eventi live.",
         wizardStart: "Avvia procedura", wizardNext: "Passo successivo", wizardReset: "Reimposta",
         connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
-        identifyHeading: "Identificazione manopole", identifyIntro: "Fai clic su Avvia identificazione, poi ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
+        identifyHeading: "Identificazione manopole", identifyIntro: "L'attivita delle manopole viene rilevata automaticamente una volta configurata la porta seriale. Ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
         mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerStep: "Step (0..1)", addMapping: "Aggiungi mappatura", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).",
         groupEditButton: "Modifica",
         groupEditorTitle: "Editor Gruppo",
@@ -650,7 +641,6 @@
       localStorage.setItem(languageStorageKey, state.language);
       $("languageSelect").value = state.language;
       localizeStaticUI();
-      renderWizard();
       renderTemplateOptions();
       createKnobCards();
       updatePlatformWarnings();
@@ -730,16 +720,21 @@
 
     function createKnobCards() {
       const grid = $("knobGrid");
+      for (const timer of knobPressTimers.values()) clearTimeout(timer);
+      knobPressTimers.clear();
       grid.innerHTML = "";
       for (let i = 1; i <= knobCount; i++) {
         const card = document.createElement("div");
         card.className = "knob";
         card.id = "knob-" + i;
+        card.dataset.angle = "0";
         card.innerHTML = `
           <div class="dial"></div>
           <div><strong>Knob ${i}</strong></div>
           <div class="hint" id="knob-${i}-meta">${t("waiting")}</div>
         `;
+        const dial = card.querySelector(".dial");
+        if (dial) dial.style.transform = "rotate(0deg)";
         grid.appendChild(card);
       }
     }
@@ -761,10 +756,30 @@
       const card = $("knob-" + knobId);
       if (!card) return;
       card.classList.remove("active-rotate", "active-press");
+      const dial = card.querySelector(".dial");
       if (kind === "button_press") {
         card.classList.add("active-press");
+        if (dial) {
+          const angle = Number(card.dataset.angle || "0");
+          dial.style.transform = "rotate(" + angle + "deg) scale(0.84)";
+          if (knobPressTimers.has(knobId)) clearTimeout(knobPressTimers.get(knobId));
+          knobPressTimers.set(knobId, setTimeout(() => {
+            if (knobPressTimers.has(knobId)) knobPressTimers.delete(knobId);
+            const stableAngle = Number(card.dataset.angle || "0");
+            dial.style.transform = "rotate(" + stableAngle + "deg)";
+          }, 130));
+        }
       } else {
+        if (knobPressTimers.has(knobId)) {
+          clearTimeout(knobPressTimers.get(knobId));
+          knobPressTimers.delete(knobId);
+        }
         card.classList.add("active-rotate");
+        const stepDelta = Number(delta) || 0;
+        const currentAngle = Number(card.dataset.angle || "0");
+        const nextAngle = currentAngle + (stepDelta * 14);
+        card.dataset.angle = String(nextAngle);
+        if (dial) dial.style.transform = "rotate(" + nextAngle + "deg)";
       }
       const meta = $("knob-" + knobId + "-meta");
       if (meta) {
@@ -1475,6 +1490,7 @@
       $("baudInput").value = String(serial.baud || 115200);
       $("portInput").value = serial.port || "";
       state.manualPortDirty = (serial.port || "").trim().length > 0;
+      state.userPortOverride = (serial.port || "").trim().length > 0;
       renderMappings(cfg.mappings || []);
     }
 
@@ -1545,6 +1561,43 @@
         $("portInput").value = selected;
         state.manualPortDirty = false;
       }
+    }
+
+    function applyDetectedPort(port) {
+      const value = String(port || "").trim();
+      if (!value) return false;
+      const select = $("portSelect");
+      const hasPort = Array.from(select.options).some((o) => o.value === value);
+      if (!hasPort) return false;
+      state.autoApplyingPort = true;
+      select.value = value;
+      $("portInput").value = value;
+      state.manualPortDirty = false;
+      state.userPortOverride = false;
+      state.autoApplyingPort = false;
+      return true;
+    }
+
+    async function autoDetectPort() {
+      const baud = parseInt($("baudInput").value, 10) || 115200;
+      setStatus("connectionStatus", state.language === "it" ? "Rilevamento automatico porta MAMA..." : "Auto-detecting MAMA serial port...", "ok");
+      const body = await fetchJSON("/api/port-autodetect?baud=" + encodeURIComponent(String(baud)));
+      const detected = typeof body.detected === "string" ? body.detected.trim() : "";
+      const current = effectivePort().trim();
+      const keepUserSelection = state.userPortOverride && current && (!detected || current.toLowerCase() !== detected.toLowerCase());
+      if (detected && !keepUserSelection && applyDetectedPort(detected)) {
+        setStatus("connectionStatus", body.message || ((state.language === "it" ? "Dispositivo MAMA rilevato su " : "MAMA device detected on ") + detected), "ok");
+        return detected;
+      }
+      if (detected && keepUserSelection) {
+        const msg = state.language === "it"
+          ? `MAMA rilevato su ${detected}. Selezione manuale mantenuta (${current}).`
+          : `MAMA detected on ${detected}. Keeping your manual selection (${current}).`;
+        setStatus("connectionStatus", msg, "ok");
+        return detected;
+      }
+      setStatus("connectionStatus", body.message || (state.language === "it" ? "Nessun dispositivo MAMA rilevato sulle porte seriali disponibili." : "No MAMA device detected on available serial ports."));
+      return "";
     }
 
     async function testConnection() {
@@ -1659,12 +1712,56 @@
       setStatus("saveStatus", state.language === "it" ? `Template applicato: ${label}. Controlla le mappature e clicca Salva config.` : `Applied template: ${label}. Review mappings and click Save Config.`, "ok");
     }
 
-    function stopIdentify() {
+    function scheduleIdentifyStart(delayMs = 260) {
+      const port = effectivePort();
+      if (!port) {
+        setStatus("connectionStatus", state.language === "it" ? "Porta seriale non configurata." : "Serial port not configured.");
+      } else {
+        const baud = parseInt($("baudInput").value, 10) || 115200;
+        const sameConfig = state.identifyES && state.identifyPort === port && state.identifyBaud === baud;
+        if (!sameConfig) {
+          setStatus("connectionStatus", state.language === "it" ? "Applicazione impostazioni seriale..." : "Applying serial settings...");
+        }
+      }
+      if (state.identifyStartTimer) {
+        clearTimeout(state.identifyStartTimer);
+        state.identifyStartTimer = null;
+      }
+      state.identifyStartTimer = setTimeout(() => {
+        state.identifyStartTimer = null;
+        startIdentify();
+      }, delayMs);
+    }
+
+    function scheduleIdentifyRetry(delayMs = 1800) {
+      if (state.identifyRetryTimer) {
+        clearTimeout(state.identifyRetryTimer);
+        state.identifyRetryTimer = null;
+      }
+      state.identifyRetryTimer = setTimeout(() => {
+        state.identifyRetryTimer = null;
+        startIdentify();
+      }, delayMs);
+    }
+
+    function stopIdentify(silent = false) {
+      if (state.identifyStartTimer) {
+        clearTimeout(state.identifyStartTimer);
+        state.identifyStartTimer = null;
+      }
+      if (state.identifyRetryTimer) {
+        clearTimeout(state.identifyRetryTimer);
+        state.identifyRetryTimer = null;
+      }
       if (state.identifyES) {
         state.identifyES.close();
         state.identifyES = null;
       }
-      setStatus("identifyStatus", state.language === "it" ? "Identificazione arrestata" : "Identify stopped");
+      state.identifyPort = "";
+      state.identifyBaud = 0;
+      if (!silent) {
+        setStatus("identifyStatus", state.language === "it" ? "Identificazione arrestata" : "Identify stopped");
+      }
     }
 
     function syncManualPortFromSelect() {
@@ -1672,15 +1769,32 @@
       if (!selected) return;
       $("portInput").value = selected;
       state.manualPortDirty = false;
+      if (!state.autoApplyingPort) {
+        state.userPortOverride = true;
+      }
+      scheduleIdentifyStart(120);
     }
 
     async function startIdentify() {
       const port = effectivePort();
       const baud = parseInt($("baudInput").value, 10) || 115200;
       if (!port) {
-        setStatus("identifyStatus", state.language === "it" ? "Seleziona o inserisci prima una porta seriale" : "Select or type a serial port first", "error");
+        stopIdentify(true);
+        setStatus("identifyStatus", state.language === "it" ? "Seleziona o inserisci prima una porta seriale" : "Select or type a serial port first");
+        setStatus("connectionStatus", state.language === "it" ? "Porta seriale non configurata." : "Serial port not configured.");
         return;
       }
+      if (state.identifyES && state.identifyPort === port && state.identifyBaud === baud) {
+        return;
+      }
+      if (state.identifyES) {
+        stopIdentify(true);
+      }
+      if (state.identifyRetryTimer) {
+        clearTimeout(state.identifyRetryTimer);
+        state.identifyRetryTimer = null;
+      }
+      setStatus("connectionStatus", (state.language === "it" ? "Test seriale su " : "Testing serial on ") + port + " @ " + baud + "...", "ok");
       try {
         await fetchJSON("/api/port-test", {
           method: "POST",
@@ -1689,22 +1803,22 @@
         });
       } catch (err) {
         setStatus("identifyStatus", err.message, "error");
+        setStatus("connectionStatus", err.message, "error");
+        scheduleIdentifyRetry();
         return;
       }
-      stopIdentify();
       const url = "/api/identify?port=" + encodeURIComponent(port) + "&baud=" + encodeURIComponent(String(baud));
       const es = new EventSource(url);
       state.identifyES = es;
+      state.identifyPort = port;
+      state.identifyBaud = baud;
       setStatus("identifyStatus", state.language === "it" ? "Connessione stream identificazione..." : "Connecting identify stream...", "ok");
-      if (state.wizard.active) {
-        const stepID = state.wizard.steps[state.wizard.index].id;
-        if (stepID === "map") setStatus("wizardStatus", state.language === "it" ? "Identificazione attiva. Ruota e premi ogni manopola, poi clicca Passo successivo." : "Identify is running. Rotate and press each knob, then click Next Step.", "ok");
-        if (stepID === "verify") setStatus("wizardStatus", state.language === "it" ? "Verifica attiva. Conferma che gli eventi lampeggiano per ogni manopola." : "Verification active. Confirm events are flashing for each knob.", "ok");
-      }
+      setStatus("connectionStatus", state.language === "it" ? "Connessione seriale..." : "Connecting serial...", "ok");
 
       es.onopen = () => {
         if (state.identifyES !== es) return;
         setStatus("identifyStatus", (state.language === "it" ? "In ascolto su " : "Listening on ") + port + " @ " + baud, "ok");
+        setStatus("connectionStatus", (state.language === "it" ? "Connesso: " : "Connected: ") + port + " @ " + baud, "ok");
       };
 
       es.onmessage = (msg) => {
@@ -1726,10 +1840,15 @@
         if (es.readyState === EventSource.CLOSED) {
           es.close();
           state.identifyES = null;
+          state.identifyPort = "";
+          state.identifyBaud = 0;
           setStatus("identifyStatus", state.language === "it" ? "Stream identificazione disconnesso" : "Identify stream disconnected", "error");
+          setStatus("connectionStatus", state.language === "it" ? "Seriale disconnessa, nuovo tentativo..." : "Serial disconnected, retrying...", "error");
+          scheduleIdentifyRetry();
           return;
         }
         setStatus("identifyStatus", state.language === "it" ? "Connessione stream persa, nuova connessione in corso..." : "Identify stream connection lost, reconnecting...", "error");
+        setStatus("connectionStatus", state.language === "it" ? "Connessione seriale persa, riconnessione..." : "Serial connection lost, reconnecting...", "error");
       };
     }
 
@@ -1771,21 +1890,31 @@
       $("portInput").addEventListener("input", () => {
         const manual = $("portInput").value.trim();
         state.manualPortDirty = manual.length > 0;
-        if (!manual) return;
+        if (!manual) {
+          state.userPortOverride = false;
+          scheduleIdentifyStart(260);
+          return;
+        }
+        state.userPortOverride = true;
         const select = $("portSelect");
         const hasMatch = Array.from(select.options).some((o) => o.value === manual);
         if (hasMatch) {
           select.value = manual;
           state.manualPortDirty = false;
         }
+        scheduleIdentifyStart(260);
       });
-      $("refreshPorts").addEventListener("click", () => loadPorts().then(() => {
-        if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "detect") {
-          const hasPort = $("portSelect").value.trim() || $("portInput").value.trim();
-          if (hasPort) setStatus("wizardStatus", "Board detection complete. Choose the correct port and click Next Step.", "ok");
+      $("baudInput").addEventListener("input", () => scheduleIdentifyStart(220));
+      $("refreshPorts").addEventListener("click", async () => {
+        try {
+          stopIdentify(true);
+          await loadPorts();
+          await autoDetectPort();
+          scheduleIdentifyStart(120);
+        } catch (err) {
+          setStatus("saveStatus", err.message, "error");
         }
-      }).catch(err => setStatus("saveStatus", err.message, "error")));
-      $("testConnection").addEventListener("click", testConnection);
+      });
       $("applyStartup").addEventListener("click", applyStartupSetting);
       $("addMapping").addEventListener("click", () => $("mappings").appendChild(mappingRow()));
       $("applyTemplate").addEventListener("click", applyTemplate);
@@ -1799,11 +1928,6 @@
         importConfigFromFile(file);
         ev.target.value = "";
       });
-      $("startIdentify").addEventListener("click", startIdentify);
-      $("stopIdentify").addEventListener("click", stopIdentify);
-      $("wizardStart").addEventListener("click", startWizard);
-      $("wizardNext").addEventListener("click", nextWizardStep);
-      $("wizardReset").addEventListener("click", resetWizard);
       $("languageSelect").addEventListener("change", (ev) => setLanguage(ev.target.value));
       $("groupAddRule").addEventListener("click", () => addGroupEditorRule());
       $("groupAddBrowser").addEventListener("click", () => addGroupEditorPreset("browser"));
@@ -1824,7 +1948,7 @@
           closeGroupEditor(false);
         }
       });
-      window.addEventListener("beforeunload", stopIdentify);
+      window.addEventListener("beforeunload", () => stopIdentify(true));
     }
 
     async function main() {
@@ -1835,6 +1959,8 @@
         await loadStatus();
         await loadTargets();
         await Promise.all([loadPorts(), loadConfig(), loadStartupStatus()]);
+        await autoDetectPort();
+        scheduleIdentifyStart(150);
       } catch (err) {
         setStatus("saveStatus", err.message, "error");
       }

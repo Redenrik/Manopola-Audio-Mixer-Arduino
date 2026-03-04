@@ -63,6 +63,7 @@ void setup() {
   Wire.begin(); // Master I2C
 
   // Protocol hello for host compatibility checks
+  Serial.println("MAMA:HELLO:1");
   Serial.println("V:1");
 
   initEnc(e1);

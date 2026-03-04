@@ -30,14 +30,16 @@ func IsProtocolCompatible(version int) bool {
 }
 
 var (
-	protocolLinePattern    = regexp.MustCompile(`(?i)^v\s*[:=]\s*([0-9]+)\s*$`)
-	protocolTokenPattern   = regexp.MustCompile(`(?i)\bv\s*[:=]\s*([0-9]+)\b`)
-	encoderLinePattern     = regexp.MustCompile(`(?i)^[ek]\s*([0-9]+)\s*[:=,]\s*([+-]?\s*[0-9]+)\s*$`)
-	encoderTokenPattern    = regexp.MustCompile(`(?i)\b[ek]\s*([0-9]+)\s*[:=,]\s*([+-]?\s*[0-9]+)\b`)
-	buttonLinePattern      = regexp.MustCompile(`(?i)^b\s*([0-9]+)\s*[:=,]\s*([a-z0-9]+)\s*$`)
-	buttonTokenPattern     = regexp.MustCompile(`(?i)\bb\s*([0-9]+)\s*[:=,]\s*([a-z0-9]+)\b`)
-	legacyPressLinePattern = regexp.MustCompile(`(?i)^k\s*([0-9]+)\s*[:=,]\s*(p|press|btn|button|down|m|mute)\s*$`)
-	legacyPressTokenPattern = regexp.MustCompile(`(?i)\bk\s*([0-9]+)\s*[:=,]\s*(p|press|btn|button|down|m|mute)\b`)
+	mamaProtocolLinePattern  = regexp.MustCompile(`(?i)^mama\s*[:=]\s*(?:hello|protocol|v)\s*[:=]\s*([0-9]+)\s*$`)
+	mamaProtocolTokenPattern = regexp.MustCompile(`(?i)\bmama\s*[:=]\s*(?:hello|protocol|v)\s*[:=]\s*([0-9]+)\b`)
+	protocolLinePattern      = regexp.MustCompile(`(?i)^v\s*[:=]\s*([0-9]+)\s*$`)
+	protocolTokenPattern     = regexp.MustCompile(`(?i)\bv\s*[:=]\s*([0-9]+)\b`)
+	encoderLinePattern       = regexp.MustCompile(`(?i)^[ek]\s*([0-9]+)\s*[:=,]\s*([+-]?\s*[0-9]+)\s*$`)
+	encoderTokenPattern      = regexp.MustCompile(`(?i)\b[ek]\s*([0-9]+)\s*[:=,]\s*([+-]?\s*[0-9]+)\b`)
+	buttonLinePattern        = regexp.MustCompile(`(?i)^b\s*([0-9]+)\s*[:=,]\s*([a-z0-9]+)\s*$`)
+	buttonTokenPattern       = regexp.MustCompile(`(?i)\bb\s*([0-9]+)\s*[:=,]\s*([a-z0-9]+)\b`)
+	legacyPressLinePattern   = regexp.MustCompile(`(?i)^k\s*([0-9]+)\s*[:=,]\s*(p|press|btn|button|down|m|mute)\s*$`)
+	legacyPressTokenPattern  = regexp.MustCompile(`(?i)\bk\s*([0-9]+)\s*[:=,]\s*(p|press|btn|button|down|m|mute)\b`)
 )
 
 func ParseLine(line string) (Event, error) {
@@ -47,6 +49,9 @@ func ParseLine(line string) (Event, error) {
 	}
 
 	if ev, ok, err := parseProtocolLine(line, protocolLinePattern); ok || err != nil {
+		return ev, err
+	}
+	if ev, ok, err := parseProtocolLine(line, mamaProtocolLinePattern); ok || err != nil {
 		return ev, err
 	}
 	if ev, ok, err := parseEncoderLine(line, encoderLinePattern); ok || err != nil {
@@ -61,6 +66,9 @@ func ParseLine(line string) (Event, error) {
 
 	// Best-effort fallback for firmwares that prefix events with extra text.
 	if ev, ok, err := parseProtocolLine(line, protocolTokenPattern); ok || err != nil {
+		return ev, err
+	}
+	if ev, ok, err := parseProtocolLine(line, mamaProtocolTokenPattern); ok || err != nil {
 		return ev, err
 	}
 	if ev, ok, err := parseEncoderLine(line, encoderTokenPattern); ok || err != nil {

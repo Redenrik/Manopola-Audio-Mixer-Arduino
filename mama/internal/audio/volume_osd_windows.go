@@ -11,6 +11,7 @@ import (
 
 const (
 	wmAppCommand         = 0x0319
+	appCommandVolumeMute = 8
 	appCommandVolumeDown = 9
 	appCommandVolumeUp   = 10
 	smtoAbortIfHung      = 0x0002
@@ -24,7 +25,7 @@ var (
 	user32ProcSendMessageTimeoutW = windows.NewLazySystemDLL("user32.dll").NewProc("SendMessageTimeoutW")
 )
 
-func showWindowsVolumeFlyout(master volumeController) {
+func showWindowsVolumeFlyoutForAdjust(master volumeController) {
 	if master == nil {
 		return
 	}
@@ -49,6 +50,36 @@ func showWindowsVolumeFlyout(master volumeController) {
 
 	if mutedErr == nil && muted {
 		_ = mute(master, "")
+	}
+}
+
+func showWindowsVolumeFlyoutForMuteToggle(master volumeController) {
+	if master == nil {
+		return
+	}
+	now := time.Now().UnixMilli()
+	if now-atomic.LoadInt64(&lastFlyoutAtUnixMilli) < flyoutMinIntervalMS {
+		return
+	}
+	atomic.StoreInt64(&lastFlyoutAtUnixMilli, now)
+
+	// Toggle mute twice to show OSD while preserving the already-applied mute state.
+	// This avoids volume up/down commands that can accidentally unmute.
+	expectedMuted, expectedErr := getMuted(master, "")
+	sendVolumeAppCommand(appCommandVolumeMute)
+	sendVolumeAppCommand(appCommandVolumeMute)
+
+	if expectedErr != nil {
+		return
+	}
+	actualMuted, err := getMuted(master, "")
+	if err != nil || actualMuted == expectedMuted {
+		return
+	}
+	if expectedMuted {
+		_ = mute(master, "")
+	} else {
+		_ = unmute(master, "")
 	}
 }
 

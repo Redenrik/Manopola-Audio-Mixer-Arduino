@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -187,6 +188,56 @@ func TestIsIdleReadError(t *testing.T) {
 				t.Fatalf("isIdleReadError(%v) = %v, want %v", tt.err, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestProbeProtocolVersionSuccess(t *testing.T) {
+	port := &fakePort{
+		results: []readResult{
+			{data: []byte("noise\n")},
+			{data: []byte("MAMA:HELLO:1\r\n")},
+		},
+		defaultErr: io.ErrNoProgress,
+	}
+
+	version, err := probeProtocolVersion(port, 120*time.Millisecond)
+	if err != nil {
+		t.Fatalf("probeProtocolVersion() error = %v", err)
+	}
+	if version != 1 {
+		t.Fatalf("version = %d, want 1", version)
+	}
+}
+
+func TestProbeProtocolVersionRejectsLegacyHelloWithoutMamaSignature(t *testing.T) {
+	port := &fakePort{
+		results: []readResult{
+			{data: []byte("V:1\r\n")},
+		},
+		defaultErr: io.ErrNoProgress,
+	}
+
+	_, err := probeProtocolVersion(port, 35*time.Millisecond)
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "mama protocol hello") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestProbeProtocolVersionTimeoutWithoutHello(t *testing.T) {
+	port := &fakePort{
+		results:    []readResult{{data: []byte("E1:+1\n")}},
+		defaultErr: io.ErrNoProgress,
+	}
+
+	_, err := probeProtocolVersion(port, 35*time.Millisecond)
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "protocol hello") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
