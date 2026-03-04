@@ -1,0 +1,2 @@
+Source-based launchers only (no prebuilt .exe artifacts tracked in git).
+Launchers will build local .exe files at runtime when executed on Windows.
