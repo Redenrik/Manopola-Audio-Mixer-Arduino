@@ -9,13 +9,13 @@ on:
         description: Release tag (for manual runs)
         required: true
         type: string
-      include_installer:
-        description: Build optional Windows installer artifact
+      include_advanced_artifacts:
+        description: Include advanced architecture-specific assets
         required: false
-        default: false
+        default: true
         type: boolean
       include_update_manifest:
-        description: Generate optional update-manifest.json per artifact
+        description: Generate update-manifest.json assets
         required: false
         default: true
         type: boolean
@@ -24,22 +24,9 @@ permissions:
   contents: write
 
 jobs:
-  package:
-    name: package (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            artifact_name: mama-linux-amd64-portable
-            archive_ext: tar.gz
-          - os: macos-latest
-            artifact_name: mama-macos-amd64-portable
-            archive_ext: tar.gz
-          - os: windows-latest
-            artifact_name: mama-windows-amd64-portable
-            archive_ext: zip
+  package-linux:
+    name: package-linux
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -65,51 +52,29 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.x'
+          go-version: "1.24.x"
           cache-dependency-path: mama/go.sum
 
-      - name: Build portable directory (Linux/macOS)
-        if: runner.os != 'Windows'
+      - name: Build recommended Linux package (amd64)
         shell: bash
         run: |
           set -euo pipefail
-          out_dir="dist/${{ matrix.artifact_name }}"
-          mkdir -p "$out_dir"
-          cd mama
-          go build -o "../$out_dir/mama" ./cmd/mama
-          go build -o "../$out_dir/mama-ui" ./cmd/mama-ui
-          cd ..
-          cp mama/internal/config/default.yaml "$out_dir/config.yaml"
+          bash scripts/release/package-portable.sh linux amd64 dist/MAMA-Linux
+          tar -C dist -czf dist/MAMA-Linux.tar.gz MAMA-Linux
 
-      - name: Build portable directory (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: scripts/windows/package-portable.ps1 -OutputDir "dist/${{ matrix.artifact_name }}"
-
-      - name: Package archive (Linux/macOS)
-        if: runner.os != 'Windows'
+      - name: Build advanced Linux package (arm64)
+        if: github.event_name == 'release' || inputs.include_advanced_artifacts
         shell: bash
         run: |
           set -euo pipefail
-          cd dist
-          tar -czf "${{ matrix.artifact_name }}.tar.gz" "${{ matrix.artifact_name }}"
-
-      - name: Package archive (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Compress-Archive -Path "dist/${{ matrix.artifact_name }}/*" -DestinationPath "dist/${{ matrix.artifact_name }}.zip" -Force
-
-      - name: Build optional Windows installer
-        if: runner.os == 'Windows' && (github.event_name == 'release' || inputs.include_installer)
-        shell: pwsh
-        run: scripts/windows/package-installer.ps1 -PortableDir "dist/${{ matrix.artifact_name }}" -OutputDir "dist/installer" -AppVersion "${{ steps.release.outputs.tag }}"
+          bash scripts/release/package-portable.sh linux arm64 dist/mama-linux-arm64-portable
+          tar -C dist -czf dist/mama-linux-arm64-portable.tar.gz mama-linux-arm64-portable
 
       - name: Generate checksums
         shell: bash
-        run: scripts/release/generate-checksums.sh dist
+        run: bash scripts/release/generate-checksums.sh dist dist/SHA256SUMS-linux.txt
 
-      - name: Generate optional update manifest
+      - name: Generate update manifests
         if: github.event_name == 'release' || inputs.include_update_manifest
         shell: bash
         env:
@@ -117,9 +82,19 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          archive_path="dist/${{ matrix.artifact_name }}.${{ matrix.archive_ext }}"
-          download_url="https://github.com/$REPO/releases/download/$RELEASE_TAG/$(basename "$archive_path")"
-          scripts/release/generate-update-manifest.sh "$archive_path" "$RELEASE_TAG" "$download_url" "dist/${{ matrix.artifact_name }}-update-manifest.json"
+          bash scripts/release/generate-update-manifest.sh \
+            "dist/MAMA-Linux.tar.gz" \
+            "$RELEASE_TAG" \
+            "https://github.com/$REPO/releases/download/$RELEASE_TAG/MAMA-Linux.tar.gz" \
+            "dist/MAMA-Linux-update-manifest.json"
+
+          if [[ "${{ github.event_name == 'release' || inputs.include_advanced_artifacts }}" == "true" ]]; then
+            bash scripts/release/generate-update-manifest.sh \
+              "dist/mama-linux-arm64-portable.tar.gz" \
+              "$RELEASE_TAG" \
+              "https://github.com/$REPO/releases/download/$RELEASE_TAG/mama-linux-arm64-portable.tar.gz" \
+              "dist/mama-linux-arm64-portable-update-manifest.json"
+          fi
 
       - name: Upload release assets
         if: github.event_name == 'release'
@@ -129,23 +104,267 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -euo pipefail
-          gh release upload "$RELEASE_TAG" \
-            dist/${{ matrix.artifact_name }}.${{ matrix.archive_ext }} \
-            dist/${{ matrix.artifact_name }}-update-manifest.json \
-            dist/SHA256SUMS.txt \
-            --clobber
-          if compgen -G "dist/installer/*.exe" >/dev/null; then
-            gh release upload "$RELEASE_TAG" dist/installer/*.exe --clobber
+          assets=(
+            "dist/MAMA-Linux.tar.gz"
+            "dist/SHA256SUMS-linux.txt"
+          )
+
+          if [[ -f "dist/MAMA-Linux-update-manifest.json" ]]; then
+            assets+=("dist/MAMA-Linux-update-manifest.json")
           fi
+
+          if [[ "${{ github.event_name == 'release' || inputs.include_advanced_artifacts }}" == "true" ]]; then
+            assets+=("dist/mama-linux-arm64-portable.tar.gz")
+            if [[ -f "dist/mama-linux-arm64-portable-update-manifest.json" ]]; then
+              assets+=("dist/mama-linux-arm64-portable-update-manifest.json")
+            fi
+          fi
+
+          gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
 
       - name: Upload workflow artifacts
         if: github.event_name != 'release'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
+          name: release-assets-linux
           path: |
-            dist/${{ matrix.artifact_name }}.${{ matrix.archive_ext }}
-            dist/${{ matrix.artifact_name }}-update-manifest.json
-            dist/SHA256SUMS.txt
-            dist/installer/*.exe
+            dist/MAMA-Linux.tar.gz
+            dist/mama-linux-arm64-portable.tar.gz
+            dist/*-update-manifest.json
+            dist/SHA256SUMS-linux.txt
+          if-no-files-found: ignore
+
+  package-macos:
+    name: package-macos
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+          EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          tag="$EVENT_RELEASE_TAG"
+          if [ -z "$tag" ]; then
+            tag="$INPUT_RELEASE_TAG"
+          fi
+          if [ -z "$tag" ]; then
+            echo "release tag not provided" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache-dependency-path: mama/go.sum
+
+      - name: Build recommended macOS package (universal2)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/release/package-macos-universal.sh dist/MAMA-macOS
+          tar -C dist -czf dist/MAMA-macOS.tar.gz MAMA-macOS
+
+      - name: Build advanced macOS packages (amd64/arm64)
+        if: github.event_name == 'release' || inputs.include_advanced_artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/release/package-portable.sh darwin amd64 dist/mama-macos-amd64-portable
+          bash scripts/release/package-portable.sh darwin arm64 dist/mama-macos-arm64-portable
+          tar -C dist -czf dist/mama-macos-amd64-portable.tar.gz mama-macos-amd64-portable
+          tar -C dist -czf dist/mama-macos-arm64-portable.tar.gz mama-macos-arm64-portable
+
+      - name: Generate checksums
+        shell: bash
+        run: bash scripts/release/generate-checksums.sh dist dist/SHA256SUMS-macos.txt
+
+      - name: Generate update manifests
+        if: github.event_name == 'release' || inputs.include_update_manifest
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          bash scripts/release/generate-update-manifest.sh \
+            "dist/MAMA-macOS.tar.gz" \
+            "$RELEASE_TAG" \
+            "https://github.com/$REPO/releases/download/$RELEASE_TAG/MAMA-macOS.tar.gz" \
+            "dist/MAMA-macOS-update-manifest.json"
+
+          if [[ "${{ github.event_name == 'release' || inputs.include_advanced_artifacts }}" == "true" ]]; then
+            bash scripts/release/generate-update-manifest.sh \
+              "dist/mama-macos-amd64-portable.tar.gz" \
+              "$RELEASE_TAG" \
+              "https://github.com/$REPO/releases/download/$RELEASE_TAG/mama-macos-amd64-portable.tar.gz" \
+              "dist/mama-macos-amd64-portable-update-manifest.json"
+
+            bash scripts/release/generate-update-manifest.sh \
+              "dist/mama-macos-arm64-portable.tar.gz" \
+              "$RELEASE_TAG" \
+              "https://github.com/$REPO/releases/download/$RELEASE_TAG/mama-macos-arm64-portable.tar.gz" \
+              "dist/mama-macos-arm64-portable-update-manifest.json"
+          fi
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          assets=(
+            "dist/MAMA-macOS.tar.gz"
+            "dist/SHA256SUMS-macos.txt"
+          )
+
+          if [[ -f "dist/MAMA-macOS-update-manifest.json" ]]; then
+            assets+=("dist/MAMA-macOS-update-manifest.json")
+          fi
+
+          if [[ "${{ github.event_name == 'release' || inputs.include_advanced_artifacts }}" == "true" ]]; then
+            assets+=("dist/mama-macos-amd64-portable.tar.gz" "dist/mama-macos-arm64-portable.tar.gz")
+            if [[ -f "dist/mama-macos-amd64-portable-update-manifest.json" ]]; then
+              assets+=("dist/mama-macos-amd64-portable-update-manifest.json")
+            fi
+            if [[ -f "dist/mama-macos-arm64-portable-update-manifest.json" ]]; then
+              assets+=("dist/mama-macos-arm64-portable-update-manifest.json")
+            fi
+          fi
+
+          gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+
+      - name: Upload workflow artifacts
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets-macos
+          path: |
+            dist/MAMA-macOS.tar.gz
+            dist/mama-macos-amd64-portable.tar.gz
+            dist/mama-macos-arm64-portable.tar.gz
+            dist/*-update-manifest.json
+            dist/SHA256SUMS-macos.txt
+          if-no-files-found: ignore
+
+  package-windows:
+    name: package-windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: release
+        shell: pwsh
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+          EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          $tag = $env:EVENT_RELEASE_TAG
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            $tag = $env:INPUT_RELEASE_TAG
+          }
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            throw "release tag not provided"
+          }
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache-dependency-path: mama/go.sum
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build recommended Windows installer
+        shell: pwsh
+        run: |
+          scripts/windows/package-portable.ps1 -OutputDir "dist/mama-windows-amd64-portable" -Arch "amd64" -BinaryName "mama.exe"
+          scripts/windows/package-installer.ps1 -PortableDir "dist/mama-windows-amd64-portable" -OutputDir "dist/installer" -AppVersion "${{ steps.release.outputs.tag }}"
+          $src = "dist/installer/MAMA-Setup-${{ steps.release.outputs.tag }}.exe"
+          if (-not (Test-Path $src)) { throw "installer not found: $src" }
+          Copy-Item $src "dist/MAMA-Setup-Windows.exe" -Force
+
+      - name: Build advanced Windows portable package (amd64)
+        if: github.event_name == 'release' || inputs.include_advanced_artifacts
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/mama-windows-amd64-portable/*" -DestinationPath "dist/mama-windows-amd64-portable.zip" -Force
+
+      - name: Generate checksums
+        shell: bash
+        run: bash scripts/release/generate-checksums.sh dist dist/SHA256SUMS-windows.txt
+
+      - name: Generate update manifests
+        if: github.event_name == 'release' || inputs.include_update_manifest
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          bash scripts/release/generate-update-manifest.sh \
+            "dist/MAMA-Setup-Windows.exe" \
+            "$RELEASE_TAG" \
+            "https://github.com/$REPO/releases/download/$RELEASE_TAG/MAMA-Setup-Windows.exe" \
+            "dist/MAMA-Setup-Windows-update-manifest.json"
+
+          if [[ "${{ github.event_name == 'release' || inputs.include_advanced_artifacts }}" == "true" ]]; then
+            bash scripts/release/generate-update-manifest.sh \
+              "dist/mama-windows-amd64-portable.zip" \
+              "$RELEASE_TAG" \
+              "https://github.com/$REPO/releases/download/$RELEASE_TAG/mama-windows-amd64-portable.zip" \
+              "dist/mama-windows-amd64-portable-update-manifest.json"
+          fi
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          assets=(
+            "dist/MAMA-Setup-Windows.exe"
+            "dist/SHA256SUMS-windows.txt"
+          )
+
+          if [[ -f "dist/MAMA-Setup-Windows-update-manifest.json" ]]; then
+            assets+=("dist/MAMA-Setup-Windows-update-manifest.json")
+          fi
+
+          if [[ "${{ github.event_name == 'release' || inputs.include_advanced_artifacts }}" == "true" ]]; then
+            assets+=("dist/mama-windows-amd64-portable.zip")
+            if [[ -f "dist/mama-windows-amd64-portable-update-manifest.json" ]]; then
+              assets+=("dist/mama-windows-amd64-portable-update-manifest.json")
+            fi
+          fi
+
+          gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+
+      - name: Upload workflow artifacts
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets-windows
+          path: |
+            dist/MAMA-Setup-Windows.exe
+            dist/mama-windows-amd64-portable.zip
+            dist/*-update-manifest.json
+            dist/SHA256SUMS-windows.txt
           if-no-files-found: ignore

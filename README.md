@@ -32,8 +32,8 @@ This repository now includes:
   - setup UI localization framework with English/Italian language toggle and persisted language preference
   - setup API `/api/targets` now returns discovered backend targets (`discovered`) alongside compatibility fields (`known`, `supported`)
 - Additional target support:
-  - `app` per-session volume + mute on Unix hosts with `pactl` sink-input controls
-  - `group` grouped app/session volume + mute on Unix hosts with `pactl` sink-input controls
+  - `app` per-session volume + mute on Windows and Unix hosts
+  - `group` grouped app/session volume + mute on Windows and Unix hosts
 
 ## Release Readiness Snapshot
 
@@ -323,37 +323,33 @@ scripts/release/generate-release-notes.sh <tag> [previous-tag]
 
 Reproducible build guidance is documented in [docs/RELEASE_REPRODUCIBLE_BUILDS.md](docs/RELEASE_REPRODUCIBLE_BUILDS.md).
 
-Release packaging automation (portable + optional installer/update artifacts) is implemented in `.github/workflows/release-artifacts.yml`.
+Release packaging automation (recommended one-download-per-OS assets plus optional advanced architecture assets) is implemented in `.github/workflows/release-artifacts.yml`.
 
 Release note automation is implemented in `.github/workflows/release-notes.yml` (generates markdown, updates release notes body, and uploads a `release-notes-<tag>.md` asset).
 
 Release signing/notarization automation and maintainer setup details are documented in [docs/SIGNING_AND_NOTARIZATION.md](docs/SIGNING_AND_NOTARIZATION.md) and implemented in `.github/workflows/release-signing.yml`.
 
-## No-Command-Line Install (Windows End Users)
+## End-User Downloads (Recommended)
 
-Yes - there is a non-technical install path designed to avoid terminals/CLI.
+To minimize user decisions, releases publish one primary artifact per OS:
 
-1. Open **Releases -> Assets** and download the Windows portable package (`mama-windows-amd64-portable.zip`).
-   Do **not** download GitHub's auto-generated `Source code (zip)`: that archive is source-only and does not contain `.exe` or `.cmd` launchers.
-   If the extracted folder is named `Manopola-Audio-Mixer-Arduino`, you downloaded the source archive by mistake.
-   Quick check: if you see folders like `firmware`, `mama`, and `scripts`, you are in the source archive, not the end-user package.
-2. Extract it to a folder (for example `Desktop\MAMA`).
-3. Open the extracted folder and find the clickable setup files:
-   - `Desktop\MAMA\Open Setup UI.cmd`
-   - `Desktop\MAMA\Start Mixer.cmd`
-   If extraction creates an inner folder (for example `Desktop\MAMA\mama-windows-amd64-portable`), open that inner folder and use the same two files there.
-4. Double-click `Open Setup UI.cmd` to configure port + knob mappings.
-5. (Optional) In Setup UI, enable **Launch mixer at OS startup** and click **Apply Startup Setting** for automatic login start on Windows/macOS packages.
-6. Double-click `Start Mixer.cmd` to run the mixer.
+- Windows: `MAMA-Setup-Windows.exe`
+- macOS: `MAMA-macOS.tar.gz` (universal2)
+- Linux: `MAMA-Linux.tar.gz`
 
-No service installation is required; uninstall is deleting the folder.
+Windows quick path:
+1. Download `MAMA-Setup-Windows.exe`.
+2. Run installer.
+3. Launch **MAMA Setup UI** from Start menu/desktop.
+4. Save mappings and keep MAMA running in tray.
+   Windows ARM devices currently use the x64 installer/runtime path.
 
-Recommended end-user files inside the package:
-- `mama.exe` (runtime daemon)
-- `mama-ui.exe` (settings GUI)
-- `Open Setup UI.cmd` (double-click launcher)
-- `Start Mixer.cmd` (double-click launcher)
-- `config.yaml` (portable side-by-side config)
+macOS/Linux quick path:
+1. Download the OS package and extract it.
+2. Run setup launcher (`Open Setup UI.command` on macOS, `open-setup-ui.sh` on Linux).
+3. Save mappings and run mixer launcher (`Start Mixer.command` / `start-mixer.sh`).
+
+Advanced downloads are also published for users who explicitly need architecture-specific assets (Linux/macOS `amd64`/`arm64`, Windows portable `amd64`).
 
 For maintainers, optional installer generation (`.exe`) and packaging details are documented in [docs/INSTALLATION.md](docs/INSTALLATION.md).
 

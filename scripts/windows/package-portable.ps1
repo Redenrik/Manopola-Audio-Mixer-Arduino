@@ -1,5 +1,8 @@
 param(
-    [string]$OutputDir = "dist\mama-portable"
+    [string]$OutputDir = "dist\mama-portable",
+    [ValidateSet("amd64", "arm64")]
+    [string]$Arch = "amd64",
+    [string]$BinaryName = "mama.exe"
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,16 +18,24 @@ Get-ChildItem -Path $outDir -Filter "ui*.log" -ErrorAction SilentlyContinue | Re
 Push-Location $mamaDir
 try {
     $env:GOOS = "windows"
-    $env:GOARCH = "amd64"
+    $env:GOARCH = $Arch
 
     Write-Host "Building Windows portable binaries for GOARCH=$env:GOARCH..."
-    Write-Host "Embedding app icon into executable..."
-    $iconPath = Join-Path $mamaDir "assets\\icons\\mama-app.ico"
     $sysoPath = Join-Path $mamaDir "cmd\\mama\\mama_windows.syso"
-    go run github.com/akavel/rsrc@latest -ico $iconPath -o $sysoPath
+    if ($Arch -eq "amd64") {
+        Write-Host "Embedding app icon into executable..."
+        $iconPath = Join-Path $mamaDir "assets\\icons\\mama-app.ico"
+        go run github.com/akavel/rsrc@latest -arch amd64 -ico $iconPath -o $sysoPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "rsrc icon embedding failed"
+        }
+    }
 
-    Write-Host "Building mama.exe..."
-    go build -ldflags "-H=windowsgui" -o (Join-Path $outDir "mama.exe") ./cmd/mama
+    Write-Host "Building $BinaryName..."
+    go build -ldflags "-H=windowsgui" -o (Join-Path $outDir $BinaryName) ./cmd/mama
+    if ($LASTEXITCODE -ne 0) {
+        throw "go build failed for GOARCH=$env:GOARCH"
+    }
     Remove-Item -Path $sysoPath -ErrorAction SilentlyContinue
 }
 finally {

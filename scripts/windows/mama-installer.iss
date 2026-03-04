@@ -31,9 +31,9 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 Source: "{#SourceDir}\\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\\MAMA Setup UI"; Filename: "{app}\\mama-ui.exe"
-Name: "{group}\\MAMA Runtime"; Filename: "{app}\\mama.exe"
-Name: "{commondesktop}\\MAMA Setup UI"; Filename: "{app}\\mama-ui.exe"; Tasks: desktopicon
+Name: "{group}\\MAMA Setup UI"; Filename: "{app}\\Open Setup UI.cmd"
+Name: "{group}\\MAMA Runtime"; Filename: "{app}\\Start Mixer.cmd"
+Name: "{commondesktop}\\MAMA Setup UI"; Filename: "{app}\\Open Setup UI.cmd"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\\mama-ui.exe"; Description: "Launch setup UI"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\\Open Setup UI.cmd"; Description: "Launch setup UI"; Flags: shellexec nowait postinstall skipifsilent

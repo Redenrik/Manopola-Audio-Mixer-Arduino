@@ -9,7 +9,7 @@ This document defines what MAMA versions are supported, what environments are ex
 | Dimension | Supported | Notes |
 |---|---|---|
 | Operating systems | Windows, Linux, macOS | CI validates all three OS families on each PR/push. |
-| CPU architecture | `amd64`, `arm64` | Primary release artifacts should target these architectures when practical. |
+| CPU architecture | `amd64`, `arm64` | Recommended assets are OS-level; advanced packages publish `amd64` and `arm64` for Linux/macOS, while Windows currently ships `amd64` (native `arm64` pending dependency support). |
 | Go toolchain (contributors/CI) | Latest patched `1.24.x` | Matches the CI baseline and vulnerability scan expectations. |
 
 ### Firmware and protocol compatibility

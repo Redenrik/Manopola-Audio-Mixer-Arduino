@@ -2,113 +2,82 @@
 
 ## Audience Split
 
-- End users: should not need terminal usage.
-- Maintainers: generate release artifacts from source.
+- End users: install and run with minimal decisions.
+- Maintainers: build deterministic release artifacts.
 
 ## End User Install (No Terminal)
 
-Recommended distribution format: portable ZIP.
+Use the **recommended asset per OS** from the release page:
 
-User steps:
-1. Download release ZIP from the project Releases page.
-2. Extract to any folder (for example `Desktop\MAMA`).
-3. Double-click `Open Setup UI.cmd`.
-4. Select serial port, assign mappings, save.
-5. (Optional) Enable **Launch mixer at OS startup** in Setup UI and click **Apply Startup Setting**.
-6. Double-click `Start Mixer.cmd`.
+- Windows: `MAMA-Setup-Windows.exe`
+- macOS: `MAMA-macOS.tar.gz`
+- Linux: `MAMA-Linux.tar.gz`
 
-No service installation required and no terminal commands are needed for this flow. Startup integration is available for Windows/macOS packaged launches.
+Advanced architecture-specific assets remain available for power users (Linux/macOS `amd64` + `arm64`, Windows portable `amd64`).
 
-## Quick Start Bundle (Repository Checkout)
+### Windows (recommended)
 
-For users running from a local source checkout on Linux/macOS, a one-command quick-start bundle is available:
+1. Download `MAMA-Setup-Windows.exe`.
+2. Run installer.
+3. Launch **MAMA Setup UI** from Start menu/desktop shortcut.
+4. Configure serial + knob mappings and save.
+5. (Optional) Enable startup from Setup UI.
 
-```bash
-scripts/quickstart.sh
-```
+### macOS / Linux (recommended)
 
-This writes `dist/mama-quickstart/` with both binaries, config, and launchers (`open-setup-ui.sh` and `start-mixer.sh`).
+1. Download the OS package (`MAMA-macOS.tar.gz` or `MAMA-Linux.tar.gz`).
+2. Extract to a writable folder.
+3. Run setup launcher:
+   - macOS: `Open Setup UI.command`
+   - Linux: `open-setup-ui.sh`
+4. Save config and then use runtime launcher:
+   - macOS: `Start Mixer.command`
+   - Linux: `start-mixer.sh`
 
-Optional smoke validation:
+## Maintainer Build Commands
 
-```bash
-scripts/quickstart-smoke-test.sh
-```
-
-## Maintainer Build (Windows)
-
-From repo root:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\windows\package-portable.ps1
-```
-
-The packaging script enforces `GOOS=windows` and `GOARCH=amd64` so local output matches the supported Windows release artifact architecture.
-
-Output folder:
-- `dist\mama-portable\`
-
-Contents:
-- `mama.exe`
-- `mama-ui.exe`
-- `config.yaml`
-- `Open Setup UI.cmd`
-- `Start Mixer.cmd`
-
-## Release Integrity (Maintainers)
-
-After generating `dist\mama-portable`, create a checksum manifest:
-
-```bash
-scripts/release/generate-checksums.sh dist/mama-portable
-```
-
-Publish `SHA256SUMS.txt` with release artifacts and verify it before publishing:
-
-```bash
-cd dist/mama-portable
-sha256sum -c SHA256SUMS.txt
-```
-
-For the full reproducible-build checklist, see [`RELEASE_REPRODUCIBLE_BUILDS.md`](RELEASE_REPRODUCIBLE_BUILDS.md).
-
-## Non-Pollution Principles
-
-Default package behavior:
-- no write outside package directory except normal OS temp/log internals
-- no registry requirement for normal operation
-- no scheduled task/service auto-install
-- uninstall is deleting the folder
-
-## Optional Installer (Windows Maintainers)
-
-Portable ZIP remains the default distribution.
-
-For maintainers that want an installer artifact in addition to portable mode:
+### Windows recommended installer
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\windows\package-installer.ps1 -PortableDir dist\mama-portable -AppVersion v1.0.0
+powershell -ExecutionPolicy Bypass -File scripts\windows\package-portable.ps1 -OutputDir dist\mama-windows-amd64-portable -Arch amd64 -BinaryName mama.exe
+powershell -ExecutionPolicy Bypass -File scripts\windows\package-installer.ps1 -PortableDir dist\mama-windows-amd64-portable -AppVersion v1.0.0
 ```
 
-Notes:
-- installer generation is optional and requires Inno Setup (`iscc`)
-- when `iscc` is unavailable, the script exits successfully after printing a skip warning
-- the portable package remains the canonical fallback artifact
+### Windows portable build
 
-## Optional Update Manifest
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows\package-portable.ps1 -OutputDir dist\mama-windows-amd64-portable -Arch amd64 -BinaryName mama.exe
+```
 
-To ship a machine-readable update payload descriptor for any archive:
+Note: native Windows `arm64` builds are currently blocked by upstream dependency constraints; Windows ARM devices should use the x64 installer/package.
+
+### Linux portable builds
 
 ```bash
-scripts/release/generate-update-manifest.sh dist/mama-portable.zip v1.0.0 https://github.com/<org>/<repo>/releases/download/v1.0.0/mama-portable.zip
+bash scripts/release/package-portable.sh linux amd64 dist/MAMA-Linux
+bash scripts/release/package-portable.sh linux arm64 dist/mama-linux-arm64-portable
 ```
 
-This writes `update-manifest.json` with version, URL, checksum, and size metadata.
+### macOS portable builds
 
-## Linux/macOS Notes
+```bash
+bash scripts/release/package-macos-universal.sh dist/MAMA-macOS
+bash scripts/release/package-portable.sh darwin amd64 dist/mama-macos-amd64-portable
+bash scripts/release/package-portable.sh darwin arm64 dist/mama-macos-arm64-portable
+```
 
-Current scripts target Windows first.
+## Release Integrity
 
-For Linux/macOS maintainers:
-- run `scripts/quickstart.sh` to build `mama` and `mama-ui` and assemble a portable directory automatically
-- create desktop launchers (`.desktop`/app bundle) if needed
+Generate checksum manifests:
+
+```bash
+bash scripts/release/generate-checksums.sh dist
+```
+
+Generate update manifests:
+
+```bash
+bash scripts/release/generate-update-manifest.sh <artifact-path> <version> <download-url>
+```
+
+For the full reproducible-build flow, see [RELEASE_REPRODUCIBLE_BUILDS.md](RELEASE_REPRODUCIBLE_BUILDS.md).
