@@ -26,6 +26,9 @@ type windowsAppSession struct {
 	isMuted bool
 }
 
+// go-wca v0.1.1 contains a malformed IID_IAudioSessionManager2 string; keep a local valid GUID.
+var iidIAudioSessionManager2 = ole.NewGUID("{77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F}")
+
 func newAppSessionController() appSessionController {
 	return &windowsAppSessionController{}
 }
@@ -123,7 +126,7 @@ func (w *windowsAppSessionController) selectSession(selectorToken string) (windo
 			return s, nil
 		}
 	}
-	return windowsAppSession{}, fmt.Errorf("no app session matched selector %q", selectorToken)
+	return windowsAppSession{}, fmt.Errorf("%w: no app session matched selector %q", ErrTargetUnavailable, selectorToken)
 }
 
 func (w *windowsAppSessionController) selectSessions(selectors []config.Selector) ([]windowsAppSession, error) {
@@ -146,7 +149,7 @@ func (w *windowsAppSessionController) selectSessions(selectors []config.Selector
 		}
 	}
 	if len(matched) == 0 {
-		return nil, fmt.Errorf("no app sessions matched group selectors")
+		return nil, fmt.Errorf("%w: no app sessions matched group selectors", ErrTargetUnavailable)
 	}
 	return matched, nil
 }
@@ -198,83 +201,80 @@ type windowsAppSessionHandle struct {
 }
 
 func withWindowsSessions(fn func([]windowsAppSessionHandle) error) (err error) {
-	if err = ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED); err != nil {
-		return err
-	}
-	defer ole.CoUninitialize()
+	return withCOMApartment(func() error {
+		var mmde *wca.IMMDeviceEnumerator
+		if err = wca.CoCreateInstance(wca.CLSID_MMDeviceEnumerator, 0, wca.CLSCTX_ALL, wca.IID_IMMDeviceEnumerator, &mmde); err != nil {
+			return fmt.Errorf("create device enumerator: %w", err)
+		}
+		defer mmde.Release()
 
-	var mmde *wca.IMMDeviceEnumerator
-	if err = wca.CoCreateInstance(wca.CLSID_MMDeviceEnumerator, 0, wca.CLSCTX_ALL, wca.IID_IMMDeviceEnumerator, &mmde); err != nil {
-		return err
-	}
-	defer mmde.Release()
+		var mmd *wca.IMMDevice
+		if err = mmde.GetDefaultAudioEndpoint(wca.ERender, wca.EConsole, &mmd); err != nil {
+			return fmt.Errorf("get default render endpoint: %w", err)
+		}
+		defer mmd.Release()
 
-	var mmd *wca.IMMDevice
-	if err = mmde.GetDefaultAudioEndpoint(wca.ERender, wca.EConsole, &mmd); err != nil {
-		return err
-	}
-	defer mmd.Release()
+		var mgr *iAudioSessionManager2
+		if err = activateIMMDevice(mmd, iidIAudioSessionManager2, wca.CLSCTX_ALL, &mgr); err != nil {
+			return fmt.Errorf("activate IAudioSessionManager2: %w", err)
+		}
+		defer mgr.Release()
 
-	var mgr *iAudioSessionManager2
-	if err = mmd.Activate(wca.IID_IAudioSessionManager2, wca.CLSCTX_ALL, nil, &mgr); err != nil {
-		return err
-	}
-	defer mgr.Release()
+		var enum *iAudioSessionEnumerator
+		if err = mgr.GetSessionEnumerator(&enum); err != nil {
+			return fmt.Errorf("get audio session enumerator: %w", err)
+		}
+		defer enum.Release()
 
-	var enum *iAudioSessionEnumerator
-	if err = mgr.GetSessionEnumerator(&enum); err != nil {
-		return err
-	}
-	defer enum.Release()
-
-	count, err := enum.GetCount()
-	if err != nil {
-		return err
-	}
-
-	sessions := make([]windowsAppSessionHandle, 0, count)
-	for i := 0; i < count; i++ {
-		ctrl, err := enum.GetSession(i)
+		count, err := enum.GetCount()
 		if err != nil {
-			continue
-		}
-		if ctrl == nil {
-			continue
-		}
-		defer ctrl.Release()
-
-		ctrl2 := &iAudioSessionControl2{}
-		if err := ctrl.PutQueryInterface(wca.IID_IAudioSessionControl2, &ctrl2); err != nil {
-			continue
-		}
-		defer ctrl2.Release()
-
-		pid, err := ctrl2.GetProcessID()
-		if err != nil || pid == 0 {
-			continue
+			return fmt.Errorf("get audio session count: %w", err)
 		}
 
-		simple := &iSimpleAudioVolume{}
-		if err := ctrl.PutQueryInterface(wca.IID_ISimpleAudioVolume, &simple); err != nil {
-			continue
-		}
-		defer simple.Release()
+		sessions := make([]windowsAppSessionHandle, 0, count)
+		for i := 0; i < count; i++ {
+			ctrl, err := enum.GetSession(i)
+			if err != nil {
+				continue
+			}
+			if ctrl == nil {
+				continue
+			}
+			defer ctrl.Release()
 
-		exePath, exeName := processInfoFromPID(pid)
-		sessionID := fmt.Sprintf("pid:%d:%d", pid, i)
-		if exePath != "" {
-			sessionID = exePath
-		}
-		sessions = append(sessions, windowsAppSessionHandle{
-			id:      sessionID,
-			name:    exeName,
-			exe:     exeName,
-			control: ctrl2,
-			volume:  simple,
-		})
-	}
+			ctrl2 := &iAudioSessionControl2{}
+			if err := ctrl.PutQueryInterface(wca.IID_IAudioSessionControl2, &ctrl2); err != nil {
+				continue
+			}
+			defer ctrl2.Release()
 
-	return fn(sessions)
+			pid, err := ctrl2.GetProcessID()
+			if err != nil || pid == 0 {
+				continue
+			}
+
+			simple := &iSimpleAudioVolume{}
+			if err := ctrl.PutQueryInterface(wca.IID_ISimpleAudioVolume, &simple); err != nil {
+				continue
+			}
+			defer simple.Release()
+
+			exePath, exeName := processInfoFromPID(pid)
+			sessionID := fmt.Sprintf("pid:%d:%d", pid, i)
+			if exePath != "" {
+				sessionID = exePath
+			}
+			sessions = append(sessions, windowsAppSessionHandle{
+				id:      sessionID,
+				name:    exeName,
+				exe:     exeName,
+				control: ctrl2,
+				volume:  simple,
+			})
+		}
+
+		return fn(sessions)
+	})
 }
 
 func processInfoFromPID(pid uint32) (string, string) {
@@ -332,11 +332,11 @@ type iAudioSessionManager2Vtbl struct {
 	ole.IUnknownVtbl
 	GetAudioSessionControl        uintptr
 	GetSimpleAudioVolume          uintptr
+	GetSessionEnumerator          uintptr
 	RegisterSessionNotification   uintptr
 	UnregisterSessionNotification uintptr
 	RegisterDuckNotification      uintptr
 	UnregisterDuckNotification    uintptr
-	GetSessionEnumerator          uintptr
 }
 
 func (v *iAudioSessionManager2) VTable() *iAudioSessionManager2Vtbl {

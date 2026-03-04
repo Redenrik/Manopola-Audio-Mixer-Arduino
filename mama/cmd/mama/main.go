@@ -170,6 +170,12 @@ func runSessionFromChannels(ctx context.Context, cfg *config.Config, b audio.Bac
 			switch ev.Kind {
 			case proto.EventEncoderDelta:
 				if err := b.Adjust(m.Target, backendTargetName(m), m.Step, ev.Delta); err != nil {
+					if errors.Is(err, audio.ErrTargetUnavailable) {
+						if cfg.Debug {
+							runtime.Log("target_unavailable", runtime.Fields{"knob_id": ev.KnobID, "operation": "adjust"})
+						}
+						continue
+					}
 					metrics.IncBackendFailures()
 					if cfg.Debug {
 						runtime.Log("backend_error", runtime.Fields{"error": err, "knob_id": ev.KnobID, "operation": "adjust"})
@@ -177,6 +183,12 @@ func runSessionFromChannels(ctx context.Context, cfg *config.Config, b audio.Bac
 				}
 			case proto.EventButtonPress:
 				if err := b.ToggleMute(m.Target, backendTargetName(m)); err != nil {
+					if errors.Is(err, audio.ErrTargetUnavailable) {
+						if cfg.Debug {
+							runtime.Log("target_unavailable", runtime.Fields{"knob_id": ev.KnobID, "operation": "toggle_mute"})
+						}
+						continue
+					}
 					metrics.IncBackendFailures()
 					if cfg.Debug {
 						runtime.Log("backend_error", runtime.Fields{"error": err, "knob_id": ev.KnobID, "operation": "toggle_mute"})

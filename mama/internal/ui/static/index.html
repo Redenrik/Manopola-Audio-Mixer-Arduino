@@ -379,6 +379,7 @@
       cfgPath: "",
       config: null,
       knownTargets: ["master_out", "mic_in", "line_in", "app", "group"],
+      discoveredTargets: [],
       identifyES: null,
       manualPortDirty: false,
       language: "en",
@@ -647,11 +648,64 @@
       }, 420));
     }
 
+    function targetSections() {
+      return [
+        { label: state.language === "it" ? "Uscite" : "Outputs", ids: ["master_out"] },
+        { label: state.language === "it" ? "Ingressi" : "Inputs", ids: ["mic_in", "line_in"] },
+        { label: state.language === "it" ? "Sessioni" : "Sessions", ids: ["app", "group"] }
+      ];
+    }
+
+    function parseSelectorTokenInput(raw) {
+      const token = (raw || "").trim();
+      if (!token) return null;
+
+      let kind = "exact";
+      let value = token;
+      const idx = token.indexOf(":");
+      if (idx > 0) {
+        const candidate = token.slice(0, idx).trim();
+        const rest = token.slice(idx + 1).trim();
+        if (["exact", "contains", "prefix", "suffix", "glob", "exe"].includes(candidate) && rest) {
+          kind = candidate;
+          value = rest;
+        }
+      }
+
+      value = value.trim();
+      if (!value) return null;
+      return { kind, value };
+    }
+
+    function selectorTokenFromMapping(mapping) {
+      if (mapping && mapping.selector && mapping.selector.kind && mapping.selector.value) {
+        return String(mapping.selector.kind) + ":" + String(mapping.selector.value);
+      }
+      if (mapping && typeof mapping.name === "string") {
+        return mapping.name;
+      }
+      return "";
+    }
+
+    function appSelectorSuggestions() {
+      const out = new Set();
+      for (const item of state.discoveredTargets || []) {
+        if (!item || item.type !== "app") continue;
+        if (typeof item.name === "string" && item.name.trim()) {
+          out.add(item.name.trim());
+          out.add("exact:" + item.name.trim());
+          out.add("exe:" + item.name.trim());
+        }
+      }
+      return Array.from(out);
+    }
+
     function mappingRow(mapping = { knob: 1, target: "master_out", step: 0.02, name: "" }) {
       const row = document.createElement("div");
       row.className = "row";
 
       const knob = document.createElement("select");
+      knob.className = "map-knob";
       knob.setAttribute("aria-label", "Mapping knob");
       for (let i = 1; i <= knobCount; i++) {
         const o = document.createElement("option");
@@ -662,21 +716,44 @@
       knob.value = String(mapping.knob || 1);
 
       const target = document.createElement("select");
+      target.className = "map-target";
       target.setAttribute("aria-label", "Mapping target");
-      for (const targetID of state.knownTargets) {
-        const o = document.createElement("option");
-        o.value = targetID;
-        o.textContent = targetID;
-        target.appendChild(o);
+      const known = new Set(state.knownTargets || []);
+      for (const section of targetSections()) {
+        const ids = section.ids.filter((id) => known.has(id));
+        if (ids.length === 0) continue;
+        const group = document.createElement("optgroup");
+        group.label = section.label;
+        for (const targetID of ids) {
+          const o = document.createElement("option");
+          o.value = targetID;
+          o.textContent = targetID;
+          group.appendChild(o);
+        }
+        target.appendChild(group);
       }
-      target.value = mapping.target || "master_out";
+      const selectedTarget = mapping.target || "master_out";
+      const hasSelectedTarget = Array.from(target.options).some((o) => o.value === selectedTarget);
+      if (!hasSelectedTarget) {
+        const fallback = document.createElement("option");
+        fallback.value = selectedTarget;
+        fallback.textContent = selectedTarget;
+        target.appendChild(fallback);
+      }
+      target.value = selectedTarget;
 
       const name = document.createElement("input");
+      name.className = "map-name";
       name.setAttribute("aria-label", "Application or group name");
       name.placeholder = state.language === "it" ? "discord.exe / gruppo-musica" : "discord.exe / music-group";
-      name.value = mapping.name || "";
+      name.value = selectorTokenFromMapping(mapping);
+
+      const suggestions = document.createElement("datalist");
+      suggestions.id = "map-suggestions-" + Math.random().toString(36).slice(2);
+      name.setAttribute("list", suggestions.id);
 
       const step = document.createElement("input");
+      step.className = "map-step";
       step.setAttribute("aria-label", "Volume step");
       step.type = "number";
       step.min = "0.001";
@@ -695,6 +772,14 @@
         const requiresName = target.value === "app" || target.value === "group";
         name.disabled = !requiresName;
         if (!requiresName) name.value = "";
+        suggestions.innerHTML = "";
+        if (target.value === "app") {
+          for (const value of appSelectorSuggestions()) {
+            const option = document.createElement("option");
+            option.value = value;
+            suggestions.appendChild(option);
+          }
+        }
       }
       target.addEventListener("change", syncNameState);
       syncNameState();
@@ -702,6 +787,7 @@
       row.appendChild(knob);
       row.appendChild(target);
       row.appendChild(name);
+      row.appendChild(suggestions);
       row.appendChild(step);
       row.appendChild(remove);
       return row;
@@ -720,13 +806,22 @@
     function collectMappings() {
       const rows = Array.from($("mappings").querySelectorAll(".row"));
       return rows.map((row) => {
-        const [knob, target, name, step] = row.querySelectorAll("select,input");
-        return {
+        const knob = row.querySelector(".map-knob");
+        const target = row.querySelector(".map-target");
+        const name = row.querySelector(".map-name");
+        const step = row.querySelector(".map-step");
+        const mapping = {
           knob: parseInt(knob.value, 10),
           target: target.value,
-          name: name.value.trim(),
           step: parseFloat(step.value)
         };
+        const selector = parseSelectorTokenInput(name.value);
+        if (target.value === "app" && selector) {
+          mapping.selector = selector;
+        } else if ((target.value === "app" || target.value === "group") && name.value.trim()) {
+          mapping.name = name.value.trim();
+        }
+        return mapping;
       });
     }
 
@@ -777,17 +872,19 @@
 
     async function loadTargets() {
       const body = await fetchJSON("/api/targets");
+      state.discoveredTargets = Array.isArray(body.discovered) ? body.discovered : [];
+      if (Array.isArray(body.known) && body.known.length > 0) {
+        state.knownTargets = body.known;
+        return;
+      }
       if (Array.isArray(body.discovered) && body.discovered.length > 0) {
         const discoveredTypes = Array.from(new Set(body.discovered
           .map((entry) => entry && typeof entry === "object" ? entry.type : "")
           .filter((type) => typeof type === "string" && type.trim().length > 0)));
         if (discoveredTypes.length > 0) {
-          state.knownTargets = discoveredTypes;
+          state.knownTargets = Array.from(new Set([...state.knownTargets, ...discoveredTypes]));
           return;
         }
-      }
-      if (Array.isArray(body.known) && body.known.length > 0) {
-        state.knownTargets = body.known;
       }
     }
 

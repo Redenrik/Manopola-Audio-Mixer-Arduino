@@ -43,6 +43,8 @@ From repo root:
 powershell -ExecutionPolicy Bypass -File scripts\windows\package-portable.ps1
 ```
 
+The packaging script enforces `GOOS=windows` and `GOARCH=amd64` so local output matches the supported Windows release artifact architecture.
+
 Output folder:
 - `dist\mama-portable\`
 

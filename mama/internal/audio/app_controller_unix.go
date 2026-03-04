@@ -140,7 +140,7 @@ func (u *unixAppSessionController) selectSession(selectorToken string) (appSessi
 			return s, nil
 		}
 	}
-	return appSession{}, fmt.Errorf("no app session matched selector %q", selectorToken)
+	return appSession{}, fmt.Errorf("%w: no app session matched selector %q", ErrTargetUnavailable, selectorToken)
 }
 
 func (u *unixAppSessionController) selectSessions(selectors []config.Selector) ([]appSession, error) {
@@ -163,7 +163,7 @@ func (u *unixAppSessionController) selectSessions(selectors []config.Selector) (
 		}
 	}
 	if len(matched) == 0 {
-		return nil, fmt.Errorf("no app sessions matched group selectors")
+		return nil, fmt.Errorf("%w: no app sessions matched group selectors", ErrTargetUnavailable)
 	}
 	return matched, nil
 }

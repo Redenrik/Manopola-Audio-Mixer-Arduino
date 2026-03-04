@@ -317,6 +317,22 @@ func TestBackendListTargetsIncludesAppTargetsWhenAvailable(t *testing.T) {
 	}
 }
 
+func TestBackendListTargetsIgnoresAppDiscoveryErrors(t *testing.T) {
+	app := &fakeAppSessionController{listErr: errors.New("boom")}
+	b := &baseBackend{master: &fakeVolumeController{}, app: app}
+
+	targets, err := b.ListTargets()
+	if err != nil {
+		t.Fatalf("ListTargets() error = %v", err)
+	}
+	if len(targets) != 1 {
+		t.Fatalf("ListTargets() len = %d, want 1", len(targets))
+	}
+	if targets[0].Type != config.TargetMasterOut || targets[0].ID != "system:master_out" {
+		t.Fatalf("ListTargets()[0] = %#v, want master_out target", targets[0])
+	}
+}
+
 func TestBackendAppUnsupportedWithoutController(t *testing.T) {
 	b := &baseBackend{master: &fakeVolumeController{}, app: nil}
 	if err := b.Adjust(config.TargetApp, "exact:Discord", 0.02, 1); err == nil {

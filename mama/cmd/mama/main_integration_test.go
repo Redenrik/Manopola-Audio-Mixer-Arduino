@@ -22,15 +22,19 @@ type backendCall struct {
 	delta  int
 }
 
-type fakeBackend struct{ calls []backendCall }
+type fakeBackend struct {
+	calls     []backendCall
+	adjustErr error
+	toggleErr error
+}
 
 func (f *fakeBackend) Adjust(target config.TargetType, name string, step float64, deltaSteps int) error {
 	f.calls = append(f.calls, backendCall{op: "adjust", target: target, name: name, step: step, delta: deltaSteps})
-	return nil
+	return f.adjustErr
 }
 func (f *fakeBackend) ToggleMute(target config.TargetType, name string) error {
 	f.calls = append(f.calls, backendCall{op: "toggle", target: target, name: name})
-	return nil
+	return f.toggleErr
 }
 func (f *fakeBackend) ListTargets() ([]audio.DiscoveredTarget, error) { return nil, nil }
 
@@ -154,5 +158,28 @@ func TestRunSessionFromChannels_ProtocolMismatchBestEffort(t *testing.T) {
 	}
 	if backend.calls[0].op != "adjust" || backend.calls[1].op != "toggle" {
 		t.Fatalf("unexpected backend call sequence: %+v", backend.calls)
+	}
+}
+
+func TestRunSessionFromChannels_TargetUnavailableIgnored(t *testing.T) {
+	cfg := &config.Config{Mappings: []config.Mapping{{Knob: 1, Target: config.TargetApp, Step: 0.02, Selector: &config.Selector{Kind: config.SelectorExact, Value: "discord"}}}, Debug: true}
+	backend := &fakeBackend{adjustErr: audio.ErrTargetUnavailable, toggleErr: audio.ErrTargetUnavailable}
+	metrics := runtime.NewMetrics()
+
+	lineCh := make(chan string)
+	readErrCh := make(chan error, 1)
+	go func() {
+		defer close(lineCh)
+		lineCh <- "E1:+1"
+		lineCh <- "B1:1"
+		readErrCh <- nil
+	}()
+
+	if err := runSessionFromChannels(context.Background(), cfg, backend, metrics, lineCh, readErrCh); err != nil {
+		t.Fatalf("runSessionFromChannels returned error: %v", err)
+	}
+
+	if got := metrics.Snapshot().BackendFailures; got != 0 {
+		t.Fatalf("backend failures = %d, want 0", got)
 	}
 }

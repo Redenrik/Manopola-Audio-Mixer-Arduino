@@ -6,7 +6,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/itchyny/volume-go"
 	"mama/internal/config"
 )
 
@@ -19,12 +18,6 @@ type volumeController interface {
 }
 
 type systemVolumeController struct{}
-
-func (systemVolumeController) GetVolume() (int, error) { return volume.GetVolume() }
-func (systemVolumeController) SetVolume(v int) error   { return volume.SetVolume(v) }
-func (systemVolumeController) GetMuted() (bool, error) { return volume.GetMuted() }
-func (systemVolumeController) Mute() error             { return volume.Mute() }
-func (systemVolumeController) Unmute() error           { return volume.Unmute() }
 
 type baseBackend struct {
 	master volumeController
@@ -130,10 +123,9 @@ func (b *baseBackend) ListTargets() ([]DiscoveredTarget, error) {
 	}
 	if b.app != nil {
 		appTargets, err := b.app.ListTargets()
-		if err != nil {
-			return nil, fmt.Errorf("list app targets: %w", err)
+		if err == nil {
+			targets = append(targets, appTargets...)
 		}
-		targets = append(targets, appTargets...)
 	}
 	return targets, nil
 }

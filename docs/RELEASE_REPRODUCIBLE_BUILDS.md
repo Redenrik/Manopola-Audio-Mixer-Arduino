@@ -28,6 +28,8 @@ For local Windows-only packaging from repository root:
 powershell -ExecutionPolicy Bypass -File scripts\windows\package-portable.ps1
 ```
 
+This script explicitly builds with `GOOS=windows` and `GOARCH=amd64` to keep local packaging aligned with the supported Windows artifact architecture.
+
 Optional installer from the portable directory:
 
 ```powershell

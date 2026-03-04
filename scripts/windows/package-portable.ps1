@@ -12,6 +12,10 @@ New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
 Push-Location $mamaDir
 try {
+    $env:GOOS = "windows"
+    $env:GOARCH = "amd64"
+
+    Write-Host "Building Windows portable binaries for GOARCH=$env:GOARCH..."
     Write-Host "Building mama.exe..."
     go build -o (Join-Path $outDir "mama.exe") ./cmd/mama
 
