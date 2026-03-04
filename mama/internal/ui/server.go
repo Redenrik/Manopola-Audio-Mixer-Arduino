@@ -107,8 +107,9 @@ func (s *Server) handleRuntime(w http.ResponseWriter, r *http.Request) {
 
 	if s.mixerService == nil {
 		writeJSON(w, http.StatusOK, map[string]any{
-			"ok":      true,
-			"running": false,
+			"ok":            true,
+			"running":       false,
+			"observedKnobs": []int{},
 			"status": map[string]any{
 				"state":     "inactive",
 				"connected": false,
@@ -119,24 +120,28 @@ func (s *Server) handleRuntime(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":      true,
-		"running": true,
-		"status":  s.mixerService.Status(),
-		"metrics": s.mixerService.MetricsSnapshot(),
-		"serial":  s.mixerService.ConfigSnapshot().Serial,
+		"ok":            true,
+		"running":       true,
+		"status":        s.mixerService.Status(),
+		"metrics":       s.mixerService.MetricsSnapshot(),
+		"serial":        s.mixerService.ConfigSnapshot().Serial,
+		"observedKnobs": s.mixerService.ObservedKnobs(),
 	})
 }
 
 type mappingStatusItem struct {
-	Knob         int               `json:"knob"`
-	Target       config.TargetType `json:"target"`
-	Selector     string            `json:"selector,omitempty"`
-	Display      string            `json:"display,omitempty"`
-	Available    bool              `json:"available"`
-	Volume       int               `json:"volume,omitempty"`
-	Muted        bool              `json:"muted"`
-	SessionCount int               `json:"sessionCount,omitempty"`
-	Error        string            `json:"error,omitempty"`
+	Knob             int               `json:"knob"`
+	Target           config.TargetType `json:"target"`
+	Selector         string            `json:"selector,omitempty"`
+	Display          string            `json:"display,omitempty"`
+	Available        bool              `json:"available"`
+	Volume           int               `json:"volume,omitempty"`
+	Muted            bool              `json:"muted"`
+	SessionCount     int               `json:"sessionCount,omitempty"`
+	FallbackToMaster bool              `json:"fallbackToMaster,omitempty"`
+	Health           string            `json:"health"`
+	HealthMessage    string            `json:"healthMessage,omitempty"`
+	Error            string            `json:"error,omitempty"`
 }
 
 func (s *Server) handleMappingStatus(w http.ResponseWriter, r *http.Request) {
@@ -155,11 +160,13 @@ func (s *Server) handleMappingStatus(w http.ResponseWriter, r *http.Request) {
 	for _, mapping := range cfg.ActiveMappings() {
 		selectorToken := mappingSelectorToken(mapping)
 		item := mappingStatusItem{
-			Knob:      mapping.Knob,
-			Target:    mapping.Target,
-			Selector:  selectorToken,
-			Display:   mappingDisplayName(mapping),
-			Available: false,
+			Knob:             mapping.Knob,
+			Target:           mapping.Target,
+			Selector:         selectorToken,
+			Display:          mappingDisplayName(mapping),
+			Available:        false,
+			FallbackToMaster: mapping.FallbackToMaster,
+			Health:           "unknown",
 		}
 
 		targetState, readErr := s.backend.ReadState(mapping.Target, selectorToken)
@@ -168,9 +175,10 @@ func (s *Server) handleMappingStatus(w http.ResponseWriter, r *http.Request) {
 			item.Volume = targetState.Volume
 			item.Muted = targetState.Muted
 			item.SessionCount = targetState.SessionCount
-		} else if !errors.Is(readErr, audio.ErrTargetUnavailable) {
+		} else {
 			item.Error = readErr.Error()
 		}
+		item.Health, item.HealthMessage = classifyMappingHealth(mapping, item, readErr)
 
 		items = append(items, item)
 	}
@@ -256,6 +264,35 @@ func mappingSelectorForUI(selector config.Selector) string {
 		return value
 	}
 	return kind + ":" + value
+}
+
+func classifyMappingHealth(mapping config.Mapping, item mappingStatusItem, readErr error) (string, string) {
+	if readErr == nil {
+		if item.Available {
+			return "ok", "target reachable"
+		}
+		return "unavailable", "target not reachable right now"
+	}
+
+	msg := readErr.Error()
+	if errors.Is(readErr, audio.ErrTargetUnavailable) {
+		if mapping.FallbackToMaster && (mapping.Target == config.TargetApp || mapping.Target == config.TargetGroup) {
+			return "fallback", "target unavailable, fallback to master is enabled"
+		}
+		return "unavailable", "target unavailable"
+	}
+
+	lower := strings.ToLower(msg)
+	switch {
+	case strings.Contains(lower, "permission"), strings.Contains(lower, "access denied"), strings.Contains(lower, "coinitialize"):
+		return "permission", msg
+	case strings.Contains(lower, "unsupported"):
+		return "unsupported", msg
+	case strings.Contains(lower, "not found"), strings.Contains(lower, "impossibile trovare elemento"):
+		return "missing", msg
+	default:
+		return "error", msg
+	}
 }
 
 func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {

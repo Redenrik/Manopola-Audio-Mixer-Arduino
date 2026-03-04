@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"sort"
 	"sync"
 	"time"
 
@@ -71,6 +73,9 @@ type Service struct {
 	sessionID     uint64
 	sessionCancel context.CancelFunc
 	sessionClose  func()
+
+	observedMu    sync.RWMutex
+	observedKnobs map[int]struct{}
 }
 
 func NewService(initial config.Config, backend audio.Backend) (*Service, error) {
@@ -83,10 +88,11 @@ func NewService(initial config.Config, backend audio.Backend) (*Service, error) 
 	}
 
 	s := &Service{
-		backend: backend,
-		metrics: runtime.NewMetrics(),
-		cfg:     cloneConfig(cfg),
-		subs:    make(map[int]chan Event),
+		backend:       backend,
+		metrics:       runtime.NewMetrics(),
+		cfg:           cloneConfig(cfg),
+		subs:          make(map[int]chan Event),
+		observedKnobs: make(map[int]struct{}),
 		status: Status{
 			State:     "starting",
 			Port:      cfg.Serial.Port,
@@ -318,6 +324,9 @@ func (s *Service) runSession(parent context.Context, reader *serialx.Reader, por
 				}
 				continue
 			}
+			if ev.KnobID > 0 {
+				s.noteObservedKnob(ev.KnobID)
+			}
 
 			switch ev.Kind {
 			case proto.EventProtocolHello:
@@ -370,10 +379,25 @@ func (s *Service) runSession(parent context.Context, reader *serialx.Reader, por
 
 			switch ev.Kind {
 			case proto.EventEncoderDelta:
-				if err := s.backend.Adjust(m.Target, backendTargetName(m), m.Step, ev.Delta); err != nil {
+				step := effectiveAdjustStep(m)
+				if err := s.backend.Adjust(m.Target, backendTargetName(m), step, ev.Delta); err != nil {
 					if errors.Is(err, audio.ErrTargetUnavailable) {
 						if cfg.Debug {
 							runtime.Log("target_unavailable", runtime.Fields{"knob_id": ev.KnobID, "operation": "adjust"})
+						}
+						handled, fallbackErr := s.tryFallbackAdjust(m, step, ev.Delta, ev.KnobID, cfg.Debug)
+						if handled {
+							if fallbackErr != nil {
+								s.metrics.IncBackendFailures()
+								s.publish(Event{
+									Type:    EventTypeError,
+									Time:    time.Now().UTC(),
+									Kind:    "encoder_delta",
+									KnobID:  ev.KnobID,
+									Message: "fallback adjust failed",
+									Error:   fallbackErr.Error(),
+								})
+							}
 						}
 						continue
 					}
@@ -395,6 +419,20 @@ func (s *Service) runSession(parent context.Context, reader *serialx.Reader, por
 					if errors.Is(err, audio.ErrTargetUnavailable) {
 						if cfg.Debug {
 							runtime.Log("target_unavailable", runtime.Fields{"knob_id": ev.KnobID, "operation": "toggle_mute"})
+						}
+						handled, fallbackErr := s.tryFallbackToggle(m, ev.KnobID, cfg.Debug)
+						if handled {
+							if fallbackErr != nil {
+								s.metrics.IncBackendFailures()
+								s.publish(Event{
+									Type:    EventTypeError,
+									Time:    time.Now().UTC(),
+									Kind:    "button_press",
+									KnobID:  ev.KnobID,
+									Message: "fallback mute toggle failed",
+									Error:   fallbackErr.Error(),
+								})
+							}
 						}
 						continue
 					}
@@ -464,6 +502,20 @@ func (s *Service) MetricsSnapshot() runtime.MetricsSnapshot {
 
 func (s *Service) ConfigSnapshot() config.Config {
 	return s.configSnapshot()
+}
+
+func (s *Service) ObservedKnobs() []int {
+	s.observedMu.RLock()
+	defer s.observedMu.RUnlock()
+	if len(s.observedKnobs) == 0 {
+		return nil
+	}
+	out := make([]int, 0, len(s.observedKnobs))
+	for id := range s.observedKnobs {
+		out = append(out, id)
+	}
+	sort.Ints(out)
+	return out
 }
 
 func (s *Service) Subscribe(buffer int) (<-chan Event, func()) {
@@ -566,6 +618,65 @@ func (s *Service) publish(ev Event) {
 		default:
 		}
 	}
+}
+
+func (s *Service) noteObservedKnob(knobID int) {
+	if knobID <= 0 {
+		return
+	}
+	s.observedMu.Lock()
+	s.observedKnobs[knobID] = struct{}{}
+	s.observedMu.Unlock()
+}
+
+func effectiveAdjustStep(m config.Mapping) float64 {
+	step := m.Step
+	multiplier := 1.0
+	switch m.Sensitivity {
+	case config.SensitivitySlow:
+		multiplier = 0.5
+	case config.SensitivityFast:
+		multiplier = 1.6
+	default:
+		multiplier = 1.0
+	}
+
+	next := step * multiplier
+	next = math.Max(0.001, math.Min(1.0, next))
+	return next
+}
+
+func (s *Service) tryFallbackAdjust(m config.Mapping, step float64, delta int, knobID int, debug bool) (bool, error) {
+	if !m.FallbackToMaster {
+		return false, nil
+	}
+	if m.Target != config.TargetApp && m.Target != config.TargetGroup {
+		return false, nil
+	}
+	if debug {
+		runtime.Log("fallback_adjust", runtime.Fields{
+			"knob_id": knobID,
+			"target":  "master_out",
+			"delta":   delta,
+		})
+	}
+	return true, s.backend.Adjust(config.TargetMasterOut, "", step, delta)
+}
+
+func (s *Service) tryFallbackToggle(m config.Mapping, knobID int, debug bool) (bool, error) {
+	if !m.FallbackToMaster {
+		return false, nil
+	}
+	if m.Target != config.TargetApp && m.Target != config.TargetGroup {
+		return false, nil
+	}
+	if debug {
+		runtime.Log("fallback_toggle", runtime.Fields{
+			"knob_id": knobID,
+			"target":  "master_out",
+		})
+	}
+	return true, s.backend.ToggleMute(config.TargetMasterOut, "")
 }
 
 func backendTargetName(m config.Mapping) string {

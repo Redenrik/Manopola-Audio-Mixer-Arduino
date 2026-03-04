@@ -68,14 +68,24 @@ const (
 )
 
 type Mapping struct {
-	Knob      int        `yaml:"knob" json:"knob"`
-	Target    TargetType `yaml:"target" json:"target"`
-	Name      string     `yaml:"name,omitempty" json:"name,omitempty"` // app/group legacy alias and optional endpoint selector token for system targets
-	Selector  *Selector  `yaml:"selector,omitempty" json:"selector,omitempty"`
-	Selectors []Selector `yaml:"selectors,omitempty" json:"selectors,omitempty"`
-	Priority  int        `yaml:"priority,omitempty" json:"priority,omitempty"`
-	Step      float64    `yaml:"step" json:"step"` // e.g. 0.02 = 2% per detent
+	Knob             int               `yaml:"knob" json:"knob"`
+	Target           TargetType        `yaml:"target" json:"target"`
+	Name             string            `yaml:"name,omitempty" json:"name,omitempty"` // app/group legacy alias and optional endpoint selector token for system targets
+	Selector         *Selector         `yaml:"selector,omitempty" json:"selector,omitempty"`
+	Selectors        []Selector        `yaml:"selectors,omitempty" json:"selectors,omitempty"`
+	Priority         int               `yaml:"priority,omitempty" json:"priority,omitempty"`
+	Step             float64           `yaml:"step" json:"step"` // e.g. 0.02 = 2% per detent
+	Sensitivity      SensitivityPreset `yaml:"sensitivity,omitempty" json:"sensitivity,omitempty"`
+	FallbackToMaster bool              `yaml:"fallback_to_master,omitempty" json:"fallback_to_master,omitempty"`
 }
+
+type SensitivityPreset string
+
+const (
+	SensitivitySlow   SensitivityPreset = "slow"
+	SensitivityNormal SensitivityPreset = "normal"
+	SensitivityFast   SensitivityPreset = "fast"
+)
 
 type SelectorKind string
 
@@ -128,17 +138,19 @@ type rawProfile struct {
 }
 
 type rawMapping struct {
-	Knob       int        `yaml:"knob"`
-	Target     TargetType `yaml:"target"`
-	Name       string     `yaml:"name"`
-	Selector   *Selector  `yaml:"selector"`
-	Selectors  []Selector `yaml:"selectors"`
-	Step       float64    `yaml:"step"`
-	Priority   int        `yaml:"priority"`
-	LegacyID   int        `yaml:"id"`
-	LegacyType TargetType `yaml:"type"`
-	LegacyApp  string     `yaml:"app"`
-	LegacyStep float64    `yaml:"volume_step"`
+	Knob             int               `yaml:"knob"`
+	Target           TargetType        `yaml:"target"`
+	Name             string            `yaml:"name"`
+	Selector         *Selector         `yaml:"selector"`
+	Selectors        []Selector        `yaml:"selectors"`
+	Step             float64           `yaml:"step"`
+	Priority         int               `yaml:"priority"`
+	Sensitivity      SensitivityPreset `yaml:"sensitivity"`
+	FallbackToMaster bool              `yaml:"fallback_to_master"`
+	LegacyID         int               `yaml:"id"`
+	LegacyType       TargetType        `yaml:"type"`
+	LegacyApp        string            `yaml:"app"`
+	LegacyStep       float64           `yaml:"volume_step"`
 }
 
 func Load(path string) (Config, error) {
@@ -202,13 +214,15 @@ func migrateRawConfig(raw rawConfig) Config {
 
 func migrateRawMapping(rm rawMapping) Mapping {
 	m := Mapping{
-		Knob:      rm.Knob,
-		Target:    rm.Target,
-		Name:      rm.Name,
-		Selector:  rm.Selector,
-		Selectors: rm.Selectors,
-		Priority:  rm.Priority,
-		Step:      rm.Step,
+		Knob:             rm.Knob,
+		Target:           rm.Target,
+		Name:             rm.Name,
+		Selector:         rm.Selector,
+		Selectors:        rm.Selectors,
+		Priority:         rm.Priority,
+		Step:             rm.Step,
+		Sensitivity:      rm.Sensitivity,
+		FallbackToMaster: rm.FallbackToMaster,
 	}
 
 	if m.Knob == 0 {
@@ -222,6 +236,9 @@ func migrateRawMapping(rm rawMapping) Mapping {
 	}
 	if m.Step == 0 {
 		m.Step = rm.LegacyStep
+	}
+	if m.Sensitivity == "" {
+		m.Sensitivity = SensitivityNormal
 	}
 
 	return m
@@ -287,6 +304,7 @@ func validateMappingSet(mappings []Mapping) error {
 		m := &mappings[i]
 
 		m.Name = strings.TrimSpace(m.Name)
+		m.Sensitivity = normalizeSensitivity(m.Sensitivity)
 		if m.Selector != nil {
 			m.Selector.Value = strings.TrimSpace(m.Selector.Value)
 		}
@@ -311,6 +329,12 @@ func validateMappingSet(mappings []Mapping) error {
 
 		if err := validateMappingSelectors(m); err != nil {
 			return fmt.Errorf("knob %d: %w", m.Knob, err)
+		}
+		if err := validateSensitivity(m.Sensitivity); err != nil {
+			return fmt.Errorf("knob %d: %w", m.Knob, err)
+		}
+		if m.FallbackToMaster && m.Target != TargetApp && m.Target != TargetGroup {
+			return fmt.Errorf("knob %d: fallback_to_master is allowed only for target app/group", m.Knob)
 		}
 
 		if math.IsNaN(m.Step) || math.IsInf(m.Step, 0) || m.Step <= 0 || m.Step > 1 {
@@ -478,6 +502,26 @@ func validateSelector(selector Selector) error {
 		return nil
 	default:
 		return fmt.Errorf("invalid selector kind %q", selector.Kind)
+	}
+}
+
+func normalizeSensitivity(v SensitivityPreset) SensitivityPreset {
+	switch SensitivityPreset(strings.ToLower(strings.TrimSpace(string(v)))) {
+	case SensitivitySlow:
+		return SensitivitySlow
+	case SensitivityFast:
+		return SensitivityFast
+	default:
+		return SensitivityNormal
+	}
+}
+
+func validateSensitivity(v SensitivityPreset) error {
+	switch v {
+	case SensitivitySlow, SensitivityNormal, SensitivityFast:
+		return nil
+	default:
+		return fmt.Errorf("invalid sensitivity %q", v)
 	}
 }
 

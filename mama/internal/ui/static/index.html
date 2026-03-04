@@ -124,7 +124,7 @@
     .row {
       display: grid;
       gap: 8px;
-      grid-template-columns: 92px minmax(170px, 1fr) minmax(250px, 1.5fr) 132px 42px;
+      grid-template-columns: 92px minmax(150px, 1fr) minmax(220px, 1.4fr) 118px 118px 146px 42px;
       align-items: center;
       margin-bottom: 8px;
     }
@@ -160,7 +160,7 @@
       }
 
       .row {
-        grid-template-columns: 108px minmax(190px, 1fr) minmax(330px, 1.7fr) 148px 48px;
+        grid-template-columns: 108px minmax(190px, 1fr) minmax(320px, 1.6fr) 130px 148px 170px 48px;
       }
     }
 
@@ -340,6 +340,63 @@
     .status.error { color: #7a2614; }
     .status.ok { color: #175a51; }
 
+    .recovery-banner {
+      border: 1px solid #e9baaa;
+      background: #fff3ee;
+      color: #7a2614;
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .recovery-banner.hidden {
+      display: none;
+    }
+
+    .recovery-banner button {
+      white-space: nowrap;
+      padding: 7px 10px;
+      font-size: 0.88rem;
+    }
+
+    .health-badge {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+      vertical-align: baseline;
+    }
+
+    .health-ok {
+      color: #145f51;
+      background: #d9f3ec;
+      border-color: #93d3c4;
+    }
+
+    .health-fallback {
+      color: #66410b;
+      background: #ffeccf;
+      border-color: #efcf93;
+    }
+
+    .health-unavailable, .health-missing {
+      color: #7a2614;
+      background: #fde5de;
+      border-color: #efb2a2;
+    }
+
+    .health-permission, .health-unsupported, .health-error {
+      color: #7a2614;
+      background: #fbded6;
+      border-color: #e6a99a;
+    }
+
     .debug-console-wrap {
       margin-top: 12px;
       border: 1px solid var(--line);
@@ -412,6 +469,14 @@
       border-color: var(--lite-border);
       color: var(--lite-text);
       white-space: nowrap;
+    }
+
+    .map-fallback {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.84rem;
+      margin: 0;
     }
 
     .modal-overlay {
@@ -491,6 +556,11 @@
       </div>
     </section>
 
+    <section class="recovery-banner hidden" id="recoveryBanner" role="status" aria-live="polite">
+      <span id="recoveryMessage"></span>
+      <button id="recoveryRetry" type="button">Retry Now</button>
+    </section>
+
     <section class="panel split">
       <div>
         <h2 id="connectionHeading">Connection</h2>
@@ -550,7 +620,9 @@
         <div id="headerKnob">Knob</div>
         <div id="headerTarget">Target</div>
         <div id="headerName">Name / Selector</div>
+        <div id="headerSensitivity">Sensitivity</div>
         <div id="headerStep">Step (0..1)</div>
+        <div id="headerFallback">Fallback</div>
         <div></div>
       </div>
       <div id="mappings"></div>
@@ -605,6 +677,7 @@
       mappingStatusTimer: null,
       mappingStatusInFlight: false,
       lastMappingStatus: [],
+      observedKnobs: [],
       debugLines: [],
       autoApplyingPort: false,
       userPortOverride: false,
@@ -683,7 +756,8 @@
       }
     };
 
-    const knobCount = 5;
+    let knobCount = 5;
+    const maxKnobCount = 32;
     const knobTimers = new Map();
     const knobPressTimers = new Map();
     const backupStorageKey = "mama.setup.config.backup.v1";
@@ -706,7 +780,7 @@
         wizardStart: "Start Wizard", wizardNext: "Next Step", wizardReset: "Reset",
         connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
         identifyHeading: "Knob Identification", identifyIntro: "Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.", debugHeading: "Debug Console", startIdentify: "Start Identify", stopIdentify: "Stop",
-        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerStep: "Step (0..1)", addMapping: "Add Mapping", restoreMissingKnobs: "Restore Missing Knobs", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).",
+        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (0..1)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", restoreMissingKnobs: "Restore Missing Knobs", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).",
         restoreMissingKnobsDone: "Missing knobs restored.",
         restoreMissingKnobsNone: "All knob IDs are already mapped.",
         groupEditButton: "Edit",
@@ -727,7 +801,7 @@
         groupPreviewNone: "Live preview: no active apps match these rules right now.",
         groupPreviewSome: "Live preview matched apps:",
         groupPreviewMore: "and more",
-        noPorts: "No ports detected", waiting: "waiting...", buttonPress: "button press", delta: "delta", knobNoMapping: "No mapping", knobUnavailable: "Unavailable", knobMuted: "Muted", knobLive: "Live", knobApps: "apps",
+        noPorts: "No ports detected", waiting: "waiting...", buttonPress: "button press", delta: "delta", knobNoMapping: "No mapping", knobUnavailable: "Unavailable", knobMuted: "Muted", knobLive: "Live", knobApps: "apps", healthOK: "OK", healthUnavailable: "Unavailable", healthFallback: "Fallback", healthMissing: "Missing", healthPermission: "Permission", healthUnsupported: "Unsupported", healthError: "Error", recoveryRetry: "Retry Now", recoveryConnecting: "Connecting to serial device...", recoveryReconnecting: "Serial disconnected, auto-retry in progress.", recoveryInactive: "Runtime not active.",
         wizardSteps: { detect: { title: "Detect board", hint: "Refresh detected serial ports and select your board." }, test: { title: "Test port", hint: "Run Test Connection to ensure the board is reachable." }, map: { title: "Map knobs", hint: "Use Start Identify and rotate/press knobs to confirm IDs before editing mappings." }, save: { title: "Save config", hint: "Persist serial + mapping configuration." }, verify: { title: "Verify", hint: "Run identify again to confirm knob events after save." } }
       },
       it: {
@@ -745,7 +819,7 @@
         wizardStart: "Avvia procedura", wizardNext: "Passo successivo", wizardReset: "Reimposta",
         connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
         identifyHeading: "Identificazione manopole", identifyIntro: "L'attivita delle manopole viene rilevata automaticamente una volta configurata la porta seriale. Ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", debugHeading: "Console debug", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
-        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerStep: "Step (0..1)", addMapping: "Aggiungi mappatura", restoreMissingKnobs: "Ripristina manopole mancanti", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).",
+        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (0..1)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", restoreMissingKnobs: "Ripristina manopole mancanti", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).",
         restoreMissingKnobsDone: "Manopole mancanti ripristinate.",
         restoreMissingKnobsNone: "Tutti gli ID manopola sono gia mappati.",
         groupEditButton: "Modifica",
@@ -766,7 +840,7 @@
         groupPreviewNone: "Anteprima live: nessuna app attiva corrisponde alle regole al momento.",
         groupPreviewSome: "Anteprima live app corrispondenti:",
         groupPreviewMore: "e altre",
-        noPorts: "Nessuna porta rilevata", waiting: "in attesa...", buttonPress: "pressione tasto", delta: "delta", knobNoMapping: "Nessuna mappatura", knobUnavailable: "Non disponibile", knobMuted: "Muto", knobLive: "Attivo", knobApps: "app",
+        noPorts: "Nessuna porta rilevata", waiting: "in attesa...", buttonPress: "pressione tasto", delta: "delta", knobNoMapping: "Nessuna mappatura", knobUnavailable: "Non disponibile", knobMuted: "Muto", knobLive: "Attivo", knobApps: "app", healthOK: "OK", healthUnavailable: "Non disponibile", healthFallback: "Fallback", healthMissing: "Mancante", healthPermission: "Permessi", healthUnsupported: "Non supportato", healthError: "Errore", recoveryRetry: "Riprova ora", recoveryConnecting: "Connessione dispositivo seriale...", recoveryReconnecting: "Seriale disconnessa, riconnessione automatica in corso.", recoveryInactive: "Runtime non attivo.",
         wizardSteps: { detect: { title: "Rileva scheda", hint: "Aggiorna le porte seriali rilevate e seleziona la tua scheda." }, test: { title: "Test porta", hint: "Esegui Test connessione per verificare che la scheda sia raggiungibile." }, map: { title: "Mappa manopole", hint: "Usa Avvia identificazione e ruota/premi le manopole per confermare gli ID prima di modificare le mappature." }, save: { title: "Salva config", hint: "Salva la configurazione seriale e delle mappature." }, verify: { title: "Verifica", hint: "Avvia di nuovo l'identificazione per confermare gli eventi dopo il salvataggio." } }
       }
     };
@@ -809,7 +883,7 @@
         titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", themeLabel: "themeLabel", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
         wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
         manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", debugHeading: "debugHeading", mappingsHeading: "mappingsHeading",
-        mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep",
+        mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerSensitivity: "headerSensitivity", headerStep: "headerStep", headerFallback: "headerFallback",
         addMapping: "addMapping", restoreMissingKnobs: "restoreMissingKnobs", saveConfig: "saveConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
         groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupAddMusic: "groupAddMusic", groupAddStreaming: "groupAddStreaming", groupAddChat: "groupAddChat", groupAddCreator: "groupAddCreator", groupClearRules: "groupClearRules", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
       };
@@ -820,6 +894,7 @@
       $("themeSelect").options[0].textContent = t("themeSystem");
       $("themeSelect").options[1].textContent = t("themeLight");
       $("themeSelect").options[2].textContent = t("themeDark");
+      $("recoveryRetry").textContent = t("recoveryRetry");
     }
 
     function localizedWizardStep(stepID) {
@@ -835,6 +910,9 @@
       createKnobCards();
       applyKnobStatusItems(state.lastMappingStatus);
       updatePlatformWarnings();
+      if ($("mappings").children.length > 0) {
+        renderMappings(collectMappings());
+      }
     }
 
     function bindSystemThemeListener() {
@@ -924,6 +1002,58 @@
       setStatus("wizardStatus", `Step ${state.wizard.index + 1}: ${current.hint}`, "ok");
     }
 
+    function normalizeKnobCount(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return knobCount;
+      return Math.max(1, Math.min(maxKnobCount, Math.floor(n)));
+    }
+
+    function mappedKnobMaxFromConfig(cfgLike) {
+      const list = (cfgLike && Array.isArray(cfgLike.mappings)) ? cfgLike.mappings : [];
+      let maxSeen = 0;
+      for (const mapping of list) {
+        const knob = Number(mapping && mapping.knob);
+        if (Number.isFinite(knob) && knob > maxSeen) maxSeen = knob;
+      }
+      return maxSeen;
+    }
+
+    function growKnobCount(nextCount, reason = "") {
+      const normalized = normalizeKnobCount(nextCount);
+      if (normalized <= knobCount) return false;
+      knobCount = normalized;
+      createKnobCards();
+      applyKnobStatusItems(state.lastMappingStatus);
+      refreshAllKnobSelectOptions();
+      if (reason) appendDebugLine("INFO knob discovery: " + reason + " -> " + knobCount);
+      return true;
+    }
+
+    function refreshAllKnobSelectOptions() {
+      const selects = Array.from(document.querySelectorAll(".map-knob"));
+      for (const select of selects) {
+        const current = String(select.value || "");
+        select.innerHTML = "";
+        for (let i = 1; i <= knobCount; i++) {
+          const o = document.createElement("option");
+          o.value = String(i);
+          o.textContent = "Knob " + i;
+          select.appendChild(o);
+        }
+        if (current) {
+          if (Array.from(select.options).some((o) => o.value === current)) {
+            select.value = current;
+          } else {
+            const fallback = document.createElement("option");
+            fallback.value = current;
+            fallback.textContent = "Knob " + current;
+            select.appendChild(fallback);
+            select.value = current;
+          }
+        }
+      }
+    }
+
     function createKnobCards() {
       const grid = $("knobGrid");
       for (const timer of knobPressTimers.values()) clearTimeout(timer);
@@ -968,15 +1098,44 @@
       if (!item.available) return t("knobUnavailable");
       const volume = clampPercent(item.volume);
       const muteText = item.muted ? t("knobMuted") : t("knobLive");
+      const health = healthBadge(item.health);
       if (item.sessionCount > 1) {
-        return `${volume}% - ${muteText} (${item.sessionCount} ${t("knobApps")})`;
+        return `${volume}% - ${muteText} (${item.sessionCount} ${t("knobApps")}) ${health}`;
       }
-      return `${volume}% - ${muteText}`;
+      return `${volume}% - ${muteText} ${health}`;
+    }
+
+    function healthLabel(health) {
+      switch (String(health || "").trim().toLowerCase()) {
+        case "ok": return t("healthOK");
+        case "fallback": return t("healthFallback");
+        case "unavailable": return t("healthUnavailable");
+        case "missing": return t("healthMissing");
+        case "permission": return t("healthPermission");
+        case "unsupported": return t("healthUnsupported");
+        case "error": return t("healthError");
+        default: return "";
+      }
+    }
+
+    function healthBadge(health) {
+      const key = String(health || "").trim().toLowerCase();
+      const label = healthLabel(key);
+      if (!label) return "";
+      return `<span class="health-badge health-${key}">${label}</span>`;
     }
 
     function applyKnobStatusItems(items) {
       const list = Array.isArray(items) ? items : [];
       state.lastMappingStatus = list;
+      let maxSeen = 0;
+      for (const item of list) {
+        const id = Number(item && item.knob);
+        if (Number.isFinite(id) && id > maxSeen) maxSeen = id;
+      }
+      if (maxSeen > knobCount) {
+        growKnobCount(maxSeen, "runtime observed");
+      }
       const seen = new Set();
       for (const item of list) {
         const knobID = Number(item && item.knob);
@@ -991,9 +1150,10 @@
           level.style.width = item.available ? (clampPercent(item.volume) + "%") : "0%";
         }
         if (stateEl) {
-          stateEl.textContent = knobStateText(item);
+          stateEl.innerHTML = knobStateText(item);
           if (item.error) {
-            stateEl.title = item.error;
+            const hint = item.healthMessage ? `${item.healthMessage}: ${item.error}` : item.error;
+            stateEl.title = hint;
           } else {
             stateEl.removeAttribute("title");
           }
@@ -1655,7 +1815,7 @@
       setStatus("saveStatus", t("restoreMissingKnobsDone"), "ok");
     }
 
-    function mappingRow(mapping = { knob: 1, target: "master_out", step: 0.02, name: "" }) {
+    function mappingRow(mapping = { knob: 1, target: "master_out", step: 0.02, sensitivity: "normal", fallback_to_master: false, name: "" }) {
       const row = document.createElement("div");
       row.className = "row";
 
@@ -1727,6 +1887,35 @@
       step.step = "0.001";
       step.value = String(mapping.step || 0.02);
 
+      const sensitivity = document.createElement("select");
+      sensitivity.className = "map-sensitivity";
+      sensitivity.setAttribute("aria-label", "Sensitivity preset");
+      const sensitivityOptions = [
+        { value: "slow", label: t("sensitivitySlow") },
+        { value: "normal", label: t("sensitivityNormal") },
+        { value: "fast", label: t("sensitivityFast") }
+      ];
+      for (const entry of sensitivityOptions) {
+        const option = document.createElement("option");
+        option.value = entry.value;
+        option.textContent = entry.label;
+        sensitivity.appendChild(option);
+      }
+      sensitivity.value = ["slow", "normal", "fast"].includes(String(mapping.sensitivity || "").toLowerCase())
+        ? String(mapping.sensitivity).toLowerCase()
+        : "normal";
+
+      const fallbackWrap = document.createElement("label");
+      fallbackWrap.className = "map-fallback";
+      const fallback = document.createElement("input");
+      fallback.type = "checkbox";
+      fallback.className = "map-fallback-master";
+      fallback.checked = !!mapping.fallback_to_master;
+      const fallbackText = document.createElement("span");
+      fallbackText.textContent = t("fallbackToMaster");
+      fallbackWrap.appendChild(fallback);
+      fallbackWrap.appendChild(fallbackText);
+
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "btn-danger icon-btn";
@@ -1750,6 +1939,10 @@
         }
         groupEdit.hidden = target.value !== "group";
         groupEdit.disabled = target.value !== "group" || name.disabled;
+        const supportsFallback = target.value === "app" || target.value === "group";
+        fallbackWrap.style.visibility = supportsFallback ? "visible" : "hidden";
+        fallback.disabled = !supportsFallback;
+        if (!supportsFallback) fallback.checked = false;
         suggestions.innerHTML = "";
         for (const value of suggestionsForTarget(target.value)) {
           const option = document.createElement("option");
@@ -1763,8 +1956,10 @@
       row.appendChild(knob);
       row.appendChild(target);
       row.appendChild(nameWrap);
+      row.appendChild(sensitivity);
       row.appendChild(suggestions);
       row.appendChild(step);
+      row.appendChild(fallbackWrap);
       row.appendChild(remove);
       return row;
     }
@@ -1776,6 +1971,14 @@
         host.appendChild(mappingRow());
         return;
       }
+      let maxSeen = 0;
+      for (const entry of list) {
+        const knob = Number(entry && entry.knob);
+        if (Number.isFinite(knob) && knob > maxSeen) maxSeen = knob;
+      }
+      if (maxSeen > knobCount) {
+        growKnobCount(maxSeen, "config mappings");
+      }
       for (const m of list) host.appendChild(mappingRow(m));
     }
 
@@ -1785,12 +1988,18 @@
         const knob = row.querySelector(".map-knob");
         const target = row.querySelector(".map-target");
         const name = row.querySelector(".map-name");
+        const sensitivity = row.querySelector(".map-sensitivity");
         const step = row.querySelector(".map-step");
+        const fallback = row.querySelector(".map-fallback-master");
         const mapping = {
           knob: parseInt(knob.value, 10),
           target: target.value,
-          step: parseFloat(step.value)
+          step: parseFloat(step.value),
+          sensitivity: (sensitivity && sensitivity.value) ? sensitivity.value : "normal"
         };
+        if (fallback && fallback.checked && (target.value === "app" || target.value === "group")) {
+          mapping.fallback_to_master = true;
+        }
         const selector = parseSelectorTokenInput(name.value);
         if (target.value === "app" && selector) {
           mapping.selector = selector;
@@ -1973,9 +2182,21 @@
       const stateValue = typeof status.state === "string" ? status.state : "";
       const message = typeof status.message === "string" ? status.message : "";
       const error = typeof status.error === "string" ? status.error : "";
+      const retryIn = typeof status.retryIn === "string" ? status.retryIn.trim() : "";
+      const banner = $("recoveryBanner");
+      const bannerText = $("recoveryMessage");
+      const showBanner = (text) => {
+        banner.classList.remove("hidden");
+        bannerText.textContent = text;
+      };
+      const hideBanner = () => {
+        banner.classList.add("hidden");
+        bannerText.textContent = "";
+      };
 
       if (status.connected) {
         setStatus("connectionStatus", label ? ((state.language === "it" ? "Connesso: " : "Connected: ") + label) : (state.language === "it" ? "Connesso" : "Connected"), "ok");
+        hideBanner();
         return;
       }
 
@@ -1984,16 +2205,28 @@
           ? ((state.language === "it" ? "Connessione seriale: " : "Serial connection: ") + label + " (" + stateValue + ")")
           : (state.language === "it" ? "Connessione seriale in corso..." : "Serial connection in progress...");
         setStatus("connectionStatus", connectingMsg, "ok");
+        if (stateValue === "reconnecting") {
+          const suffix = retryIn ? (" " + retryIn) : "";
+          showBanner(`${t("recoveryReconnecting")}${suffix ? " (" + suffix + ")" : ""}`);
+        } else {
+          showBanner(t("recoveryConnecting"));
+        }
         return;
       }
 
       if (error) {
         setStatus("connectionStatus", error, "error");
+        showBanner(error);
         return;
       }
 
       if (message) {
         setStatus("connectionStatus", message);
+        if (stateValue === "inactive" || stateValue === "stopped") {
+          showBanner(t("recoveryInactive"));
+        } else {
+          hideBanner();
+        }
       }
     }
 
@@ -2002,6 +2235,15 @@
         const body = await fetchJSON("/api/runtime");
         if (body && body.status) {
           applyRuntimeStatus(body.status);
+        }
+        if (body && Array.isArray(body.observedKnobs) && body.observedKnobs.length > 0) {
+          state.observedKnobs = body.observedKnobs
+            .map((v) => Number(v))
+            .filter((v) => Number.isFinite(v) && v > 0 && v <= maxKnobCount);
+          const maxSeen = state.observedKnobs.reduce((acc, v) => Math.max(acc, v), 0);
+          if (maxSeen > knobCount) {
+            growKnobCount(maxSeen, "runtime capabilities");
+          }
         }
       } catch (err) {
         setStatus("connectionStatus", err.message, "error");
@@ -2196,6 +2438,10 @@
         try {
           const ev = JSON.parse(msg.data);
           if (ev.type === "event") {
+            const knobID = Number(ev.knobId || 0);
+            if (knobID > knobCount && knobID <= maxKnobCount) {
+              growKnobCount(knobID, "serial event knob " + knobID);
+            }
             flashKnob(ev.knobId, ev.kind, ev.delta);
           } else if (ev.type === "raw" && ev.raw) {
             appendDebugLine("RX " + ev.raw);
@@ -2289,6 +2535,14 @@
       $("baudInput").addEventListener("input", () => scheduleIdentifyStart(220));
       $("debugInput").addEventListener("change", syncDebugConsoleVisibility);
       $("themeSelect").addEventListener("change", (ev) => applyThemePreference(ev.target.value, true));
+      $("recoveryRetry").addEventListener("click", async () => {
+        try {
+          await refreshRuntimeStatus();
+          scheduleIdentifyStart(80);
+        } catch (_) {
+          // refreshRuntimeStatus already updates status surface
+        }
+      });
       $("refreshPorts").addEventListener("click", async () => {
         try {
           stopIdentify(true);
