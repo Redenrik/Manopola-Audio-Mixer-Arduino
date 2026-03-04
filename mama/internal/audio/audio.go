@@ -11,6 +11,7 @@ type Backend interface {
 	// step is a scalar 0..1, e.g. 0.02 = 2%.
 	Adjust(target config.TargetType, name string, step float64, deltaSteps int) error
 	ToggleMute(target config.TargetType, name string) error
+	ReadState(target config.TargetType, name string) (TargetState, error)
 	ListTargets() ([]DiscoveredTarget, error)
 }
 
@@ -20,6 +21,13 @@ type DiscoveredTarget struct {
 	Name     string            `json:"name,omitempty"`
 	Selector string            `json:"selector,omitempty"`
 	Aliases  []string          `json:"aliases,omitempty"`
+}
+
+type TargetState struct {
+	Available    bool `json:"available"`
+	Volume       int  `json:"volume"`
+	Muted        bool `json:"muted"`
+	SessionCount int  `json:"sessionCount,omitempty"`
 }
 
 func NewBackend() Backend {

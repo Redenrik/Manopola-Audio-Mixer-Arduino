@@ -269,3 +269,37 @@ func TestHandleRuntime_WithService(t *testing.T) {
 		t.Fatalf("expected runtime status state to be populated")
 	}
 }
+
+func TestHandleMappingStatus_ReturnsActiveMappings(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(cfgPath, []byte(config.DefaultYAML), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	s := New(cfgPath)
+	s.backend = &fakeTargetsBackend{}
+	req := httptest.NewRequest(http.MethodGet, "/api/mapping-status", nil)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rr.Code)
+	}
+
+	var body struct {
+		Mappings []struct {
+			Knob      int    `json:"knob"`
+			Target    string `json:"target"`
+			Available bool   `json:"available"`
+		} `json:"mappings"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode json: %v", err)
+	}
+	if len(body.Mappings) != 5 {
+		t.Fatalf("expected 5 mappings, got %d", len(body.Mappings))
+	}
+	if body.Mappings[0].Knob != 1 || body.Mappings[0].Target != "master_out" {
+		t.Fatalf("unexpected first mapping: %+v", body.Mappings[0])
+	}
+}

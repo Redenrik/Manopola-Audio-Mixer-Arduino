@@ -116,6 +116,49 @@ func (w *windowsAppSessionController) ToggleMuteGroup(selectors []config.Selecto
 	return nil
 }
 
+func (w *windowsAppSessionController) ReadState(selectorToken string) (TargetState, error) {
+	target, err := w.selectSession(selectorToken)
+	if err != nil {
+		return TargetState{}, err
+	}
+	return TargetState{
+		Available:    true,
+		Volume:       target.volume,
+		Muted:        target.isMuted,
+		SessionCount: 1,
+	}, nil
+}
+
+func (w *windowsAppSessionController) ReadGroupState(selectors []config.Selector) (TargetState, error) {
+	targets, err := w.selectSessions(selectors)
+	if err != nil {
+		return TargetState{}, err
+	}
+
+	totalVolume := 0
+	allMuted := true
+	for _, target := range targets {
+		totalVolume += target.volume
+		if !target.isMuted {
+			allMuted = false
+		}
+	}
+	avg := int(math.Round(float64(totalVolume) / float64(len(targets))))
+	if avg < 0 {
+		avg = 0
+	}
+	if avg > 100 {
+		avg = 100
+	}
+
+	return TargetState{
+		Available:    true,
+		Volume:       avg,
+		Muted:        allMuted,
+		SessionCount: len(targets),
+	}, nil
+}
+
 func (w *windowsAppSessionController) ListTargets() ([]DiscoveredTarget, error) {
 	sessions, err := w.listSessions()
 	if err != nil {

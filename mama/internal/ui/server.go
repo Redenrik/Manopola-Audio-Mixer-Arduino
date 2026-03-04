@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -52,6 +53,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/", s.handleIndex)
 	mux.HandleFunc("/api/status", s.handleStatus)
 	mux.HandleFunc("/api/runtime", s.handleRuntime)
+	mux.HandleFunc("/api/mapping-status", s.handleMappingStatus)
 	mux.HandleFunc("/api/config", s.handleConfig)
 	mux.HandleFunc("/api/ports", s.handlePorts)
 	mux.HandleFunc("/api/port-test", s.handlePortTest)
@@ -123,6 +125,137 @@ func (s *Server) handleRuntime(w http.ResponseWriter, r *http.Request) {
 		"metrics": s.mixerService.MetricsSnapshot(),
 		"serial":  s.mixerService.ConfigSnapshot().Serial,
 	})
+}
+
+type mappingStatusItem struct {
+	Knob         int               `json:"knob"`
+	Target       config.TargetType `json:"target"`
+	Selector     string            `json:"selector,omitempty"`
+	Display      string            `json:"display,omitempty"`
+	Available    bool              `json:"available"`
+	Volume       int               `json:"volume,omitempty"`
+	Muted        bool              `json:"muted"`
+	SessionCount int               `json:"sessionCount,omitempty"`
+	Error        string            `json:"error,omitempty"`
+}
+
+func (s *Server) handleMappingStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	cfg, err := s.activeConfig()
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+
+	items := make([]mappingStatusItem, 0, len(cfg.ActiveMappings()))
+	for _, mapping := range cfg.ActiveMappings() {
+		selectorToken := mappingSelectorToken(mapping)
+		item := mappingStatusItem{
+			Knob:      mapping.Knob,
+			Target:    mapping.Target,
+			Selector:  selectorToken,
+			Display:   mappingDisplayName(mapping),
+			Available: false,
+		}
+
+		targetState, readErr := s.backend.ReadState(mapping.Target, selectorToken)
+		if readErr == nil {
+			item.Available = targetState.Available
+			item.Volume = targetState.Volume
+			item.Muted = targetState.Muted
+			item.SessionCount = targetState.SessionCount
+		} else if !errors.Is(readErr, audio.ErrTargetUnavailable) {
+			item.Error = readErr.Error()
+		}
+
+		items = append(items, item)
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Knob < items[j].Knob
+	})
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"mappings":      items,
+		"activeProfile": cfg.ActiveProfile,
+	})
+}
+
+func (s *Server) activeConfig() (config.Config, error) {
+	if s.mixerService != nil {
+		return s.mixerService.ConfigSnapshot(), nil
+	}
+	return config.Load(s.cfgPath)
+}
+
+func mappingSelectorToken(mapping config.Mapping) string {
+	if mapping.Target == config.TargetApp && mapping.Selector != nil {
+		return string(mapping.Selector.Kind) + ":" + mapping.Selector.Value
+	}
+	if mapping.Target == config.TargetGroup && len(mapping.Selectors) > 0 {
+		if b, err := json.Marshal(mapping.Selectors); err == nil {
+			return string(b)
+		}
+	}
+	return strings.TrimSpace(mapping.Name)
+}
+
+func mappingDisplayName(mapping config.Mapping) string {
+	switch mapping.Target {
+	case config.TargetMasterOut:
+		if name := strings.TrimSpace(mapping.Name); name != "" {
+			return name
+		}
+		return "System Output"
+	case config.TargetMicIn:
+		if name := strings.TrimSpace(mapping.Name); name != "" {
+			return name
+		}
+		return "System Microphone"
+	case config.TargetLineIn:
+		if name := strings.TrimSpace(mapping.Name); name != "" {
+			return name
+		}
+		return "System Line Input"
+	case config.TargetApp:
+		if mapping.Selector != nil {
+			return mappingSelectorForUI(*mapping.Selector)
+		}
+		if name := strings.TrimSpace(mapping.Name); name != "" {
+			return name
+		}
+		return "Application"
+	case config.TargetGroup:
+		if len(mapping.Selectors) > 0 {
+			parts := make([]string, 0, len(mapping.Selectors))
+			for _, selector := range mapping.Selectors {
+				parts = append(parts, mappingSelectorForUI(selector))
+			}
+			return strings.Join(parts, "; ")
+		}
+		if name := strings.TrimSpace(mapping.Name); name != "" {
+			return name
+		}
+		return "Group"
+	default:
+		return strings.TrimSpace(mapping.Name)
+	}
+}
+
+func mappingSelectorForUI(selector config.Selector) string {
+	kind := strings.TrimSpace(string(selector.Kind))
+	value := strings.TrimSpace(selector.Value)
+	if value == "" {
+		return ""
+	}
+	if kind == "" || kind == string(config.SelectorExact) {
+		return value
+	}
+	return kind + ":" + value
 }
 
 func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {

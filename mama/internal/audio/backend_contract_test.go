@@ -68,9 +68,14 @@ type fakeAppSessionController struct {
 	toggleCalls      []string
 	adjustGroupCalls [][]config.Selector
 	toggleGroupCalls [][]config.Selector
+	readGroupCalls   [][]config.Selector
 	targets          []DiscoveredTarget
 	adjustErr        error
 	toggleErr        error
+	readErr          error
+	readGroupErr     error
+	stateBySelector  map[string]TargetState
+	groupState       TargetState
 	listErr          error
 }
 
@@ -101,6 +106,40 @@ func (f *fakeAppSessionController) ToggleMuteGroup(selectors []config.Selector) 
 	dup := append([]config.Selector(nil), selectors...)
 	f.toggleGroupCalls = append(f.toggleGroupCalls, dup)
 	return f.toggleErr
+}
+
+func (f *fakeAppSessionController) ReadState(selectorToken string) (TargetState, error) {
+	if f.readErr != nil {
+		return TargetState{}, f.readErr
+	}
+	if f.stateBySelector != nil {
+		if state, ok := f.stateBySelector[selectorToken]; ok {
+			return state, nil
+		}
+	}
+	return TargetState{
+		Available:    true,
+		Volume:       50,
+		Muted:        false,
+		SessionCount: 1,
+	}, nil
+}
+
+func (f *fakeAppSessionController) ReadGroupState(selectors []config.Selector) (TargetState, error) {
+	dup := append([]config.Selector(nil), selectors...)
+	f.readGroupCalls = append(f.readGroupCalls, dup)
+	if f.readGroupErr != nil {
+		return TargetState{}, f.readGroupErr
+	}
+	if f.groupState.Available || f.groupState.Volume != 0 || f.groupState.Muted || f.groupState.SessionCount != 0 {
+		return f.groupState, nil
+	}
+	return TargetState{
+		Available:    true,
+		Volume:       50,
+		Muted:        false,
+		SessionCount: len(selectors),
+	}, nil
 }
 func TestBackendAdjustMasterOutContract(t *testing.T) {
 	fake := &fakeVolumeController{curVolume: 50}

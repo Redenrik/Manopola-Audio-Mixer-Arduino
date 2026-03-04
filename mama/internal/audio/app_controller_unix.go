@@ -4,6 +4,7 @@ package audio
 
 import (
 	"fmt"
+	"math"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -121,6 +122,49 @@ func (u *unixAppSessionController) ToggleMuteGroup(selectors []config.Selector) 
 		}
 	}
 	return nil
+}
+
+func (u *unixAppSessionController) ReadState(selectorToken string) (TargetState, error) {
+	target, err := u.selectSession(selectorToken)
+	if err != nil {
+		return TargetState{}, err
+	}
+	return TargetState{
+		Available:    true,
+		Volume:       target.volume,
+		Muted:        target.isMuted,
+		SessionCount: 1,
+	}, nil
+}
+
+func (u *unixAppSessionController) ReadGroupState(selectors []config.Selector) (TargetState, error) {
+	targets, err := u.selectSessions(selectors)
+	if err != nil {
+		return TargetState{}, err
+	}
+
+	totalVolume := 0
+	allMuted := true
+	for _, target := range targets {
+		totalVolume += target.volume
+		if !target.isMuted {
+			allMuted = false
+		}
+	}
+	avg := int(math.Round(float64(totalVolume) / float64(len(targets))))
+	if avg < 0 {
+		avg = 0
+	}
+	if avg > 100 {
+		avg = 100
+	}
+
+	return TargetState{
+		Available:    true,
+		Volume:       avg,
+		Muted:        allMuted,
+		SessionCount: len(targets),
+	}, nil
 }
 
 func (u *unixAppSessionController) ListTargets() ([]DiscoveredTarget, error) {

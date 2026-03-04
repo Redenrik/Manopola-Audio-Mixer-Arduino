@@ -14,6 +14,7 @@ import (
 
 type fakeTargetsBackend struct {
 	targets []audio.DiscoveredTarget
+	states  map[string]audio.TargetState
 	err     error
 }
 
@@ -23,6 +24,20 @@ func (f *fakeTargetsBackend) Adjust(target config.TargetType, name string, step 
 
 func (f *fakeTargetsBackend) ToggleMute(target config.TargetType, name string) error {
 	return nil
+}
+
+func (f *fakeTargetsBackend) ReadState(target config.TargetType, name string) (audio.TargetState, error) {
+	if f.states != nil {
+		key := string(target) + "|" + name
+		if state, ok := f.states[key]; ok {
+			return state, nil
+		}
+	}
+	return audio.TargetState{
+		Available: true,
+		Volume:    50,
+		Muted:     false,
+	}, nil
 }
 
 func (f *fakeTargetsBackend) ListTargets() ([]audio.DiscoveredTarget, error) {

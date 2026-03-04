@@ -10,6 +10,7 @@
       --ink: #12332a;
       --ink-dim: #3f5d53;
       --panel: #ffffff;
+      --panel-soft: #f7fbfa;
       --accent: #ff7d00;
       --accent-2: #028090;
       --ok: #2a9d8f;
@@ -17,6 +18,56 @@
       --line: #d3e0db;
       --radius: 14px;
       --shadow: 0 12px 30px rgba(18, 51, 42, 0.12);
+      --control-bg: #ffffff;
+      --control-border: #b8ccc5;
+      --control-text: #12332a;
+      --glow-a: rgba(255, 125, 0, 0.18);
+      --glow-b: rgba(2, 128, 144, 0.16);
+      --knob-grad-top: #f9fdfc;
+      --knob-grad-bottom: #eef5f2;
+      --dial-ring: #87a89d;
+      --dial-mark: #56796d;
+      --danger-bg: #fdf0ed;
+      --danger-border: #f2bfaf;
+      --danger-text: #7f2f1f;
+      --lite-bg: #eef7f5;
+      --lite-border: #bfd6cf;
+      --lite-text: #1f4f44;
+      --meter-track: #d8e6e1;
+      --meter-fill-a: #028090;
+      --meter-fill-b: #ff7d00;
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #101816;
+      --ink: #e8f2ef;
+      --ink-dim: #b4c8c1;
+      --panel: #172320;
+      --panel-soft: #1b2a26;
+      --accent: #ff9f45;
+      --accent-2: #37a9b5;
+      --ok: #54bda9;
+      --warn: #ff8d6b;
+      --line: #314641;
+      --shadow: 0 16px 30px rgba(0, 0, 0, 0.32);
+      --control-bg: #1e2d29;
+      --control-border: #3e5851;
+      --control-text: #e8f2ef;
+      --glow-a: rgba(255, 159, 69, 0.11);
+      --glow-b: rgba(55, 169, 181, 0.13);
+      --knob-grad-top: #20322d;
+      --knob-grad-bottom: #182622;
+      --dial-ring: #5f7f75;
+      --dial-mark: #d9e8e3;
+      --danger-bg: #3f241f;
+      --danger-border: #8e4f43;
+      --danger-text: #ffd8cf;
+      --lite-bg: #243833;
+      --lite-border: #426159;
+      --lite-text: #d5ebe4;
+      --meter-track: #30463f;
+      --meter-fill-a: #37a9b5;
+      --meter-fill-b: #ff9f45;
     }
 
     * { box-sizing: border-box; }
@@ -25,16 +76,16 @@
       font-family: "Segoe UI", "Trebuchet MS", sans-serif;
       color: var(--ink);
       background:
-        radial-gradient(circle at 12% 20%, rgba(255, 125, 0, 0.18), transparent 32%),
-        radial-gradient(circle at 80% 10%, rgba(2, 128, 144, 0.16), transparent 28%),
+        radial-gradient(circle at 12% 20%, var(--glow-a), transparent 32%),
+        radial-gradient(circle at 80% 10%, var(--glow-b), transparent 28%),
         var(--bg);
       min-height: 100vh;
     }
 
     .shell {
-      width: min(1080px, 100%);
+      width: min(1560px, 100%);
       margin: 0 auto;
-      padding: 20px;
+      padding: clamp(16px, 2vw, 30px);
       display: grid;
       gap: 16px;
     }
@@ -73,7 +124,7 @@
     .row {
       display: grid;
       gap: 8px;
-      grid-template-columns: 80px 1fr 1fr 120px 42px;
+      grid-template-columns: 92px minmax(170px, 1fr) minmax(250px, 1.5fr) 132px 42px;
       align-items: center;
       margin-bottom: 8px;
     }
@@ -98,6 +149,21 @@
       .row.header { display: none; }
     }
 
+    @media (min-width: 1450px) {
+      .split {
+        grid-template-columns: minmax(450px, 0.8fr) minmax(640px, 1.2fr);
+        gap: 16px;
+      }
+
+      .knobs {
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      }
+
+      .row {
+        grid-template-columns: 108px minmax(190px, 1fr) minmax(330px, 1.7fr) 148px 48px;
+      }
+    }
+
     label {
       display: grid;
       gap: 6px;
@@ -106,11 +172,11 @@
 
     input, select, button {
       border-radius: 10px;
-      border: 1px solid #b8ccc5;
+      border: 1px solid var(--control-border);
       padding: 9px 10px;
       font-size: 0.95rem;
-      color: var(--ink);
-      background: #fff;
+      color: var(--control-text);
+      background: var(--control-bg);
     }
 
     button {
@@ -156,9 +222,28 @@
     }
 
     .btn-danger {
-      background: #fdf0ed;
-      border-color: #f2bfaf;
-      color: #7f2f1f;
+      background: var(--danger-bg);
+      border-color: var(--danger-border);
+      color: var(--danger-text);
+    }
+
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .icon-trash {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .knobs {
@@ -173,7 +258,7 @@
       border-radius: 12px;
       padding: 14px;
       text-align: center;
-      background: linear-gradient(180deg, #f9fdfc, #eef5f2);
+      background: linear-gradient(180deg, var(--knob-grad-top), var(--knob-grad-bottom));
       transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
     }
 
@@ -182,9 +267,9 @@
       height: 58px;
       margin: 0 auto 8px;
       border-radius: 50%;
-      border: 4px solid #87a89d;
+      border: 4px solid var(--dial-ring);
       position: relative;
-      background: #fff;
+      background: var(--control-bg);
       transform: rotate(0deg);
       transition: transform 120ms ease;
       transform-origin: 50% 50%;
@@ -199,7 +284,7 @@
       height: 16px;
       margin-left: -2px;
       border-radius: 4px;
-      background: #56796d;
+      background: var(--dial-mark);
     }
 
     .knob.active-rotate {
@@ -212,6 +297,37 @@
       transform: translateY(-2px);
       border-color: #2a9d8f;
       box-shadow: 0 10px 24px rgba(42, 157, 143, 0.28);
+    }
+
+    .knob-target {
+      margin-top: 6px;
+      min-height: 1.3em;
+      color: var(--ink);
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .knob-meter {
+      height: 8px;
+      border-radius: 999px;
+      margin-top: 8px;
+      background: var(--meter-track);
+      overflow: hidden;
+    }
+
+    .knob-meter-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--meter-fill-a), var(--meter-fill-b));
+      transition: width 140ms ease;
+    }
+
+    .knob-state {
+      min-height: 1.3em;
+      margin-top: 6px;
     }
 
     .status {
@@ -228,7 +344,7 @@
       margin-top: 12px;
       border: 1px solid var(--line);
       border-radius: 10px;
-      background: #f7fbfa;
+      background: var(--panel-soft);
       padding: 10px;
     }
 
@@ -251,7 +367,7 @@
     .mono {
       font-family: Consolas, "SFMono-Regular", Menlo, monospace;
       font-size: 0.9rem;
-      color: #35594d;
+      color: var(--ink-dim);
     }
 
     .wizard-steps {
@@ -265,12 +381,12 @@
       border: 1px solid var(--line);
       border-radius: 10px;
       padding: 10px;
-      background: #f8fcfb;
+      background: var(--panel-soft);
     }
 
     .wizard-step.done {
       border-color: #8ac9bf;
-      background: #effaf7;
+      background: var(--panel-soft);
     }
 
     .wizard-step.active {
@@ -292,9 +408,9 @@
     }
 
     .btn-lite {
-      background: #eef7f5;
-      border-color: #bfd6cf;
-      color: #1f4f44;
+      background: var(--lite-bg);
+      border-color: var(--lite-border);
+      color: var(--lite-text);
       white-space: nowrap;
     }
 
@@ -316,7 +432,7 @@
       width: min(920px, 100%);
       max-height: calc(100vh - 28px);
       overflow: auto;
-      background: #fff;
+      background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 12px;
       padding: 16px;
@@ -362,6 +478,14 @@
           <select id="languageSelect" aria-label="Language">
             <option value="en">English</option>
             <option value="it">Italiano</option>
+          </select>
+        </label>
+        <label style="min-width: 220px; margin: 0;">
+          <span id="themeLabel">Theme</span>
+          <select id="themeSelect" aria-label="Theme">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
           </select>
         </label>
       </div>
@@ -432,6 +556,7 @@
       <div id="mappings"></div>
       <div class="actions">
         <button id="addMapping" type="button">Add Mapping</button>
+        <button id="restoreMissingKnobs" type="button">Restore Missing Knobs</button>
         <button class="btn-primary" id="saveConfig" type="button">Save Config</button>
       </div>
       <div class="actions">
@@ -477,11 +602,15 @@
       identifyES: null,
       identifyStartTimer: null,
       identifyRetryTimer: null,
+      mappingStatusTimer: null,
+      mappingStatusInFlight: false,
+      lastMappingStatus: [],
       debugLines: [],
       autoApplyingPort: false,
       userPortOverride: false,
       manualPortDirty: false,
       language: "en",
+      themePreference: "system",
       groupEditor: {
         open: false,
         sourceInput: null,
@@ -560,6 +689,7 @@
     const backupStorageKey = "mama.setup.config.backup.v1";
 
     const languageStorageKey = "mama.setup.language.v1";
+    const themeStorageKey = "mama.setup.theme.v1";
     const i18n = {
       en: {
         pageTitle: "MAMA Setup",
@@ -567,12 +697,18 @@
         subtitleMain: "Configure serial connection, assign each knob target, and visually identify knob numbers in real time.",
         configPathLabel: "Config path:",
         languageLabel: "Language",
+        themeLabel: "Theme",
+        themeSystem: "System",
+        themeLight: "Light",
+        themeDark: "Dark",
         wizardHeading: "First-Run Wizard",
         wizardIntro: "Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.",
         wizardStart: "Start Wizard", wizardNext: "Next Step", wizardReset: "Reset",
         connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
         identifyHeading: "Knob Identification", identifyIntro: "Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.", debugHeading: "Debug Console", startIdentify: "Start Identify", stopIdentify: "Stop",
-        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerStep: "Step (0..1)", addMapping: "Add Mapping", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).",
+        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerStep: "Step (0..1)", addMapping: "Add Mapping", restoreMissingKnobs: "Restore Missing Knobs", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).",
+        restoreMissingKnobsDone: "Missing knobs restored.",
+        restoreMissingKnobsNone: "All knob IDs are already mapped.",
         groupEditButton: "Edit",
         groupEditorTitle: "Group Editor",
         groupEditorIntro: "Add matching rules for this group. Any app matching at least one rule will be controlled.",
@@ -591,7 +727,7 @@
         groupPreviewNone: "Live preview: no active apps match these rules right now.",
         groupPreviewSome: "Live preview matched apps:",
         groupPreviewMore: "and more",
-        noPorts: "No ports detected", waiting: "waiting...", buttonPress: "button press", delta: "delta",
+        noPorts: "No ports detected", waiting: "waiting...", buttonPress: "button press", delta: "delta", knobNoMapping: "No mapping", knobUnavailable: "Unavailable", knobMuted: "Muted", knobLive: "Live", knobApps: "apps",
         wizardSteps: { detect: { title: "Detect board", hint: "Refresh detected serial ports and select your board." }, test: { title: "Test port", hint: "Run Test Connection to ensure the board is reachable." }, map: { title: "Map knobs", hint: "Use Start Identify and rotate/press knobs to confirm IDs before editing mappings." }, save: { title: "Save config", hint: "Persist serial + mapping configuration." }, verify: { title: "Verify", hint: "Run identify again to confirm knob events after save." } }
       },
       it: {
@@ -600,12 +736,18 @@
         subtitleMain: "Configura la connessione seriale, assegna i target alle manopole e identifica visivamente i numeri in tempo reale.",
         configPathLabel: "Percorso config:",
         languageLabel: "Lingua",
+        themeLabel: "Tema",
+        themeSystem: "Sistema",
+        themeLight: "Chiaro",
+        themeDark: "Scuro",
         wizardHeading: "Procedura guidata iniziale",
         wizardIntro: "Segui questa procedura per rilevare la scheda, confermare la seriale, mappare le manopole, salvare e verificare gli eventi live.",
         wizardStart: "Avvia procedura", wizardNext: "Passo successivo", wizardReset: "Reimposta",
         connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
         identifyHeading: "Identificazione manopole", identifyIntro: "L'attivita delle manopole viene rilevata automaticamente una volta configurata la porta seriale. Ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", debugHeading: "Console debug", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
-        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerStep: "Step (0..1)", addMapping: "Aggiungi mappatura", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).",
+        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerStep: "Step (0..1)", addMapping: "Aggiungi mappatura", restoreMissingKnobs: "Ripristina manopole mancanti", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).",
+        restoreMissingKnobsDone: "Manopole mancanti ripristinate.",
+        restoreMissingKnobsNone: "Tutti gli ID manopola sono gia mappati.",
         groupEditButton: "Modifica",
         groupEditorTitle: "Editor Gruppo",
         groupEditorIntro: "Aggiungi regole di matching per questo gruppo. Qualsiasi app che corrisponde ad almeno una regola verrà controllata.",
@@ -624,7 +766,7 @@
         groupPreviewNone: "Anteprima live: nessuna app attiva corrisponde alle regole al momento.",
         groupPreviewSome: "Anteprima live app corrispondenti:",
         groupPreviewMore: "e altre",
-        noPorts: "Nessuna porta rilevata", waiting: "in attesa...", buttonPress: "pressione tasto", delta: "delta",
+        noPorts: "Nessuna porta rilevata", waiting: "in attesa...", buttonPress: "pressione tasto", delta: "delta", knobNoMapping: "Nessuna mappatura", knobUnavailable: "Non disponibile", knobMuted: "Muto", knobLive: "Attivo", knobApps: "app",
         wizardSteps: { detect: { title: "Rileva scheda", hint: "Aggiorna le porte seriali rilevate e seleziona la tua scheda." }, test: { title: "Test porta", hint: "Esegui Test connessione per verificare che la scheda sia raggiungibile." }, map: { title: "Mappa manopole", hint: "Usa Avvia identificazione e ruota/premi le manopole per confermare gli ID prima di modificare le mappature." }, save: { title: "Salva config", hint: "Salva la configurazione seriale e delle mappature." }, verify: { title: "Verifica", hint: "Avvia di nuovo l'identificazione per confermare gli eventi dopo il salvataggio." } }
       }
     };
@@ -637,20 +779,47 @@
       return (i18n[state.language] && i18n[state.language][key]) || i18n.en[key] || key;
     }
 
+    function normalizeThemePreference(value) {
+      return value === "light" || value === "dark" ? value : "system";
+    }
+
+    function resolvedThemeFromPreference(preference) {
+      if (preference === "light" || preference === "dark") {
+        return preference;
+      }
+      if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        return "dark";
+      }
+      return "light";
+    }
+
+    function applyThemePreference(preference, persist = true) {
+      const normalized = normalizeThemePreference(preference);
+      state.themePreference = normalized;
+      if (persist) {
+        localStorage.setItem(themeStorageKey, normalized);
+      }
+      $("themeSelect").value = normalized;
+      document.documentElement.setAttribute("data-theme", resolvedThemeFromPreference(normalized));
+    }
+
     function localizeStaticUI() {
       document.title = t("pageTitle");
       const bindings = {
-        titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
+        titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", themeLabel: "themeLabel", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
         wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
         manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", debugHeading: "debugHeading", mappingsHeading: "mappingsHeading",
         mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep",
-        addMapping: "addMapping", saveConfig: "saveConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
+        addMapping: "addMapping", restoreMissingKnobs: "restoreMissingKnobs", saveConfig: "saveConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
         groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupAddMusic: "groupAddMusic", groupAddStreaming: "groupAddStreaming", groupAddChat: "groupAddChat", groupAddCreator: "groupAddCreator", groupClearRules: "groupClearRules", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
       };
       for (const [id, key] of Object.entries(bindings)) {
         const el = $(id);
         if (el) el.textContent = t(key);
       }
+      $("themeSelect").options[0].textContent = t("themeSystem");
+      $("themeSelect").options[1].textContent = t("themeLight");
+      $("themeSelect").options[2].textContent = t("themeDark");
     }
 
     function localizedWizardStep(stepID) {
@@ -664,7 +833,23 @@
       localizeStaticUI();
       renderTemplateOptions();
       createKnobCards();
+      applyKnobStatusItems(state.lastMappingStatus);
       updatePlatformWarnings();
+    }
+
+    function bindSystemThemeListener() {
+      if (!window.matchMedia) return;
+      const media = window.matchMedia("(prefers-color-scheme: dark)");
+      const onChange = () => {
+        if (state.themePreference === "system") {
+          applyThemePreference("system", false);
+        }
+      };
+      if (media.addEventListener) {
+        media.addEventListener("change", onChange);
+      } else if (media.addListener) {
+        media.addListener(onChange);
+      }
     }
 
     function updatePlatformWarnings() {
@@ -752,12 +937,107 @@
         card.innerHTML = `
           <div class="dial"></div>
           <div><strong>Knob ${i}</strong></div>
+          <div class="hint knob-target" id="knob-${i}-target">${t("knobNoMapping")}</div>
+          <div class="knob-meter"><div class="knob-meter-fill" id="knob-${i}-level"></div></div>
+          <div class="hint knob-state" id="knob-${i}-state">${t("waiting")}</div>
           <div class="hint" id="knob-${i}-meta">${t("waiting")}</div>
         `;
         const dial = card.querySelector(".dial");
         if (dial) dial.style.transform = "rotate(0deg)";
         grid.appendChild(card);
       }
+    }
+
+    function clampPercent(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return 0;
+      if (n < 0) return 0;
+      if (n > 100) return 100;
+      return Math.round(n);
+    }
+
+    function formatKnobTarget(targetID, detail) {
+      const base = targetLabel(targetID || "");
+      const extra = String(detail || "").trim();
+      return extra ? `${base}: ${extra}` : base;
+    }
+
+    function knobStateText(item) {
+      if (!item) return t("waiting");
+      if (item.error) return t("knobUnavailable");
+      if (!item.available) return t("knobUnavailable");
+      const volume = clampPercent(item.volume);
+      const muteText = item.muted ? t("knobMuted") : t("knobLive");
+      if (item.sessionCount > 1) {
+        return `${volume}% - ${muteText} (${item.sessionCount} ${t("knobApps")})`;
+      }
+      return `${volume}% - ${muteText}`;
+    }
+
+    function applyKnobStatusItems(items) {
+      const list = Array.isArray(items) ? items : [];
+      state.lastMappingStatus = list;
+      const seen = new Set();
+      for (const item of list) {
+        const knobID = Number(item && item.knob);
+        if (!(knobID >= 1 && knobID <= knobCount)) continue;
+        seen.add(knobID);
+
+        const target = $("knob-" + knobID + "-target");
+        const level = $("knob-" + knobID + "-level");
+        const stateEl = $("knob-" + knobID + "-state");
+        if (target) target.textContent = formatKnobTarget(item.target, item.display);
+        if (level) {
+          level.style.width = item.available ? (clampPercent(item.volume) + "%") : "0%";
+        }
+        if (stateEl) {
+          stateEl.textContent = knobStateText(item);
+          if (item.error) {
+            stateEl.title = item.error;
+          } else {
+            stateEl.removeAttribute("title");
+          }
+        }
+      }
+
+      for (let i = 1; i <= knobCount; i++) {
+        if (seen.has(i)) continue;
+        const target = $("knob-" + i + "-target");
+        const level = $("knob-" + i + "-level");
+        const stateEl = $("knob-" + i + "-state");
+        if (target) target.textContent = t("knobNoMapping");
+        if (level) level.style.width = "0%";
+        if (stateEl) {
+          stateEl.textContent = t("waiting");
+          stateEl.removeAttribute("title");
+        }
+      }
+    }
+
+    async function loadMappingStatus() {
+      if (state.mappingStatusInFlight) return;
+      state.mappingStatusInFlight = true;
+      try {
+        const body = await fetchJSON("/api/mapping-status");
+        applyKnobStatusItems(body.mappings);
+      } catch (err) {
+        appendDebugLine("ERR mapping status: " + (err && err.message ? err.message : String(err)));
+      } finally {
+        state.mappingStatusInFlight = false;
+      }
+    }
+
+    function stopMappingStatusPolling() {
+      if (state.mappingStatusTimer) {
+        clearInterval(state.mappingStatusTimer);
+        state.mappingStatusTimer = null;
+      }
+    }
+
+    function startMappingStatusPolling() {
+      stopMappingStatusPolling();
+      loadMappingStatus();
+      state.mappingStatusTimer = setInterval(loadMappingStatus, 900);
     }
 
     function renderTemplateOptions() {
@@ -1333,6 +1613,48 @@
       return value;
     }
 
+    function mappedKnobSet() {
+      const set = new Set();
+      const rows = Array.from($("mappings").querySelectorAll(".row"));
+      for (const row of rows) {
+        const knob = row.querySelector(".map-knob");
+        if (!knob) continue;
+        const id = parseInt(knob.value, 10);
+        if (Number.isInteger(id) && id > 0) {
+          set.add(id);
+        }
+      }
+      return set;
+    }
+
+    function nextAvailableKnobID() {
+      const used = mappedKnobSet();
+      for (let i = 1; i <= knobCount; i++) {
+        if (!used.has(i)) return i;
+      }
+      return 1;
+    }
+
+    function addMappingWithNextKnob() {
+      $("mappings").appendChild(mappingRow({ knob: nextAvailableKnobID(), target: "master_out", step: 0.02, name: "" }));
+    }
+
+    function restoreMissingKnobs() {
+      const used = mappedKnobSet();
+      const missing = [];
+      for (let i = 1; i <= knobCount; i++) {
+        if (!used.has(i)) missing.push(i);
+      }
+      if (missing.length === 0) {
+        setStatus("saveStatus", t("restoreMissingKnobsNone"));
+        return;
+      }
+      for (const knobID of missing) {
+        $("mappings").appendChild(mappingRow({ knob: knobID, target: "master_out", step: 0.02, name: "" }));
+      }
+      setStatus("saveStatus", t("restoreMissingKnobsDone"), "ok");
+    }
+
     function mappingRow(mapping = { knob: 1, target: "master_out", step: 0.02, name: "" }) {
       const row = document.createElement("div");
       row.className = "row";
@@ -1407,9 +1729,10 @@
 
       const remove = document.createElement("button");
       remove.type = "button";
-      remove.className = "btn-danger";
-      remove.textContent = state.language === "it" ? "Rimuovi" : "Remove";
+      remove.className = "btn-danger icon-btn";
+      remove.innerHTML = '<svg class="icon-trash" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
       remove.setAttribute("aria-label", "Remove mapping row");
+      remove.setAttribute("title", state.language === "it" ? "Rimuovi mappatura" : "Remove mapping");
       remove.addEventListener("click", () => row.remove());
 
       function syncNameState() {
@@ -1514,6 +1837,7 @@
       state.userPortOverride = (serial.port || "").trim().length > 0;
       syncDebugConsoleVisibility();
       renderMappings(cfg.mappings || []);
+      loadMappingStatus();
     }
 
     function syncDebugConsoleVisibility() {
@@ -1709,6 +2033,7 @@
       const cfg = await fetchJSON("/api/config");
       state.config = cfg;
       applyConfigToForm(cfg);
+      await loadMappingStatus();
       setStatus("saveStatus", state.language === "it" ? "Configurazione caricata" : "Config loaded", "ok");
     }
 
@@ -1723,6 +2048,7 @@
         state.config = saved;
         setStatus("saveStatus", state.language === "it" ? "Configurazione salvata" : "Config saved", "ok");
         await refreshRuntimeStatus();
+        await loadMappingStatus();
         if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "save") {
           setStatus("wizardStatus", state.language === "it" ? "Configurazione salvata. Clicca Passo successivo per la verifica finale." : "Config saved successfully. Click Next Step for final verification.", "ok");
         }
@@ -1962,6 +2288,7 @@
       });
       $("baudInput").addEventListener("input", () => scheduleIdentifyStart(220));
       $("debugInput").addEventListener("change", syncDebugConsoleVisibility);
+      $("themeSelect").addEventListener("change", (ev) => applyThemePreference(ev.target.value, true));
       $("refreshPorts").addEventListener("click", async () => {
         try {
           stopIdentify(true);
@@ -1973,7 +2300,8 @@
         }
       });
       $("applyStartup").addEventListener("click", applyStartupSetting);
-      $("addMapping").addEventListener("click", () => $("mappings").appendChild(mappingRow()));
+      $("addMapping").addEventListener("click", addMappingWithNextKnob);
+      $("restoreMissingKnobs").addEventListener("click", restoreMissingKnobs);
       $("applyTemplate").addEventListener("click", applyTemplate);
       $("saveConfig").addEventListener("click", saveConfig);
       $("backupConfig").addEventListener("click", backupConfig);
@@ -2005,12 +2333,18 @@
           closeGroupEditor(false);
         }
       });
-      window.addEventListener("beforeunload", () => stopIdentify(true));
+      window.addEventListener("beforeunload", () => {
+        stopIdentify(true);
+        stopMappingStatusPolling();
+      });
     }
 
     async function main() {
       const savedLanguage = localStorage.getItem(languageStorageKey) || "en";
+      const savedTheme = localStorage.getItem(themeStorageKey) || "system";
       setLanguage(savedLanguage);
+      applyThemePreference(savedTheme, false);
+      bindSystemThemeListener();
       bindEvents();
       syncDebugConsoleVisibility();
       try {
@@ -2019,6 +2353,7 @@
         await Promise.all([loadPorts(), loadConfig(), loadStartupStatus()]);
         await autoDetectPort();
         await refreshRuntimeStatus();
+        startMappingStatusPolling();
         scheduleIdentifyStart(150);
       } catch (err) {
         setStatus("saveStatus", err.message, "error");

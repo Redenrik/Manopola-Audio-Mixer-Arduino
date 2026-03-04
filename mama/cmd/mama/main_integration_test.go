@@ -36,6 +36,13 @@ func (f *fakeBackend) ToggleMute(target config.TargetType, name string) error {
 	f.calls = append(f.calls, backendCall{op: "toggle", target: target, name: name})
 	return f.toggleErr
 }
+func (f *fakeBackend) ReadState(target config.TargetType, name string) (audio.TargetState, error) {
+	return audio.TargetState{
+		Available: true,
+		Volume:    50,
+		Muted:     false,
+	}, nil
+}
 func (f *fakeBackend) ListTargets() ([]audio.DiscoveredTarget, error) { return nil, nil }
 
 func TestRunSessionFromChannels_RecordedFixtureMixedBurst(t *testing.T) {

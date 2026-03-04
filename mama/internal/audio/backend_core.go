@@ -39,6 +39,8 @@ type appSessionController interface {
 	ToggleMute(selectorToken string) error
 	AdjustGroup(selectors []config.Selector, step float64, deltaSteps int) error
 	ToggleMuteGroup(selectors []config.Selector) error
+	ReadState(selectorToken string) (TargetState, error)
+	ReadGroupState(selectors []config.Selector) (TargetState, error)
 	ListTargets() ([]DiscoveredTarget, error)
 }
 
@@ -126,6 +128,45 @@ func (b *baseBackend) ToggleMute(target config.TargetType, name string) error {
 		return unmute(controller, name)
 	}
 	return mute(controller, name)
+}
+
+func (b *baseBackend) ReadState(target config.TargetType, name string) (TargetState, error) {
+	if target == config.TargetApp {
+		if b.app == nil {
+			return TargetState{}, Unsupported(target)
+		}
+		return b.app.ReadState(name)
+	}
+	if target == config.TargetGroup {
+		if b.app == nil {
+			return TargetState{}, Unsupported(target)
+		}
+		selectors, err := parseGroupSelectorsToken(name)
+		if err != nil {
+			return TargetState{}, err
+		}
+		return b.app.ReadGroupState(selectors)
+	}
+
+	controller := b.controllerFor(target)
+	if controller == nil {
+		return TargetState{}, Unsupported(target)
+	}
+
+	volume, err := getVolume(controller, name)
+	if err != nil {
+		return TargetState{}, err
+	}
+	muted, err := getMuted(controller, name)
+	if err != nil {
+		return TargetState{}, err
+	}
+
+	return TargetState{
+		Available: true,
+		Volume:    volume,
+		Muted:     muted,
+	}, nil
 }
 
 func (b *baseBackend) ListTargets() ([]DiscoveredTarget, error) {
