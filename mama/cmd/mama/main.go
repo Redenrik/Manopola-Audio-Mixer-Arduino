@@ -24,10 +24,14 @@ func main() {
 	var cfgPath string
 	var listenAddr string
 	var openBrowser bool
+	var desktopMode bool
+	var startHidden bool
 
 	flag.StringVar(&cfgPath, "config", "", "path to config yaml (default: auto)")
 	flag.StringVar(&listenAddr, "listen", "127.0.0.1:18765", "HTTP listen address")
 	flag.BoolVar(&openBrowser, "open", true, "open web UI in default browser")
+	flag.BoolVar(&desktopMode, "desktop", defaultDesktopMode(), "use embedded desktop window with system tray")
+	flag.BoolVar(&startHidden, "start-hidden", false, "start desktop window hidden in system tray")
 	flag.Parse()
 
 	if cfgPath == "" {
@@ -67,7 +71,11 @@ func main() {
 
 	mixerErrC := make(chan error, 1)
 	go func() {
-		mixerErrC <- mixerService.Run(ctx)
+		err := mixerService.Run(ctx)
+		mixerErrC <- err
+		if err != nil && !errors.Is(err, context.Canceled) {
+			cancel()
+		}
 	}()
 
 	httpServer := &http.Server{
@@ -76,7 +84,11 @@ func main() {
 	}
 	httpErrC := make(chan error, 1)
 	go func() {
-		httpErrC <- httpServer.ListenAndServe()
+		err := httpServer.ListenAndServe()
+		httpErrC <- err
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			cancel()
+		}
 	}()
 
 	uiURL := fmt.Sprintf("http://%s", listenAddr)
@@ -84,23 +96,30 @@ func main() {
 	fmt.Printf("Config file: %s\n", cfgPath)
 	fmt.Printf("Serial target: %s @ %d\n", cfg.Serial.Port, cfg.Serial.Baud)
 
-	if openBrowser {
+	if openBrowser && !desktopMode {
 		go openURL(uiURL)
 	}
 
 	var runErr error
-	select {
-	case <-ctx.Done():
-	case err := <-mixerErrC:
-		if err != nil && !errors.Is(err, context.Canceled) {
-			runErr = fmt.Errorf("mixer service error: %w", err)
+	if desktopMode {
+		if err := runDesktopShell(ctx, cancel, uiURL, cfg.Debug, startHidden); err != nil && runErr == nil {
+			runErr = fmt.Errorf("desktop shell error: %w", err)
 		}
 		cancel()
-	case err := <-httpErrC:
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			runErr = fmt.Errorf("ui server error: %w", err)
+	} else {
+		select {
+		case <-ctx.Done():
+		case err := <-mixerErrC:
+			if err != nil && !errors.Is(err, context.Canceled) {
+				runErr = fmt.Errorf("mixer service error: %w", err)
+			}
+			cancel()
+		case err := <-httpErrC:
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				runErr = fmt.Errorf("ui server error: %w", err)
+			}
+			cancel()
 		}
-		cancel()
 	}
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 2*time.Second)

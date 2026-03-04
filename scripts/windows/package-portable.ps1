@@ -18,14 +18,22 @@ try {
     $env:GOARCH = "amd64"
 
     Write-Host "Building Windows portable binaries for GOARCH=$env:GOARCH..."
+    Write-Host "Embedding app icon into executable..."
+    $iconPath = Join-Path $mamaDir "assets\\icons\\mama-app.ico"
+    $sysoPath = Join-Path $mamaDir "cmd\\mama\\mama_windows.syso"
+    go run github.com/akavel/rsrc@latest -ico $iconPath -o $sysoPath
+
     Write-Host "Building mama.exe..."
-    go build -o (Join-Path $outDir "mama.exe") ./cmd/mama
+    go build -ldflags "-H=windowsgui" -o (Join-Path $outDir "mama.exe") ./cmd/mama
+    Remove-Item -Path $sysoPath -ErrorAction SilentlyContinue
 }
 finally {
     Pop-Location
 }
 
 Copy-Item (Join-Path $mamaDir "internal\config\default.yaml") (Join-Path $outDir "config.yaml") -Force
+Copy-Item (Join-Path $mamaDir "assets\icons\mama-app.ico") (Join-Path $outDir "mama-app.ico") -Force
+Copy-Item (Join-Path $mamaDir "assets\icons\mama-tray.ico") (Join-Path $outDir "mama-tray.ico") -Force
 
 $setupLauncher = @'
 @echo off
@@ -36,7 +44,7 @@ start "" "mama.exe"
 $runtimeLauncher = @'
 @echo off
 cd /d "%~dp0"
-start "" "mama.exe" -open=false
+start "" "mama.exe" -open=false -start-hidden=true
 '@
 
 $notes = @'
@@ -45,7 +53,7 @@ MAMA Portable Package
 1) Run "Open Setup UI.cmd" (or "Start MAMA.cmd") to launch MAMA.
 2) The mixer engine and setup UI run together in one process.
 3) Save config at any time; changes apply immediately without restart.
-4) "Start Mixer.cmd" keeps running in background mode (no auto-open browser).
+4) "Start Mixer.cmd" runs hidden in tray (no auto-open browser).
 
 All settings stay in this folder (`config.yaml`).
 '@

@@ -224,6 +224,24 @@
     .status.error { color: #7a2614; }
     .status.ok { color: #175a51; }
 
+    .debug-console-wrap {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f7fbfa;
+      padding: 10px;
+    }
+
+    .debug-console {
+      margin: 8px 0 0;
+      max-height: 180px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-family: Consolas, "SFMono-Regular", Menlo, monospace;
+      font-size: 0.82rem;
+      color: #2a4c42;
+    }
+
     .hint {
       margin-top: 8px;
       font-size: 0.85rem;
@@ -387,6 +405,10 @@
         <p id="identifyIntro">Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.</p>
         <div class="knobs" id="knobGrid"></div>
         <p class="status" id="identifyStatus" role="status" aria-live="polite"></p>
+        <div class="debug-console-wrap" id="debugPanel" style="display:none;">
+          <h3 id="debugHeading">Debug Console</h3>
+          <pre class="debug-console" id="debugConsole"></pre>
+        </div>
       </div>
     </section>
 
@@ -455,6 +477,7 @@
       identifyES: null,
       identifyStartTimer: null,
       identifyRetryTimer: null,
+      debugLines: [],
       autoApplyingPort: false,
       userPortOverride: false,
       manualPortDirty: false,
@@ -548,7 +571,7 @@
         wizardIntro: "Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.",
         wizardStart: "Start Wizard", wizardNext: "Next Step", wizardReset: "Reset",
         connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
-        identifyHeading: "Knob Identification", identifyIntro: "Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.", startIdentify: "Start Identify", stopIdentify: "Stop",
+        identifyHeading: "Knob Identification", identifyIntro: "Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.", debugHeading: "Debug Console", startIdentify: "Start Identify", stopIdentify: "Stop",
         mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerStep: "Step (0..1)", addMapping: "Add Mapping", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).",
         groupEditButton: "Edit",
         groupEditorTitle: "Group Editor",
@@ -581,7 +604,7 @@
         wizardIntro: "Segui questa procedura per rilevare la scheda, confermare la seriale, mappare le manopole, salvare e verificare gli eventi live.",
         wizardStart: "Avvia procedura", wizardNext: "Passo successivo", wizardReset: "Reimposta",
         connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
-        identifyHeading: "Identificazione manopole", identifyIntro: "L'attivita delle manopole viene rilevata automaticamente una volta configurata la porta seriale. Ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
+        identifyHeading: "Identificazione manopole", identifyIntro: "L'attivita delle manopole viene rilevata automaticamente una volta configurata la porta seriale. Ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", debugHeading: "Console debug", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
         mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerStep: "Step (0..1)", addMapping: "Aggiungi mappatura", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).",
         groupEditButton: "Modifica",
         groupEditorTitle: "Editor Gruppo",
@@ -619,7 +642,7 @@
       const bindings = {
         titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
         wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
-        manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", mappingsHeading: "mappingsHeading",
+        manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", debugHeading: "debugHeading", mappingsHeading: "mappingsHeading",
         mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep",
         addMapping: "addMapping", saveConfig: "saveConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
         groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupAddMusic: "groupAddMusic", groupAddStreaming: "groupAddStreaming", groupAddChat: "groupAddChat", groupAddCreator: "groupAddCreator", groupClearRules: "groupClearRules", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
@@ -1489,7 +1512,24 @@
       $("portInput").value = serial.port || "";
       state.manualPortDirty = (serial.port || "").trim().length > 0;
       state.userPortOverride = (serial.port || "").trim().length > 0;
+      syncDebugConsoleVisibility();
       renderMappings(cfg.mappings || []);
+    }
+
+    function syncDebugConsoleVisibility() {
+      $("debugPanel").style.display = $("debugInput").checked ? "block" : "none";
+    }
+
+    function appendDebugLine(text) {
+      if (!$("debugInput").checked) return;
+      const stamp = new Date().toLocaleTimeString();
+      state.debugLines.push(`[${stamp}] ${text}`);
+      if (state.debugLines.length > 300) {
+        state.debugLines.splice(0, state.debugLines.length - 300);
+      }
+      const box = $("debugConsole");
+      box.textContent = state.debugLines.join("\n");
+      box.scrollTop = box.scrollHeight;
     }
 
     function downloadConfig(filename, payload) {
@@ -1831,16 +1871,23 @@
           const ev = JSON.parse(msg.data);
           if (ev.type === "event") {
             flashKnob(ev.knobId, ev.kind, ev.delta);
+          } else if (ev.type === "raw" && ev.raw) {
+            appendDebugLine("RX " + ev.raw);
           } else if (ev.type === "state") {
             applyRuntimeStatus(ev);
+            if (ev.state) {
+              appendDebugLine("STATE " + ev.state + (ev.port ? (" " + ev.port + "@" + ev.baud) : ""));
+            }
           } else if (ev.type === "error") {
             setStatus("identifyStatus", ev.message || (state.language === "it" ? "errore stream" : "stream error"), "error");
             if (ev.error) {
               setStatus("connectionStatus", ev.error, "error");
+              appendDebugLine("ERR " + ev.error);
             }
           }
         } catch (err) {
           setStatus("identifyStatus", state.language === "it" ? "Payload stream non valido" : "Invalid stream payload", "error");
+          appendDebugLine("ERR Invalid stream payload");
         }
       };
 
@@ -1851,11 +1898,13 @@
           state.identifyES = null;
           setStatus("identifyStatus", state.language === "it" ? "Stream identificazione disconnesso" : "Identify stream disconnected", "error");
           setStatus("connectionStatus", state.language === "it" ? "Stream eventi disconnesso, nuovo tentativo..." : "Event stream disconnected, retrying...", "error");
+          appendDebugLine("ERR Identify stream disconnected");
           scheduleIdentifyRetry();
           return;
         }
         setStatus("identifyStatus", state.language === "it" ? "Connessione stream persa, nuova connessione in corso..." : "Identify stream connection lost, reconnecting...", "error");
         setStatus("connectionStatus", state.language === "it" ? "Connessione stream persa, riconnessione..." : "Event stream connection lost, reconnecting...", "error");
+        appendDebugLine("ERR Identify stream connection lost");
       };
     }
 
@@ -1912,6 +1961,7 @@
         scheduleIdentifyStart(260);
       });
       $("baudInput").addEventListener("input", () => scheduleIdentifyStart(220));
+      $("debugInput").addEventListener("change", syncDebugConsoleVisibility);
       $("refreshPorts").addEventListener("click", async () => {
         try {
           stopIdentify(true);
@@ -1962,6 +2012,7 @@
       const savedLanguage = localStorage.getItem(languageStorageKey) || "en";
       setLanguage(savedLanguage);
       bindEvents();
+      syncDebugConsoleVisibility();
       try {
         await loadStatus();
         await loadTargets();
