@@ -2,58 +2,50 @@
 
 ## Setup UI cannot detect serial ports
 
-- Ensure Arduino master board is connected via USB.
-- Press `Refresh` in the setup UI.
-- Check that no other app is locking the COM port.
-- Manually type the port if auto-detection fails.
+- Confirm Arduino master board is connected via USB.
+- Click `Refresh` in setup.
+- Ensure no other app is locking the COM/TTY port (Arduino Serial Monitor, terminal tools).
+- Manually set port if auto-detect misses it.
 
-## Identify mode does not flash knob indicators
+## Port test says connected but knobs do not react
 
-- Confirm correct serial port and baud (`115200`).
-- Verify master firmware is flashed and running.
-- Verify I2C wires between master/slave (SDA/SCL + GND + 5V).
-- Check setup UI status line for stream errors.
+- Verify baud is `115200`.
+- Confirm firmware is flashed on both master and slave.
+- Check I2C wiring between boards (SDA/SCL + 5V + GND).
+- Enable `debug: true` and inspect logs for `event=serial_state` and `event=serial_rx`.
 
-## Runtime starts but knob does nothing
+## Knobs react but target volume does not change
 
-- Open `config.yaml` and verify knob mapping exists.
-- Ensure mapping `step` is greater than 0.
-- Use `master_out` universally, or `mic_in` / `line_in` on hosts that expose capture controls (`pactl`/`amixer`). `app` mappings are supported on Unix hosts with `pactl` sink-input controls.
-- Enable `debug: true` and read daemon logs for parse/mapping errors.
-- Runtime logs are now structured as deterministic `event=<name> key=value ...` entries (for example: `event=serial_state port="COM3" state="connected"`).
-- Check `event=runtime_metrics` log lines for aggregate counters (`parse_errors`, `dropped_events`, `reconnect_count`, `backend_failures`) while troubleshooting noisy serial links or backend issues.
+- Open mappings and verify knob assignment exists.
+- Check mapping `step` is greater than `0`.
+- Ensure target exists and is active (especially for `app` and `group`).
+- For app selectors, prefer `exe` kind when app display-name matching is unstable.
 
-## Runtime exits with config error
+## Runtime starts then exits with config error
 
 Common causes:
 - missing `serial.port`
 - duplicate knob IDs
-- invalid `step` (must be `> 0` and `<= 1`)
-- `app` mapping missing `selector` (or invalid selector kind/value)
+- invalid `step` (`> 0` and `<= 1`)
+- `app` mapping missing `selector`
 - `group` mapping missing `selectors`
-- overlapping `app/group` mappings with identical precedence (set distinct `priority` values)
-- group selector set matched no active app sessions (ensure target apps are running and selector kinds/values match)
-- negative mapping `priority`
+- overlapping `app/group` mappings with identical precedence (`priority` needed)
 
 ## Press action does not mute
 
-- Press action emits `B<id>:1` only.
-- Release events are intentionally ignored.
-- Confirm your mapping target is currently supported (`master_out`, plus `mic_in` / `line_in` when capture tooling is available, and `app` on Unix hosts with `pactl`).
+- Buttons emit `B<id>:1` only.
+- Confirm mapping target supports mute in your platform backend.
+- Test with `master_out` first to isolate mapping vs target issues.
 
-## `scripts/quickstart.sh` fails immediately
+## Installer choice confusion on Windows
 
-Common causes and fixes:
-- `error: Go toolchain not found in PATH...` -> install Go and retry (`go version` should work).
-- `expected Go module directory ... was not found` -> run the script from this repository checkout (do not copy script alone).
-- Permission denied on launchers -> ensure files are executable (`chmod +x dist/mama-quickstart/*.sh`).
+- Use `MAMA-Setup-Windows.exe` for 64-bit Windows.
+- Use `MAMA-Setup-Windows-32bit.exe` for 32-bit Windows.
 
-## Security scan commands fail with `403 Forbidden`
+## Security scan fails with module download errors
 
-If `go mod tidy` / `go install ... govulncheck` cannot download modules, your network/proxy may block outbound access to `proxy.golang.org` or GitHub.
-
-- Validate connectivity or set your corporate `GOPROXY`.
-- Re-run:
+If commands fail with proxy/network restrictions:
+- configure `GOPROXY` for your environment
+- rerun:
   - `cd mama && go mod tidy && git diff --exit-code -- go.mod go.sum`
   - `cd mama && go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...`
-

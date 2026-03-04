@@ -1,6 +1,6 @@
 param(
     [string]$OutputDir = "dist\mama-portable",
-    [ValidateSet("amd64", "arm64")]
+    [ValidateSet("amd64", "386", "arm64")]
     [string]$Arch = "amd64",
     [string]$BinaryName = "mama.exe"
 )
@@ -22,10 +22,10 @@ try {
 
     Write-Host "Building Windows portable binaries for GOARCH=$env:GOARCH..."
     $sysoPath = Join-Path $mamaDir "cmd\\mama\\mama_windows.syso"
-    if ($Arch -eq "amd64") {
+    if ($Arch -eq "amd64" -or $Arch -eq "386") {
         Write-Host "Embedding app icon into executable..."
         $iconPath = Join-Path $mamaDir "assets\\icons\\mama-app.ico"
-        go run github.com/akavel/rsrc@latest -arch amd64 -ico $iconPath -o $sysoPath
+        go run github.com/akavel/rsrc@latest -arch $Arch -ico $iconPath -o $sysoPath
         if ($LASTEXITCODE -ne 0) {
             throw "rsrc icon embedding failed"
         }
@@ -46,17 +46,19 @@ Copy-Item (Join-Path $mamaDir "internal\config\default.yaml") (Join-Path $outDir
 Copy-Item (Join-Path $mamaDir "assets\icons\mama-app.ico") (Join-Path $outDir "mama-app.ico") -Force
 Copy-Item (Join-Path $mamaDir "assets\icons\mama-tray.ico") (Join-Path $outDir "mama-tray.ico") -Force
 
-$setupLauncher = @'
-@echo off
-cd /d "%~dp0"
-start "" "mama.exe"
-'@
+$launcherBinary = $BinaryName
 
-$runtimeLauncher = @'
+$setupLauncher = @"
 @echo off
 cd /d "%~dp0"
-start "" "mama.exe" -open=false -start-hidden=true
-'@
+start "" "$launcherBinary"
+"@
+
+$runtimeLauncher = @"
+@echo off
+cd /d "%~dp0"
+start "" "$launcherBinary" -open=false -start-hidden=true
+"@
 
 $notes = @'
 MAMA Portable Package

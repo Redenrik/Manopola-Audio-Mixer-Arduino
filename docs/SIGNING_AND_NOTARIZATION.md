@@ -58,7 +58,7 @@ scripts/release/notarize-macos.sh dist/release-assets
 
 After release-signing workflow completes:
 - verify each primary release asset has matching `.sig` and `.pem` files.
-- verify checksum manifest (`SHA256SUMS.txt`) is present and signed.
+- verify checksum manifests (`SHA256SUMS-*.txt`) are present and signed.
 - if macOS assets are shipped, verify notarized zip artifacts are attached.
 
 ## Notes

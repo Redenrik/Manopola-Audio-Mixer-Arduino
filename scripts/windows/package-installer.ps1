@@ -1,7 +1,8 @@
 param(
     [string]$PortableDir = "dist\mama-portable",
     [string]$OutputDir = "dist\installer",
-    [string]$AppVersion = "0.1.0"
+    [string]$AppVersion = "0.1.0",
+    [string]$OutputBaseName = "MAMA-Setup"
 )
 
 $ErrorActionPreference = "Stop"
@@ -23,13 +24,13 @@ if (-not $iscc) {
 
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
-$installerPath = Join-Path $outDir "MAMA-Setup-$AppVersion.exe"
+$installerPath = Join-Path $outDir "$OutputBaseName-$AppVersion.exe"
 
 $isccArgs = @(
     "/DMyAppVersion=$AppVersion"
     "/DSourceDir=$portablePath"
     "/DOutputDir=$outDir"
-    "/DOutputBaseFilename=MAMA-Setup-$AppVersion"
+    "/DOutputBaseFilename=$OutputBaseName-$AppVersion"
     $issPath
 )
 

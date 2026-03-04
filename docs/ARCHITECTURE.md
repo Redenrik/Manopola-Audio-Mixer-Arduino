@@ -1,91 +1,84 @@
 # Architecture
 
-## System Overview
+## Overview
 
-MAMA is split into 3 runtime components:
+MAMA has three layers:
 
-1. Hardware input layer (Arduino)
-2. Transport/protocol layer (USB serial + text events)
-3. Host control layer (Go daemon + setup UI)
+1. Hardware input layer (Arduino master/slave)
+2. Transport layer (USB serial text protocol)
+3. Host control layer (Go desktop app + audio backend)
+
+The shipped desktop product is a single app process (`mama`) that includes:
+- runtime event loop
+- setup API and embedded UI page
+- tray behavior and background mode
 
 ## Data Flow
 
-1. User rotates/presses encoder.
-2. Master/slave firmware debounces and accumulates quadrature transitions.
-3. Master emits serial lines:
-   - `V:<version>` once on boot for protocol negotiation
-   - `E<id>:+/-<n>`
-   - `B<id>:1`
-4. Host parser converts line -> typed event and enforces protocol compatibility if version is announced.
-5. Mapping table resolves knob ID -> target/action config.
-6. Audio backend applies volume change or mute toggle.
+1. User rotates or presses a physical encoder.
+2. Firmware debounces and emits serial lines.
+3. Host parser converts lines into typed events.
+4. Runtime resolves knob -> mapping target.
+5. Audio backend applies volume/mute action.
+6. UI polls/streams state and reflects live status.
 
-## Firmware Split
+## Firmware Topology
 
-- `master.ino`
-  - reads encoders 1-3 locally
-  - polls slave via I2C for encoders 4-5
-  - emits unified serial event stream
-- `slave.ino`
-  - reads encoders 4-5
-  - responds to I2C requests with fixed-size packet
+- `firmware/master/master.ino`
+  - local read for encoders 1-3
+  - I2C poll for slave encoders 4-5
+  - USB serial output to host
+- `firmware/slave/slave.ino`
+  - local read for encoders 4-5
+  - fixed-size I2C response packet to master
 
-Rationale:
-- keeps USB connection single-ended on master
-- keeps protocol simple and deterministic
+## Serial Protocol
 
-## Host App Modules (`mama/internal`)
+Hello and control events:
+- `MAMA:HELLO:1`
+- `E<id>:+/-<n>`
+- `B<id>:1`
 
-- `config`
-  - YAML load/save
+Compatibility:
+- protocol version `1` is supported
+- legacy `V:<n>` remains accepted for older firmware
+- unsupported announced versions are rejected safely
+
+## Host Modules
+
+- `mama/internal/config`
+  - load/save YAML
   - schema validation and normalization
-  - default config creation for portable mode
-- `proto`
-  - strict parser for serial line protocol
-- `serial`
-  - serial open/read loop + port listing
-- `audio`
-  - platform backend abstraction
-  - currently `master_out` only
-- `ui`
-  - local HTTP setup UI and identify stream endpoint
+- `mama/internal/proto`
+  - serial protocol parser
+- `mama/internal/serial`
+  - port open/read/reconnect behavior
+- `mama/internal/audio`
+  - platform-specific audio target control
+- `mama/internal/mixer`
+  - target resolution, grouping, conflict handling
+- `mama/internal/runtime`
+  - event loop, mapping execution, metrics/logging
+- `mama/internal/ui`
+  - setup HTTP endpoints and embedded UI
 
 ## Runtime Binaries
 
-- `cmd/mama`
-  - runtime daemon
-  - reads serial events and applies mapped actions
-- `cmd/mama-ui`
-  - local setup GUI server
-  - config editor + knob identify visualization
+- `mama/cmd/mama`
+  - production app binary (runtime + setup UI + tray mode)
+- `mama/cmd/mama-ui`
+  - compatibility/developer-only UI server entrypoint (not required for end users)
 
-## Config Lifecycle
+## Packaging Model
 
-- Path resolution:
-  - `./config.yaml` first
-  - fallback `internal/config/default.yaml`
-- If not found, default file is created.
-- UI uses JSON API; persisted as YAML for human-editability.
+Release flow publishes easy user artifacts:
+- Windows installers (64-bit and 32-bit)
+- macOS universal package
+- Linux package
 
-## Portability and OS Impact
+Advanced architecture-specific portable artifacts are also published for power users.
 
-Design target:
-- no required system service install
-- no required global registry keys
-- no auto-start task by default
-- no hidden background daemon
+## Current Constraints
 
-Portable package runs from one folder:
-- binaries
-- launchers
-- `config.yaml`
-
-## Known Gaps
-
-- Audio backend does not yet implement:
-  - `mic_in`
-  - `line_in`
-  - `app`
-  - `group`
-- No signed installer pipeline yet.
-- No automated hardware-in-loop test suite yet.
+- native Windows arm64 build is blocked by upstream dependency compatibility
+- hardware-in-loop validation remains a maintainer/manual gate

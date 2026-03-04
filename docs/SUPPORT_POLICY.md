@@ -1,83 +1,69 @@
 # Support Matrix and Versioning Policy
 
-This document defines what MAMA versions are supported, what environments are expected to work, and how breaking changes are introduced.
+## 1) Platform Support Matrix
 
-## 1) Support Matrix
-
-### Desktop host (`mama`, `mama-ui`)
+### Desktop host app
 
 | Dimension | Supported | Notes |
 |---|---|---|
-| Operating systems | Windows, Linux, macOS | CI validates all three OS families on each PR/push. |
-| CPU architecture | `amd64`, `arm64` | Recommended assets are OS-level; advanced packages publish `amd64` and `arm64` for Linux/macOS, while Windows currently ships `amd64` (native `arm64` pending dependency support). |
-| Go toolchain (contributors/CI) | Latest patched `1.24.x` | Matches the CI baseline and vulnerability scan expectations. |
+| OS families | Windows, macOS, Linux | CI validates all three OS families on PRs/pushes. |
+| Windows architectures | `amd64`, `386` | Official installers are published for both. |
+| macOS architectures | `amd64`, `arm64` | Recommended user package is universal2. |
+| Linux architectures | `amd64`, `arm64` | Recommended user package is `amd64`; arm64 portable is available. |
+| Windows arm64 | Not yet supported natively | Upstream dependency constraint; use x64 path on ARM devices where available. |
+| Go baseline | `1.24.x` (patched) | Matches CI/release workflows. |
 
 ### Firmware and protocol compatibility
 
 | Component | Supported baseline | Notes |
 |---|---|---|
-| Hardware topology | Arduino Nano master + Arduino Nano slave | Master connected via USB; slave connected over I2C. |
-| Serial protocol hello | `MAMA:HELLO:1` | Host currently supports protocol version `1`; legacy `V:1` remains accepted. |
-| Host behavior for missing hello | Compatible | Host keeps legacy compatibility if firmware does not emit a protocol hello line. |
-| Host behavior for unsupported hello | Safe reject | Host logs incompatibility and drops control events. |
+| Hardware topology | Arduino Nano master + Nano slave | Master via USB, slave via I2C. |
+| Protocol hello | `MAMA:HELLO:1` | Host protocol version support: `1`. |
+| Legacy hello | `V:1` accepted | Kept for backward compatibility with older firmware. |
+| Unsupported protocol versions | Rejected safely | Host logs mismatch and drops control events. |
 
-### Feature-level support status
+### Feature-level mapping support
 
 | Mapping target | Status |
 |---|---|
 | `master_out` | Supported |
-| `mic_in` | Supported on Windows + Unix hosts with capture endpoint tooling available |
-| `line_in` | Supported on Windows + Unix hosts with capture endpoint tooling available |
-| `app` | Supported on Windows + Unix hosts with active per-app session control support available |
-| `group` | Supported on Windows + Unix hosts with active session-group control support available |
+| `mic_in` | Supported on hosts with capture endpoint support |
+| `line_in` | Supported on hosts with capture endpoint support |
+| `app` | Supported on hosts with active per-app session control |
+| `group` | Supported on hosts with active session-group control |
 
 ## 2) Versioning Policy
 
-MAMA follows **Semantic Versioning** once `v1.0.0` is released:
+MAMA uses Semantic Versioning after `v1.0.0`:
+- MAJOR: breaking changes
+- MINOR: backward-compatible features
+- PATCH: backward-compatible fixes
 
-- **MAJOR** (`X.0.0`): incompatible API/config/protocol changes.
-- **MINOR** (`x.Y.0`): backward-compatible feature additions.
-- **PATCH** (`x.y.Z`): backward-compatible bug/security fixes.
-
-Until `v1.0.0`, breaking changes may still happen, but must be clearly called out in release notes and migration docs.
+Before `v1.0.0`, breaking changes are allowed but must be called out in release notes.
 
 ## 3) Deprecation Policy
 
-### Config schema and runtime flags
+### Config and runtime flags
 
-- New config keys should be additive when possible.
-- If a key is superseded, keep legacy aliases for **at least one MINOR release** after the replacement ships.
-- Emit clear logs/docs notes when deprecated config forms are encountered.
-- Remove deprecated config behavior only in a MAJOR release (or in pre-`v1.0.0` with explicit migration guidance).
+- Prefer additive changes.
+- Keep deprecated aliases for at least one MINOR release.
+- Document deprecations in release notes.
 
 ### Serial protocol
 
-- Protocol changes must include a bumped protocol version and compatibility rules.
-- Host support should maintain the prior protocol version for **at least one MINOR release** after introducing a new protocol version.
-- Protocol removals require explicit release-note warnings and test coverage updates.
+- New protocol revisions must include explicit compatibility rules.
+- Keep previous protocol support for at least one MINOR release after introduction.
 
-### Platform support
+### Platform changes
 
-- OS or architecture support removals require:
-  1. advance notice in release notes,
-  2. tracker/roadmap updates,
-  3. a clear rationale (upstream breakage, security, or maintenance burden).
+Any support removal requires:
+1. advance release-note notice
+2. rationale (security/upstream/maintenance)
+3. migration path when practical
 
-## 4) Support Window Expectations
+## 4) Support Window
 
 After `v1.0.0`:
-
-- Latest stable release: full support (features + fixes).
-- Previous MINOR line: security and high-severity bug fixes only.
-- Older lines: best effort / community support.
-
-Before `v1.0.0`, the project remains best-effort with emphasis on current `main` and latest tagged pre-release.
-
-## 5) Maintainer Release Checklist Hooks
-
-For each release, maintainers should confirm:
-
-1. CI passes on supported OS matrix.
-2. Security scan workflow passes.
-3. Any deprecations are documented in release notes.
-4. Any compatibility-impacting changes include migration instructions.
+- latest stable: full support
+- previous MINOR: security and high-severity fixes
+- older lines: best effort

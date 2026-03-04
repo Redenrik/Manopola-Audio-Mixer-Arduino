@@ -1,55 +1,44 @@
 # Installation and Packaging
 
-## Audience Split
+## End Users (No Terminal)
 
-- End users: install and run with minimal decisions.
-- Maintainers: build deterministic release artifacts.
+Download from the latest release:
 
-## End User Install (No Terminal)
-
-Use the **recommended asset per OS** from the release page:
-
-- Windows: `MAMA-Setup-Windows.exe`
+- Windows 64-bit: `MAMA-Setup-Windows.exe`
+- Windows 32-bit: `MAMA-Setup-Windows-32bit.exe`
 - macOS: `MAMA-macOS.tar.gz`
 - Linux: `MAMA-Linux.tar.gz`
 
-Advanced architecture-specific assets remain available for power users (Linux/macOS `amd64` + `arm64`, Windows portable `amd64`).
+### Windows
 
-### Windows (recommended)
-
-1. Download `MAMA-Setup-Windows.exe`.
+1. Choose the installer matching your OS architecture (64-bit or 32-bit).
 2. Run installer.
-3. Launch **MAMA Setup UI** from Start menu/desktop shortcut.
-4. Configure serial + knob mappings and save.
-5. (Optional) Enable startup from Setup UI.
+3. Open **MAMA Setup UI**.
+4. Set serial port and knob mappings.
+5. Save and keep MAMA running in tray.
 
-### macOS / Linux (recommended)
+### macOS / Linux
 
-1. Download the OS package (`MAMA-macOS.tar.gz` or `MAMA-Linux.tar.gz`).
-2. Extract to a writable folder.
-3. Run setup launcher:
+1. Extract package to a writable folder.
+2. Run setup launcher:
    - macOS: `Open Setup UI.command`
    - Linux: `open-setup-ui.sh`
-4. Save config and then use runtime launcher:
+3. Save mappings.
+4. Run mixer launcher:
    - macOS: `Start Mixer.command`
    - Linux: `start-mixer.sh`
 
-## Maintainer Build Commands
+## Maintainers
 
-### Windows recommended installer
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\windows\package-portable.ps1 -OutputDir dist\mama-windows-amd64-portable -Arch amd64 -BinaryName mama.exe
-powershell -ExecutionPolicy Bypass -File scripts\windows\package-installer.ps1 -PortableDir dist\mama-windows-amd64-portable -AppVersion v1.0.0
-```
-
-### Windows portable build
+### Windows installers (64-bit + 32-bit)
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\windows\package-portable.ps1 -OutputDir dist\mama-windows-amd64-portable -Arch amd64 -BinaryName mama.exe
-```
+powershell -ExecutionPolicy Bypass -File scripts\windows\package-installer.ps1 -PortableDir dist\mama-windows-amd64-portable -OutputDir dist\installer-amd64 -AppVersion v1.0.0 -OutputBaseName MAMA-Setup
 
-Note: native Windows `arm64` builds are currently blocked by upstream dependency constraints; Windows ARM devices should use the x64 installer/package.
+powershell -ExecutionPolicy Bypass -File scripts\windows\package-portable.ps1 -OutputDir dist\mama-windows-386-portable -Arch 386 -BinaryName mama.exe
+powershell -ExecutionPolicy Bypass -File scripts\windows\package-installer.ps1 -PortableDir dist\mama-windows-386-portable -OutputDir dist\installer-386 -AppVersion v1.0.0 -OutputBaseName MAMA-Setup-Windows-32bit
+```
 
 ### Linux portable builds
 
@@ -66,18 +55,25 @@ bash scripts/release/package-portable.sh darwin amd64 dist/mama-macos-amd64-port
 bash scripts/release/package-portable.sh darwin arm64 dist/mama-macos-arm64-portable
 ```
 
-## Release Integrity
+### Optional advanced Windows portable zips
 
-Generate checksum manifests:
+```powershell
+Compress-Archive -Path dist\mama-windows-amd64-portable\* -DestinationPath dist\mama-windows-amd64-portable.zip -Force
+Compress-Archive -Path dist\mama-windows-386-portable\* -DestinationPath dist\mama-windows-386-portable.zip -Force
+```
+
+## Integrity
+
+Generate checksums:
 
 ```bash
 bash scripts/release/generate-checksums.sh dist
 ```
 
-Generate update manifests:
+Generate update manifest:
 
 ```bash
 bash scripts/release/generate-update-manifest.sh <artifact-path> <version> <download-url>
 ```
 
-For the full reproducible-build flow, see [RELEASE_REPRODUCIBLE_BUILDS.md](RELEASE_REPRODUCIBLE_BUILDS.md).
+For reproducible release details, see [RELEASE_REPRODUCIBLE_BUILDS.md](RELEASE_REPRODUCIBLE_BUILDS.md).

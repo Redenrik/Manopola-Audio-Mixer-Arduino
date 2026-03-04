@@ -89,8 +89,11 @@ if (Get-Command govulncheck -ErrorAction SilentlyContinue) {
 }
 
 Invoke-ReadinessCheck "cross_build_linux_amd64" { Invoke-GoInMama { Invoke-CrossBuild -Goos "linux" -Goarch "amd64" } }
+Invoke-ReadinessCheck "cross_build_linux_arm64" { Invoke-GoInMama { Invoke-CrossBuild -Goos "linux" -Goarch "arm64" } }
 Invoke-ReadinessCheck "cross_build_darwin_amd64" { Invoke-GoInMama { Invoke-CrossBuild -Goos "darwin" -Goarch "amd64" } }
+Invoke-ReadinessCheck "cross_build_darwin_arm64" { Invoke-GoInMama { Invoke-CrossBuild -Goos "darwin" -Goarch "arm64" } }
 Invoke-ReadinessCheck "cross_build_windows_amd64" { Invoke-GoInMama { Invoke-CrossBuild -Goos "windows" -Goarch "amd64" } }
+Invoke-ReadinessCheck "cross_build_windows_386" { Invoke-GoInMama { Invoke-CrossBuild -Goos "windows" -Goarch "386" } }
 
 Add-SummaryLine "end_utc=$((Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))"
 Add-SummaryLine "result=PASS"

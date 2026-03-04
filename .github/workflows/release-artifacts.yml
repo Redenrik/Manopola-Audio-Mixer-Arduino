@@ -290,20 +290,27 @@ jobs:
         shell: pwsh
         run: choco install innosetup --no-progress -y
 
-      - name: Build recommended Windows installer
+      - name: Build recommended Windows installers (64-bit + 32-bit)
         shell: pwsh
         run: |
           scripts/windows/package-portable.ps1 -OutputDir "dist/mama-windows-amd64-portable" -Arch "amd64" -BinaryName "mama.exe"
-          scripts/windows/package-installer.ps1 -PortableDir "dist/mama-windows-amd64-portable" -OutputDir "dist/installer" -AppVersion "${{ steps.release.outputs.tag }}"
-          $src = "dist/installer/MAMA-Setup-${{ steps.release.outputs.tag }}.exe"
-          if (-not (Test-Path $src)) { throw "installer not found: $src" }
-          Copy-Item $src "dist/MAMA-Setup-Windows.exe" -Force
+          scripts/windows/package-installer.ps1 -PortableDir "dist/mama-windows-amd64-portable" -OutputDir "dist/installer-amd64" -AppVersion "${{ steps.release.outputs.tag }}" -OutputBaseName "MAMA-Setup"
+          $src64 = "dist/installer-amd64/MAMA-Setup-${{ steps.release.outputs.tag }}.exe"
+          if (-not (Test-Path $src64)) { throw "installer not found: $src64" }
+          Copy-Item $src64 "dist/MAMA-Setup-Windows.exe" -Force
 
-      - name: Build advanced Windows portable package (amd64)
+          scripts/windows/package-portable.ps1 -OutputDir "dist/mama-windows-386-portable" -Arch "386" -BinaryName "mama.exe"
+          scripts/windows/package-installer.ps1 -PortableDir "dist/mama-windows-386-portable" -OutputDir "dist/installer-386" -AppVersion "${{ steps.release.outputs.tag }}" -OutputBaseName "MAMA-Setup-Windows-32bit"
+          $src32 = "dist/installer-386/MAMA-Setup-Windows-32bit-${{ steps.release.outputs.tag }}.exe"
+          if (-not (Test-Path $src32)) { throw "installer not found: $src32" }
+          Copy-Item $src32 "dist/MAMA-Setup-Windows-32bit.exe" -Force
+
+      - name: Build advanced Windows portable packages (amd64/386)
         if: github.event_name == 'release' || inputs.include_advanced_artifacts
         shell: pwsh
         run: |
           Compress-Archive -Path "dist/mama-windows-amd64-portable/*" -DestinationPath "dist/mama-windows-amd64-portable.zip" -Force
+          Compress-Archive -Path "dist/mama-windows-386-portable/*" -DestinationPath "dist/mama-windows-386-portable.zip" -Force
 
       - name: Generate checksums
         shell: bash
@@ -323,12 +330,24 @@ jobs:
             "https://github.com/$REPO/releases/download/$RELEASE_TAG/MAMA-Setup-Windows.exe" \
             "dist/MAMA-Setup-Windows-update-manifest.json"
 
+          bash scripts/release/generate-update-manifest.sh \
+            "dist/MAMA-Setup-Windows-32bit.exe" \
+            "$RELEASE_TAG" \
+            "https://github.com/$REPO/releases/download/$RELEASE_TAG/MAMA-Setup-Windows-32bit.exe" \
+            "dist/MAMA-Setup-Windows-32bit-update-manifest.json"
+
           if [[ "${{ github.event_name == 'release' || inputs.include_advanced_artifacts }}" == "true" ]]; then
             bash scripts/release/generate-update-manifest.sh \
               "dist/mama-windows-amd64-portable.zip" \
               "$RELEASE_TAG" \
               "https://github.com/$REPO/releases/download/$RELEASE_TAG/mama-windows-amd64-portable.zip" \
               "dist/mama-windows-amd64-portable-update-manifest.json"
+
+            bash scripts/release/generate-update-manifest.sh \
+              "dist/mama-windows-386-portable.zip" \
+              "$RELEASE_TAG" \
+              "https://github.com/$REPO/releases/download/$RELEASE_TAG/mama-windows-386-portable.zip" \
+              "dist/mama-windows-386-portable-update-manifest.json"
           fi
 
       - name: Upload release assets
@@ -341,17 +360,24 @@ jobs:
           set -euo pipefail
           assets=(
             "dist/MAMA-Setup-Windows.exe"
+            "dist/MAMA-Setup-Windows-32bit.exe"
             "dist/SHA256SUMS-windows.txt"
           )
 
           if [[ -f "dist/MAMA-Setup-Windows-update-manifest.json" ]]; then
             assets+=("dist/MAMA-Setup-Windows-update-manifest.json")
           fi
+          if [[ -f "dist/MAMA-Setup-Windows-32bit-update-manifest.json" ]]; then
+            assets+=("dist/MAMA-Setup-Windows-32bit-update-manifest.json")
+          fi
 
           if [[ "${{ github.event_name == 'release' || inputs.include_advanced_artifacts }}" == "true" ]]; then
-            assets+=("dist/mama-windows-amd64-portable.zip")
+            assets+=("dist/mama-windows-amd64-portable.zip" "dist/mama-windows-386-portable.zip")
             if [[ -f "dist/mama-windows-amd64-portable-update-manifest.json" ]]; then
               assets+=("dist/mama-windows-amd64-portable-update-manifest.json")
+            fi
+            if [[ -f "dist/mama-windows-386-portable-update-manifest.json" ]]; then
+              assets+=("dist/mama-windows-386-portable-update-manifest.json")
             fi
           fi
 
@@ -364,7 +390,9 @@ jobs:
           name: release-assets-windows
           path: |
             dist/MAMA-Setup-Windows.exe
+            dist/MAMA-Setup-Windows-32bit.exe
             dist/mama-windows-amd64-portable.zip
+            dist/mama-windows-386-portable.zip
             dist/*-update-manifest.json
             dist/SHA256SUMS-windows.txt
           if-no-files-found: ignore

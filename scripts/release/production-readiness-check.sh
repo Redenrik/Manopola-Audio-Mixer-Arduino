@@ -42,7 +42,7 @@ else
   echo "check=govulncheck status=SKIP reason=tool_not_installed" | tee -a "${SUMMARY_FILE}"
 fi
 
-for target in "linux/amd64" "darwin/amd64" "windows/amd64"; do
+for target in "linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows/amd64" "windows/386"; do
   IFS="/" read -r goos goarch <<<"${target}"
   run_check "cross_build_${goos}_${goarch}" bash -lc "cd \"${MAMA_DIR}\" && GOOS=${goos} GOARCH=${goarch} go build ./cmd/mama ./cmd/mama-ui"
 done

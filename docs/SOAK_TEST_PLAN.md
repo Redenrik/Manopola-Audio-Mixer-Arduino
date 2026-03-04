@@ -16,7 +16,7 @@ Included in this soak plan:
 
 Not included:
 - Hardware-in-the-loop serial endurance tests (tracked separately).
-- Firmware-side encoder/I2C stress tests (tracked in implementation tracker).
+- Firmware-side encoder/I2C stress tests (tracked in firmware test scripts).
 
 ## Scripted Verification Artifact
 

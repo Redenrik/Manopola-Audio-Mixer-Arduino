@@ -1,14 +1,10 @@
 # Production Readiness
 
-This document is the practical operator guide for moving MAMA from feature-complete development to a releasable production state.
+This is the operator checklist to validate a release candidate before publishing.
 
-For formal release gate ownership and sign-off:
-- [V1_READINESS_REVIEW.md](V1_READINESS_REVIEW.md)
-- [RELEASE_QA_CHECKLIST.md](RELEASE_QA_CHECKLIST.md)
+## Automated Gate
 
-## Automated Gate (Codex/CI)
-
-Run the production readiness gate locally:
+Run:
 
 ```bash
 make release-readiness
@@ -20,25 +16,29 @@ Or directly:
 bash scripts/release/production-readiness-check.sh
 ```
 
-Windows PowerShell equivalent:
+Windows PowerShell:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release/production-readiness-check.ps1
 ```
 
-Checks executed:
+Automated checks:
 - `go test ./...`
 - `go build ./...`
 - `go vet ./...`
 - `go mod verify`
-- `govulncheck ./...` (when installed)
+- `govulncheck ./...` (if installed)
 - cross-build compile checks:
-  - `GOOS=linux GOARCH=amd64`
-  - `GOOS=darwin GOARCH=amd64`
-  - `GOOS=windows GOARCH=amd64`
+  - `linux/amd64`
+  - `linux/arm64`
+  - `darwin/amd64`
+  - `darwin/arm64`
+  - `windows/amd64`
+  - `windows/386`
 
 Artifacts:
-- per-run logs and summary are stored under `artifacts/readiness/<run_id>/`.
+- `artifacts/readiness/<run_id>/summary.txt`
+- per-check logs in the same folder
 
 ## CI Enforcement
 
@@ -50,28 +50,21 @@ Trigger:
 - `pull_request`
 - `workflow_dispatch`
 
-The workflow runs the gate on Linux, Windows, and macOS and uploads per-platform readiness artifacts for audit/debug.
+## Manual Gates Before Release
 
-## Manual Production Gates (Maintainers)
+Automated checks are necessary but not sufficient.
+Maintainers should still verify:
 
-Automated checks alone are not enough for release.
+1. Hardware validation on representative boards/OS combinations
+2. Soak execution per [SOAK_TEST_PLAN.md](SOAK_TEST_PLAN.md)
+3. Release assets are published for all supported user targets
+4. Checksums/signatures are attached and verifiable
+5. macOS notarization evidence when shipping notarized macOS assets
 
-Required manual evidence before publication:
-- hardware validation on representative boards/OS combinations
-- soak execution per [SOAK_TEST_PLAN.md](SOAK_TEST_PLAN.md)
-- signed and verified release artifacts
-- macOS notarization evidence when shipping macOS binaries
-- release notes and support/security policy review sign-off
+## User-Impact Sanity Pass
 
-Use [RELEASE_QA_CHECKLIST.md](RELEASE_QA_CHECKLIST.md) as the single source of truth for manual owner-assigned evidence.
-
-## Supportability Baseline
-
-The setup UI can export a diagnostics JSON bundle (`Export Diagnostics`) containing:
-- runtime status snapshot
-- targets/mapping-status API snapshots
-- active in-form config
-- platform/browser metadata
-- recent debug log tail
-
-Use that bundle for bug reports and release-candidate triage.
+Before publishing, run a quick UX sanity pass:
+- fresh install on Windows 64-bit and 32-bit
+- first-launch mapping save flow works
+- tray behavior works (close-to-tray, reopen, quit)
+- serial auto-detection and manual selection both work
