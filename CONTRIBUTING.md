@@ -15,7 +15,6 @@ When submitting a PR, clearly state which layer is changed and why.
 ```bash
 cd mama
 go test ./...
-go run ./cmd/mama-ui
 go run ./cmd/mama
 ```
 
@@ -78,7 +77,7 @@ These wrappers mirror CI/security and smoke flows, reducing command drift across
 
 ## Testing Expectations
 
-- Follow [docs/RELEASE_QA_CHECKLIST.md](docs/RELEASE_QA_CHECKLIST.md) before tagging or publishing release artifacts.
+- Follow [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) before tagging or publishing release artifacts.
 
 Minimum for code PRs:
 - `go test ./...`

@@ -10,8 +10,7 @@ usage() {
 Usage: scripts/quickstart.sh [output_dir]
 
 Builds a portable quick-start bundle containing:
-- mama runtime binary
-- mama-ui setup binary
+- mama app binary (runtime + setup UI)
 - config.yaml
 - launcher scripts
 
@@ -38,36 +37,30 @@ fi
 
 mkdir -p "$OUT_DIR"
 
-echo "[1/4] Building mama runtime..."
+echo "[1/3] Building mama app..."
 (
   cd "$MAMA_DIR"
   go build -o "$OUT_DIR/mama" ./cmd/mama
 )
 
-echo "[2/4] Building mama setup UI..."
-(
-  cd "$MAMA_DIR"
-  go build -o "$OUT_DIR/mama-ui" ./cmd/mama-ui
-)
-
-echo "[3/4] Preparing portable config + launchers..."
+echo "[2/3] Preparing portable config + launchers..."
 cp "$MAMA_DIR/internal/config/default.yaml" "$OUT_DIR/config.yaml"
 
 cat > "$OUT_DIR/open-setup-ui.sh" <<'LAUNCH_UI'
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
-exec ./mama-ui "$@"
+exec ./mama "$@"
 LAUNCH_UI
 
 cat > "$OUT_DIR/start-mixer.sh" <<'LAUNCH_MIXER'
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
-exec ./mama "$@"
+exec ./mama -open=false -start-hidden=true "$@"
 LAUNCH_MIXER
 
-chmod +x "$OUT_DIR/mama" "$OUT_DIR/mama-ui" "$OUT_DIR/open-setup-ui.sh" "$OUT_DIR/start-mixer.sh"
+chmod +x "$OUT_DIR/mama" "$OUT_DIR/open-setup-ui.sh" "$OUT_DIR/start-mixer.sh"
 
 cat > "$OUT_DIR/README-QUICKSTART.txt" <<'NOTES'
 MAMA quick-start bundle
@@ -79,5 +72,5 @@ MAMA quick-start bundle
 All settings remain local to this folder via config.yaml.
 NOTES
 
-echo "[4/4] Done. Quick-start bundle available at: $OUT_DIR"
+echo "[3/3] Done. Quick-start bundle available at: $OUT_DIR"
 echo "Next: run '$OUT_DIR/open-setup-ui.sh'"

@@ -12,8 +12,8 @@ help:
 	@echo "  make smoke           - Run quickstart smoke test"
 	@echo "  make firmware-smoke  - Run firmware protocol stress tests"
 	@echo "  make quickstart      - Build dist/mama-quickstart bundle"
-	@echo "  make run-ui          - Start setup UI"
-	@echo "  make run-daemon      - Start runtime daemon"
+	@echo "  make run-ui          - Start MAMA with setup UI"
+	@echo "  make run-daemon      - Start MAMA hidden (tray/runtime mode)"
 	@echo "  make ci-local        - Run local CI-equivalent checks"
 	@echo "  make release-readiness - Run production readiness gate checks"
 
@@ -40,10 +40,10 @@ quickstart:
 	scripts/quickstart.sh
 
 run-ui:
-	cd mama && go run ./cmd/mama-ui
+	cd mama && go run ./cmd/mama
 
 run-daemon:
-	cd mama && go run ./cmd/mama
+	cd mama && go run ./cmd/mama -open=false -start-hidden=true
 
 ci-local: test verify mod-tidy-check govulncheck
 
