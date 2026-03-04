@@ -447,6 +447,10 @@
         <button type="button" class="btn-lite" id="groupAddRule">Add Rule</button>
         <button type="button" class="btn-lite" id="groupAddBrowser">Add Browser Preset</button>
         <button type="button" class="btn-lite" id="groupAddGame">Add Game Preset</button>
+        <button type="button" class="btn-lite" id="groupAddMusic">Add Music Preset</button>
+        <button type="button" class="btn-lite" id="groupAddStreaming">Add Streaming Preset</button>
+        <button type="button" class="btn-lite" id="groupAddChat">Add Chat Preset</button>
+        <button type="button" class="btn-lite" id="groupAddCreator">Add Creator Preset</button>
         <button type="button" class="btn-lite" id="groupClearRules">Clear</button>
       </div>
       <div class="group-grid" id="groupEditorRows"></div>
@@ -563,6 +567,10 @@
         groupAddRule: "Add Rule",
         groupAddBrowser: "Add Browser Preset",
         groupAddGame: "Add Game Preset",
+        groupAddMusic: "Add Music Preset",
+        groupAddStreaming: "Add Streaming Preset",
+        groupAddChat: "Add Chat Preset",
+        groupAddCreator: "Add Creator Preset",
         groupClearRules: "Clear",
         groupEditorCancel: "Cancel",
         groupEditorApply: "Apply",
@@ -592,6 +600,10 @@
         groupAddRule: "Aggiungi regola",
         groupAddBrowser: "Preset browser",
         groupAddGame: "Preset giochi",
+        groupAddMusic: "Preset musica",
+        groupAddStreaming: "Preset streaming",
+        groupAddChat: "Preset chat",
+        groupAddCreator: "Preset creator",
         groupClearRules: "Svuota",
         groupEditorCancel: "Annulla",
         groupEditorApply: "Applica",
@@ -621,7 +633,7 @@
         manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", mappingsHeading: "mappingsHeading",
         mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep",
         addMapping: "addMapping", saveConfig: "saveConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
-        groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupClearRules: "groupClearRules", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
+        groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupAddMusic: "groupAddMusic", groupAddStreaming: "groupAddStreaming", groupAddChat: "groupAddChat", groupAddCreator: "groupAddCreator", groupClearRules: "groupClearRules", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
       };
       for (const [id, key] of Object.entries(bindings)) {
         const el = $(id);
@@ -886,6 +898,62 @@
           { kind: "contains", value: "riot games" },
           { kind: "contains", value: "\\games\\" },
           { kind: "glob", value: "*game*" }
+        ];
+      }
+      if (key === "music" || key === "player" || key === "players" || key === "music_player" || key === "musicplayers") {
+        return [
+          { kind: "exe", value: "spotify" },
+          { kind: "exe", value: "tidal" },
+          { kind: "exe", value: "deezer" },
+          { kind: "exe", value: "musicbee" },
+          { kind: "exe", value: "foobar2000" },
+          { kind: "exe", value: "vlc" },
+          { kind: "exe", value: "winamp" },
+          { kind: "exe", value: "aimp" },
+          { kind: "exe", value: "itunes" },
+          { kind: "exe", value: "applemusic" },
+          { kind: "exe", value: "qobuz" }
+        ];
+      }
+      if (key === "streaming" || key === "stream" || key === "vod" || key === "streaming_services") {
+        return [
+          { kind: "contains", value: "youtube" },
+          { kind: "contains", value: "twitch" },
+          { kind: "contains", value: "netflix" },
+          { kind: "contains", value: "prime video" },
+          { kind: "contains", value: "disney" },
+          { kind: "contains", value: "hulu" },
+          { kind: "exe", value: "plex" },
+          { kind: "exe", value: "kodi" },
+          { kind: "exe", value: "jellyfinmediaplayer" },
+          { kind: "exe", value: "stremio" }
+        ];
+      }
+      if (key === "chat" || key === "voice" || key === "communication" || key === "comms") {
+        return [
+          { kind: "exe", value: "discord" },
+          { kind: "exe", value: "teams" },
+          { kind: "exe", value: "zoom" },
+          { kind: "exe", value: "slack" },
+          { kind: "exe", value: "whatsapp" },
+          { kind: "exe", value: "telegram" },
+          { kind: "exe", value: "skype" },
+          { kind: "exe", value: "teamspeak" },
+          { kind: "exe", value: "mumble" }
+        ];
+      }
+      if (key === "creator" || key === "content" || key === "production" || key === "daw") {
+        return [
+          { kind: "exe", value: "obs64" },
+          { kind: "exe", value: "obs" },
+          { kind: "exe", value: "streamlabs" },
+          { kind: "exe", value: "audacity" },
+          { kind: "exe", value: "reaper" },
+          { kind: "exe", value: "ableton live" },
+          { kind: "exe", value: "fl64" },
+          { kind: "exe", value: "cubase" },
+          { kind: "exe", value: "protools" },
+          { kind: "exe", value: "resolve" }
         ];
       }
       return [];
@@ -1189,6 +1257,10 @@
       const out = new Set(appSelectorSuggestions());
       out.add("smart:browser");
       out.add("smart:game");
+      out.add("smart:music");
+      out.add("smart:streaming");
+      out.add("smart:chat");
+      out.add("smart:creator");
       out.add("contains:steamapps\\common");
       out.add("contains:epic games");
       return Array.from(out);
@@ -1736,6 +1808,10 @@
       $("groupAddRule").addEventListener("click", () => addGroupEditorRule());
       $("groupAddBrowser").addEventListener("click", () => addGroupEditorPreset("browser"));
       $("groupAddGame").addEventListener("click", () => addGroupEditorPreset("game"));
+      $("groupAddMusic").addEventListener("click", () => addGroupEditorPreset("music"));
+      $("groupAddStreaming").addEventListener("click", () => addGroupEditorPreset("streaming"));
+      $("groupAddChat").addEventListener("click", () => addGroupEditorPreset("chat"));
+      $("groupAddCreator").addEventListener("click", () => addGroupEditorPreset("creator"));
       $("groupClearRules").addEventListener("click", clearGroupEditorRules);
       $("groupEditorCancel").addEventListener("click", () => closeGroupEditor(false));
       $("groupEditorApply").addEventListener("click", () => closeGroupEditor(true));
