@@ -172,6 +172,16 @@ jobs:
           bash scripts/release/package-macos-universal.sh dist/MAMA-macOS
           tar -C dist -czf dist/MAMA-macOS.tar.gz MAMA-macOS
 
+      - name: Verify universal2 binary slices
+        shell: bash
+        run: |
+          set -euo pipefail
+          info="$(lipo -info dist/MAMA-macOS/mama)"
+          echo "$info"
+          [[ "$info" == *"x86_64"* ]]
+          [[ "$info" == *"arm64"* ]]
+          dist/MAMA-macOS/mama --help >/dev/null
+
       - name: Build advanced macOS packages (amd64/arm64)
         if: github.event_name == 'release' || inputs.include_advanced_artifacts
         shell: bash
