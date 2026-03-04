@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
-.PHONY: help test verify mod-tidy-check govulncheck smoke firmware-smoke quickstart run-ui run-daemon ci-local
+.PHONY: help test verify mod-tidy-check govulncheck smoke firmware-smoke quickstart run-ui run-daemon ci-local release-readiness
 
 help:
 	@echo "MAMA developer commands"
@@ -15,6 +15,7 @@ help:
 	@echo "  make run-ui          - Start setup UI"
 	@echo "  make run-daemon      - Start runtime daemon"
 	@echo "  make ci-local        - Run local CI-equivalent checks"
+	@echo "  make release-readiness - Run production readiness gate checks"
 
 test:
 	cd mama && go test ./...
@@ -45,3 +46,10 @@ run-daemon:
 	cd mama && go run ./cmd/mama
 
 ci-local: test verify mod-tidy-check govulncheck
+
+release-readiness:
+ifeq ($(OS),Windows_NT)
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release/production-readiness-check.ps1
+else
+	scripts/release/production-readiness-check.sh
+endif

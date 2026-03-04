@@ -40,6 +40,7 @@ This repository now includes:
 Current repo state is **feature-rich but pre-release**: automatable in-repo gates are green, while final `v1.0.0` publication still depends on maintainer-run/manual evidence (hardware validation, soak execution, CI/security workflow sign-off for release commit, signing/notarization artifacts, and final approvals). See:
 - `docs/V1_READINESS_REVIEW.md` for objective GO/NO-GO gates
 - `docs/RELEASE_QA_CHECKLIST.md` for owner-assigned release evidence
+- `docs/PRODUCTION_READINESS.md` for the operational production gate runbook
 
 ## Repository Layout
 
@@ -81,13 +82,14 @@ Current repo state is **feature-rich but pre-release**: automatable in-repo gate
 ## Serial Event Protocol
 
 Master emits newline-terminated events:
-- `V:1` protocol hello emitted on boot
+- `MAMA:HELLO:1` protocol hello emitted on boot
 - `E1:+1` encoder 1 clockwise
 - `E1:-1` encoder 1 counterclockwise
 - `B1:1` encoder 1 button pressed
 
 Parser accepts:
-- protocol hello `V:<n>` with positive integer versions
+- protocol hello `MAMA:HELLO:<n>` with positive integer versions
+- legacy protocol hello `V:<n>` for backward compatibility
 - encoder IDs `1..32`
 - button press value only `1` (release/noise values are rejected)
 
@@ -119,20 +121,26 @@ cd mama && go mod verify
 scripts/quickstart-smoke-test.sh
 scripts/firmware/run_encoder_stress_test.sh
 scripts/firmware/run_i2c_robustness_test.sh
+bash scripts/release/production-readiness-check.sh
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release/production-readiness-check.ps1
 ```
 
 ## Common Developer Commands
 
 A repository `Makefile` provides one-entrypoint commands:
 
-- `make test` – run `go test ./...`
-- `make verify` – run `go mod verify`
-- `make mod-tidy-check` – enforce `go mod tidy` drift check
-- `make govulncheck` – install/run vulnerability scanner
-- `make smoke` – quickstart packaging smoke test
-- `make firmware-smoke` – firmware protocol stress tests
-- `make run-ui` / `make run-daemon` – run local apps
-- `make ci-local` – local CI-equivalent sequence
+- `make test` - run `go test ./...`
+- `make verify` - run `go mod verify`
+- `make mod-tidy-check` - enforce `go mod tidy` drift check
+- `make govulncheck` - install/run vulnerability scanner
+- `make smoke` - quickstart packaging smoke test
+- `make firmware-smoke` - firmware protocol stress tests
+- `make run-ui` / `make run-daemon` - run local apps
+- `make ci-local` - local CI-equivalent sequence
+- `make release-readiness` - run production-readiness gate checks (Unix shell on Linux/macOS, PowerShell on Windows)
 
 ## Quick Start (Developer)
 
@@ -161,7 +169,7 @@ scripts/firmware/run_i2c_robustness_test.sh
 - `run_encoder_stress_test.sh`: validates fast encoder spin + button debounce edge cases.
 - `run_i2c_robustness_test.sh`: validates slave I2C packet integrity under burst-load accumulator and button-edge churn.
 
-Then open the shown local URL and use the first-run wizard (or manual controls) to detect the board, test connection, optionally apply a mapping template (streaming/conferencing/music/gaming), map knobs, and save. You can also create a browser-local backup snapshot, restore it, or import/export JSON config files before persisting with **Save Config**. The setup UI supports keyboard-first navigation with visible focus states, announces status updates for assistive technologies, and provides a top-level language selector with initial English/Italian coverage.
+Then open the shown local URL and use the first-run wizard (or manual controls) to detect the board, test connection, optionally apply a mapping template (streaming/conferencing/music/gaming), map knobs, and save. You can also create a browser-local backup snapshot, restore it, import/export JSON config files, and export a diagnostics JSON bundle for support before persisting with **Save Config**. The setup UI supports keyboard-first navigation with visible focus states, announces status updates for assistive technologies, and provides a top-level language selector with initial English/Italian coverage.
 
 ## Quick Install / Start (Average Users from Source)
 
@@ -244,8 +252,8 @@ profiles:
 - `master_out` (implemented)
 - `mic_in` (implemented on Windows and Unix hosts with `pactl` or `amixer` available)
 - `line_in` (implemented on Windows and Unix hosts with capture tooling available; routed via capture endpoint controls)
-- `app` (implemented on Unix hosts with `pactl`; requires `selector`)
-- `group` (implemented on Unix hosts with `pactl`; requires `selectors`)
+- `app` (implemented on Windows and Unix hosts with session control support; requires `selector`)
+- `group` (implemented on Windows and Unix hosts with session control support; requires `selectors`)
 
 `selector.kind` / `selectors[].kind` values:
 - `exact` (exact app/session label match)
@@ -366,3 +374,4 @@ For maintainers, optional installer generation (`.exe`) and packaging details ar
 ## License
 
 MIT. See `LICENSE`.
+

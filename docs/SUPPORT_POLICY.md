@@ -17,8 +17,8 @@ This document defines what MAMA versions are supported, what environments are ex
 | Component | Supported baseline | Notes |
 |---|---|---|
 | Hardware topology | Arduino Nano master + Arduino Nano slave | Master connected via USB; slave connected over I2C. |
-| Serial protocol hello | `V:1` | Host currently supports protocol version `1`. |
-| Host behavior for missing hello | Compatible | Host keeps legacy compatibility if firmware does not emit `V:<n>`. |
+| Serial protocol hello | `MAMA:HELLO:1` | Host currently supports protocol version `1`; legacy `V:1` remains accepted. |
+| Host behavior for missing hello | Compatible | Host keeps legacy compatibility if firmware does not emit a protocol hello line. |
 | Host behavior for unsupported hello | Safe reject | Host logs incompatibility and drops control events. |
 
 ### Feature-level support status
@@ -28,8 +28,8 @@ This document defines what MAMA versions are supported, what environments are ex
 | `master_out` | Supported |
 | `mic_in` | Supported on Windows + Unix hosts with capture endpoint tooling available |
 | `line_in` | Supported on Windows + Unix hosts with capture endpoint tooling available |
-| `app` | Supported on Unix hosts with PulseAudio (`pactl`) session controls available |
-| `group` | Supported on Unix hosts with `pactl` sink-input control; unsupported on Windows (pending implementation). |
+| `app` | Supported on Windows + Unix hosts with active per-app session control support available |
+| `group` | Supported on Windows + Unix hosts with active session-group control support available |
 
 ## 2) Versioning Policy
 

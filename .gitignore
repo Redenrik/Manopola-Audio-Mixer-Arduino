@@ -23,6 +23,7 @@ Thumbs.db
 # ---- Build folders ----
 build/
 dist/
+artifacts/
 target/
 bin/
 out/

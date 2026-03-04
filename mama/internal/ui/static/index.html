@@ -98,6 +98,111 @@
       padding: 18px;
     }
 
+    .hidden {
+      display: none !important;
+    }
+
+    .main-toolbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .icon-plain {
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      background: var(--lite-bg);
+      border-color: var(--lite-border);
+      color: var(--lite-text);
+    }
+
+    .icon-plain svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .settings-view {
+      display: grid;
+      gap: 16px;
+    }
+
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .settings-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .settings-header h2 {
+      margin: 0;
+    }
+
+    .dirty-badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      border: 1px solid #f0c28a;
+      background: #fff3e1;
+      color: #8a4b06;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 2px 10px;
+      line-height: 1.6;
+    }
+
+    :root[data-theme="dark"] .dirty-badge {
+      border-color: #6d563a;
+      background: #3b3023;
+      color: #ffd9a9;
+    }
+
+    .advanced-wrap {
+      margin-top: 12px;
+      border-top: 1px dashed var(--line);
+      padding-top: 10px;
+    }
+
+    .advanced-wrap summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .advanced-wrap .content {
+      margin-top: 10px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .focus-highlight {
+      outline: 3px solid rgba(255, 125, 0, 0.45);
+      outline-offset: 2px;
+      transition: outline-color 120ms ease;
+    }
+
     h1 {
       margin: 0 0 8px;
       font-size: clamp(1.5rem, 4vw, 2.1rem);
@@ -464,6 +569,19 @@
       align-items: center;
     }
 
+    .map-hint {
+      grid-column: 1 / -1;
+      margin: 0;
+      font-size: 0.8rem;
+    }
+
+    .row.error-row {
+      border: 1px solid var(--danger-border);
+      border-radius: 12px;
+      padding: 8px;
+      background: var(--danger-bg);
+    }
+
     .btn-lite {
       background: var(--lite-bg);
       border-color: var(--lite-border);
@@ -506,6 +624,24 @@
       gap: 10px;
     }
 
+    .onboard-steps {
+      display: grid;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .onboard-step {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel-soft);
+      padding: 10px;
+    }
+
+    .onboard-step.active {
+      border-color: #f4a261;
+      box-shadow: 0 8px 16px rgba(244, 162, 97, 0.18);
+    }
+
     .group-grid {
       display: grid;
       gap: 8px;
@@ -533,112 +669,161 @@
 </head>
 <body>
   <main class="shell">
-    <section class="panel">
-      <h1 id="titleMain">Manopola Audio Mixer Setup</h1>
-      <p id="subtitleMain">Configure serial connection, assign each knob target, and visually identify knob numbers in real time.</p>
-      <p class="hint"><span id="configPathLabel">Config path:</span> <span class="mono" id="configPath">loading...</span></p>
-      <div class="actions" style="margin-top:12px;">
-        <label style="min-width: 220px; margin: 0;">
-          <span id="languageLabel">Language</span>
-          <select id="languageSelect" aria-label="Language">
-            <option value="en">English</option>
-            <option value="it">Italiano</option>
-          </select>
-        </label>
-        <label style="min-width: 220px; margin: 0;">
-          <span id="themeLabel">Theme</span>
-          <select id="themeSelect" aria-label="Theme">
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
+    <section class="panel" id="dashboardView">
+      <div class="main-toolbar">
+        <div>
+          <h1 id="titleMain">Manopola Audio Mixer Setup</h1>
+          <p id="subtitleMain">Configure serial connection, assign each knob target, and visually identify knob numbers in real time.</p>
+          <p class="hint"><span id="configPathLabel">Config path:</span> <span class="mono" id="configPath">loading...</span></p>
+        </div>
+        <div class="toolbar-actions">
+          <button id="openSettingsBtn" class="icon-plain" type="button" aria-label="Open settings" title="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3.2"></circle>
+              <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.99l.03.03a2 2 0 1 1-2.83 2.83l-.03-.03a1.8 1.8 0 0 0-1.99-.36 1.8 1.8 0 0 0-1.09 1.65V21a2 2 0 1 1-4 0v-.05a1.8 1.8 0 0 0-1.09-1.65 1.8 1.8 0 0 0-1.99.36l-.03.03a2 2 0 1 1-2.83-2.83l.03-.03A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-1.65-1.09H2.9a2 2 0 1 1 0-4h.05A1.8 1.8 0 0 0 4.6 8.8a1.8 1.8 0 0 0-.36-1.99l-.03-.03a2 2 0 1 1 2.83-2.83l.03.03a1.8 1.8 0 0 0 1.99.36h.01A1.8 1.8 0 0 0 10.16 2.7V2.6a2 2 0 1 1 4 0v.05a1.8 1.8 0 0 0 1.09 1.65h.01a1.8 1.8 0 0 0 1.99-.36l.03-.03a2 2 0 1 1 2.83 2.83l-.03.03a1.8 1.8 0 0 0-.36 1.99v.01a1.8 1.8 0 0 0 1.65 1.09h.05a2 2 0 1 1 0 4h-.05A1.8 1.8 0 0 0 19.4 15z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <h2 id="identifyHeading">Knob Identification</h2>
+      <p id="identifyIntro">Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.</p>
+
+      <section class="recovery-banner hidden" id="recoveryBanner" role="status" aria-live="polite">
+        <span id="recoveryMessage"></span>
+        <button id="recoveryRetry" type="button">Retry Now</button>
+      </section>
+
+      <div class="knobs" id="knobGrid"></div>
+      <p class="status" id="identifyStatus" role="status" aria-live="polite"></p>
+      <p class="status" id="connectionStatus" role="status" aria-live="polite"></p>
+      <div class="debug-console-wrap" id="debugPanel" style="display:none;">
+        <h3 id="debugHeading">Debug Console</h3>
+        <pre class="debug-console" id="debugConsole"></pre>
       </div>
     </section>
 
-    <section class="recovery-banner hidden" id="recoveryBanner" role="status" aria-live="polite">
-      <span id="recoveryMessage"></span>
-      <button id="recoveryRetry" type="button">Retry Now</button>
-    </section>
-
-    <section class="panel split">
-      <div>
-        <h2 id="connectionHeading">Connection</h2>
-        <label>
-          <span id="serialPortLabel">Serial Port</span>
-          <div class="split" style="grid-template-columns: 1fr auto;">
-            <select id="portSelect" aria-label="Detected serial ports"></select>
-            <button type="button" id="refreshPorts">Refresh</button>
+    <section class="settings-view hidden" id="settingsView">
+      <section class="panel">
+        <div class="settings-header">
+          <div class="settings-meta">
+            <h2 id="settingsTitle">Settings</h2>
+            <span id="unsavedBadge" class="dirty-badge hidden">Unsaved changes</span>
           </div>
-        </label>
-        <label>
-          <span id="manualPortLabel">Or type port manually</span>
-          <input id="portInput" aria-label="Manual serial port" placeholder="COM3 or /dev/ttyACM0">
-        </label>
-        <label>
-          <span id="baudLabel">Baud</span>
-          <input id="baudInput" aria-label="Serial baud rate" type="number" min="1" step="1" value="115200">
-        </label>
-        <label style="display:flex; gap:8px; align-items:center; margin-top:10px;">
-          <input id="debugInput" type="checkbox" aria-label="Enable debug logs">
-          <span id="debugLabel">Debug logs enabled</span>
-        </label>
-        <div class="actions" style="margin-top:8px; align-items:center;">
-          <label style="display:flex; gap:8px; align-items:center; margin:0;">
-            <input id="startupEnabled" type="checkbox" aria-label="Launch mixer at OS startup">
-            <span id="startupLabel">Launch mixer at OS startup</span>
+          <div class="toolbar-actions">
+            <button id="runSetupAgain" class="btn-lite" type="button">Run Setup Again</button>
+            <button id="closeSettingsBtn" class="btn-lite" type="button">Back</button>
+          </div>
+        </div>
+        <p class="hint" id="settingsIntro">Use this page for setup and advanced options.</p>
+        <div class="actions" style="margin-top:12px;">
+          <label style="min-width: 220px; margin: 0;">
+            <span id="languageLabel">Language</span>
+            <select id="languageSelect" aria-label="Language">
+              <option value="en">English</option>
+              <option value="it">Italiano</option>
+            </select>
           </label>
-          <button type="button" id="applyStartup">Apply Startup Setting</button>
+          <label style="min-width: 220px; margin: 0;">
+            <span id="themeLabel">Theme</span>
+            <select id="themeSelect" aria-label="Theme">
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </label>
         </div>
-        <p class="status" id="startupStatus" role="status" aria-live="polite"></p>
-        <p class="status" id="connectionStatus" role="status" aria-live="polite"></p>
-      </div>
+      </section>
 
-      <div>
-        <h2 id="identifyHeading">Knob Identification</h2>
-        <p id="identifyIntro">Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.</p>
-        <div class="knobs" id="knobGrid"></div>
-        <p class="status" id="identifyStatus" role="status" aria-live="polite"></p>
-        <div class="debug-console-wrap" id="debugPanel" style="display:none;">
-          <h3 id="debugHeading">Debug Console</h3>
-          <pre class="debug-console" id="debugConsole"></pre>
+      <section class="panel split" id="settingsConnectionPanel">
+        <div>
+          <h2 id="connectionHeading">Connection</h2>
+          <label>
+            <span id="serialPortLabel">Serial Port</span>
+            <div class="split" style="grid-template-columns: 1fr auto;">
+              <select id="portSelect" aria-label="Detected serial ports"></select>
+              <button type="button" id="refreshPorts">Refresh</button>
+            </div>
+          </label>
+          <label>
+            <span id="manualPortLabel">Or type port manually</span>
+            <input id="portInput" aria-label="Manual serial port" placeholder="COM3 or /dev/ttyACM0">
+          </label>
+          <label>
+            <span id="baudLabel">Baud</span>
+            <input id="baudInput" aria-label="Serial baud rate" type="number" min="1" step="1" value="115200">
+          </label>
+          <div class="actions">
+            <button type="button" id="testConnection">Test Connection</button>
+          </div>
         </div>
-      </div>
-    </section>
+        <div>
+          <h2 id="advancedHeading">Advanced</h2>
+          <div class="advanced-wrap">
+            <details>
+              <summary id="advancedSummary">Advanced settings</summary>
+              <div class="content">
+                <label style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+                  <input id="debugInput" type="checkbox" aria-label="Enable debug logs">
+                  <span id="debugLabel">Debug logs enabled</span>
+                </label>
+                <div class="actions" style="align-items:center;">
+                  <label style="display:flex; gap:8px; align-items:center; margin:0;">
+                    <input id="startupEnabled" type="checkbox" aria-label="Launch mixer at OS startup">
+                    <span id="startupLabel">Launch mixer at OS startup</span>
+                  </label>
+                  <button type="button" id="applyStartup">Apply Startup Setting</button>
+                </div>
+                <p class="status" id="startupStatus" role="status" aria-live="polite"></p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
 
-    <section class="panel">
-      <h2 id="mappingsHeading">Mappings</h2>
-      <p class="hint" id="windowsTargetWarning"></p>
-      <div class="actions templates">
-        <label style="min-width: 250px; margin: 0;">
-          <span id="mappingTemplateLabel">Mapping Template</span>
-          <select id="templateSelect" aria-label="Mapping templates"></select>
-        </label>
-        <button id="applyTemplate" type="button">Apply Template</button>
-      </div>
-      <div class="row header">
-        <div id="headerKnob">Knob</div>
-        <div id="headerTarget">Target</div>
-        <div id="headerName">Name / Selector</div>
-        <div id="headerSensitivity">Sensitivity</div>
-        <div id="headerStep">Step (0..1)</div>
-        <div id="headerFallback">Fallback</div>
-        <div></div>
-      </div>
-      <div id="mappings"></div>
-      <div class="actions">
-        <button id="addMapping" type="button">Add Mapping</button>
-        <button id="restoreMissingKnobs" type="button">Restore Missing Knobs</button>
-        <button class="btn-primary" id="saveConfig" type="button">Save Config</button>
-      </div>
-      <div class="actions">
-        <button id="backupConfig" type="button">Backup Snapshot</button>
-        <button id="restoreConfig" type="button">Restore Snapshot</button>
-        <button id="exportConfig" type="button">Export Config</button>
-        <button id="importConfig" type="button">Import Config</button>
-        <input id="importConfigFile" type="file" accept="application/json" style="display:none;">
-      </div>
-      <p class="status" id="saveStatus" role="status" aria-live="polite"></p>
+      <section class="panel" id="settingsMappingsPanel">
+        <h2 id="mappingsHeading">Mappings</h2>
+        <p class="hint" id="windowsTargetWarning"></p>
+        <div class="actions templates">
+          <label style="min-width: 250px; margin: 0;">
+            <span id="mappingTemplateLabel">Mapping Template</span>
+            <select id="templateSelect" aria-label="Mapping templates"></select>
+          </label>
+          <button id="applyTemplate" type="button">Apply Template</button>
+        </div>
+        <div class="row header">
+          <div id="headerKnob">Knob</div>
+          <div id="headerTarget">Target</div>
+          <div id="headerName">Name / Selector</div>
+          <div id="headerSensitivity">Sensitivity</div>
+          <div id="headerStep">Step (0..1)</div>
+          <div id="headerFallback">Fallback</div>
+          <div></div>
+        </div>
+        <div id="mappings"></div>
+        <div class="actions">
+          <button id="addMapping" type="button">Add Mapping</button>
+          <button id="restoreMissingKnobs" type="button">Restore Missing Knobs</button>
+          <button class="btn-primary" id="saveConfig" type="button">Save Config</button>
+          <button id="rollbackConfig" type="button">Rollback Last Save</button>
+        </div>
+        <div class="advanced-wrap">
+          <details>
+            <summary id="advancedConfigSummary">Advanced config tools</summary>
+            <div class="content">
+              <div class="actions">
+                <button id="backupConfig" type="button">Backup Snapshot</button>
+                <button id="restoreConfig" type="button">Restore Snapshot</button>
+                <button id="exportConfig" type="button">Export Config</button>
+                <button id="exportDiagnostics" type="button">Export Diagnostics</button>
+                <button id="importConfig" type="button">Import Config</button>
+                <input id="importConfigFile" type="file" accept="application/json" style="display:none;">
+              </div>
+            </div>
+          </details>
+        </div>
+        <p class="status" id="saveStatus" role="status" aria-live="polite"></p>
+      </section>
     </section>
   </main>
 
@@ -665,6 +850,21 @@
     </section>
   </div>
 
+  <div class="modal-overlay hidden" id="onboardingModal" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+    <section class="modal-card" style="width:min(760px,100%);">
+      <h2 id="onboardingTitle">Welcome to MAMA</h2>
+      <p id="onboardingIntro">Let’s quickly configure the essentials so your knobs are ready.</p>
+      <div class="onboard-steps" id="onboardingSteps"></div>
+      <p class="status" id="onboardingStatus" role="status" aria-live="polite"></p>
+      <div class="actions">
+        <button type="button" id="onboardingSkip">Skip</button>
+        <button type="button" id="onboardingPrev">Back</button>
+        <button type="button" class="btn-primary" id="onboardingNext">Next</button>
+        <button type="button" class="btn-primary hidden" id="onboardingFinish">Finish</button>
+      </div>
+    </section>
+  </div>
+
   <script>
     const state = {
       cfgPath: "",
@@ -684,11 +884,22 @@
       manualPortDirty: false,
       language: "en",
       themePreference: "system",
-      groupEditor: {
-        open: false,
-        sourceInput: null,
-        selectors: []
+      ui: {
+        settingsOpen: false,
+        dirty: false,
+        lastSavedSignature: "",
+        suspendDirtyTracking: false
       },
+      onboarding: {
+        open: false,
+        index: 0,
+        steps: [
+          { id: "serial", panelId: "settingsConnectionPanel" },
+          { id: "mappings", panelId: "settingsMappingsPanel" },
+          { id: "save", panelId: "settingsMappingsPanel" }
+        ]
+      },
+      // Backward-compatible safety for legacy wizard conditionals still present in handlers.
       wizard: {
         active: false,
         index: 0,
@@ -699,6 +910,11 @@
           { id: "save" },
           { id: "verify" }
         ]
+      },
+      groupEditor: {
+        open: false,
+        sourceInput: null,
+        selectors: []
       },
       templates: {
         streaming: {
@@ -761,6 +977,8 @@
     const knobTimers = new Map();
     const knobPressTimers = new Map();
     const backupStorageKey = "mama.setup.config.backup.v1";
+    const rollbackStorageKey = "mama.setup.config.rollback.v1";
+    const onboardingStorageKey = "mama.setup.onboarding.done.v1";
 
     const languageStorageKey = "mama.setup.language.v1";
     const themeStorageKey = "mama.setup.theme.v1";
@@ -775,12 +993,53 @@
         themeSystem: "System",
         themeLight: "Light",
         themeDark: "Dark",
+        openSettings: "Open settings",
+        settingsTitle: "Settings",
+        settingsIntro: "Use this page for setup and advanced options.",
+        runSetupAgain: "Run Setup Again",
+        closeSettingsBtn: "Back",
+        unsavedChanges: "Unsaved changes",
+        discardChangesConfirm: "You have unsaved changes. Discard them and go back?",
+        advancedHeading: "Advanced",
+        advancedSummary: "Advanced settings",
+        advancedConfigSummary: "Advanced config tools",
+        onboardingTitle: "Welcome to MAMA",
+        onboardingIntro: "Let’s quickly configure the essentials so your knobs are ready.",
+        onboardingSkip: "Skip",
+        onboardingPrev: "Back",
+        onboardingNext: "Next",
+        onboardingFinish: "Finish",
+        onboardingSerialTitle: "1. Serial connection",
+        onboardingSerialHint: "Select your board port and baud, then run Test Connection.",
+        onboardingMappingsTitle: "2. Knob mappings",
+        onboardingMappingsHint: "Assign targets and sensitivity per knob. Use a template if needed.",
+        onboardingSaveTitle: "3. Save and start",
+        onboardingSaveHint: "Save configuration. Changes apply immediately while the app is running.",
         wizardHeading: "First-Run Wizard",
         wizardIntro: "Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.",
         wizardStart: "Start Wizard", wizardNext: "Next Step", wizardReset: "Reset",
         connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
         identifyHeading: "Knob Identification", identifyIntro: "Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.", debugHeading: "Debug Console", startIdentify: "Start Identify", stopIdentify: "Stop",
-        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (0..1)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", restoreMissingKnobs: "Restore Missing Knobs", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).",
+        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (0..1)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", restoreMissingKnobs: "Restore Missing Knobs", saveConfig: "Save Config", rollbackConfig: "Rollback Last Save", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", exportDiagnostics: "Export Diagnostics", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).", nonWindowsTargetWarning: "macOS/Linux note: app/group controls depend on available audio session backend. Device and master controls remain available.",
+        appHintActive: "Detected active apps ({count}). Use suggestions with Windows names. If the app is offline, use exe:processname (example: exe:discord).",
+        appHintOffline: "No active app sessions detected now. Use exe:processname and it will attach when the app starts.",
+        groupHint: "Group accepts multiple rules separated by ';' (example: smart:browser; exe:discord).",
+        outputHintDetected: "Detected output devices ({count}) from Windows. You can pick by visible device name.",
+        outputHintMissing: "No output devices detected now. Leave empty for default output, or type a selector token.",
+        inputHintDetected: "Detected input devices ({count}) from Windows. You can pick by visible device name.",
+        inputHintMissing: "No input devices detected now. Leave empty for default input, or type a selector token.",
+        saveBlockedConflicts: "Cannot save due to configuration conflicts",
+        conflictNoMappings: "Add at least one mapping.",
+        conflictInvalidKnob: "Invalid knob id in a mapping row.",
+        conflictDuplicateKnob: "Knob {knob} is assigned more than once.",
+        conflictUnknownTarget: "Unknown target type in a mapping row.",
+        conflictInvalidStep: "Step must be between 0.001 and 1.",
+        conflictMissingAppSelector: "App target requires an app name or selector.",
+        conflictMissingGroupSelector: "Group target requires at least one selector rule.",
+        rollbackApplied: "Rollback snapshot restored. Click Save Config to apply.",
+        rollbackMissing: "No rollback snapshot available yet.",
+        diagnosticsExported: "Diagnostics exported to JSON file.",
+        diagnosticsExportFailed: "Could not export diagnostics.",
         restoreMissingKnobsDone: "Missing knobs restored.",
         restoreMissingKnobsNone: "All knob IDs are already mapped.",
         groupEditButton: "Edit",
@@ -814,12 +1073,53 @@
         themeSystem: "Sistema",
         themeLight: "Chiaro",
         themeDark: "Scuro",
+        openSettings: "Apri impostazioni",
+        settingsTitle: "Impostazioni",
+        settingsIntro: "Questa pagina contiene configurazione e opzioni avanzate.",
+        runSetupAgain: "Riapri procedura",
+        closeSettingsBtn: "Indietro",
+        unsavedChanges: "Modifiche non salvate",
+        discardChangesConfirm: "Ci sono modifiche non salvate. Vuoi scartarle e tornare indietro?",
+        advancedHeading: "Avanzate",
+        advancedSummary: "Impostazioni avanzate",
+        advancedConfigSummary: "Strumenti config avanzati",
+        onboardingTitle: "Benvenuto in MAMA",
+        onboardingIntro: "Configuriamo rapidamente le opzioni essenziali per iniziare subito.",
+        onboardingSkip: "Salta",
+        onboardingPrev: "Indietro",
+        onboardingNext: "Avanti",
+        onboardingFinish: "Fine",
+        onboardingSerialTitle: "1. Connessione seriale",
+        onboardingSerialHint: "Seleziona porta e baud della scheda, poi esegui Test connessione.",
+        onboardingMappingsTitle: "2. Mappature manopole",
+        onboardingMappingsHint: "Assegna target e sensibilita per ogni manopola. Puoi usare un template.",
+        onboardingSaveTitle: "3. Salva e avvia",
+        onboardingSaveHint: "Salva la configurazione. Le modifiche vengono applicate subito.",
         wizardHeading: "Procedura guidata iniziale",
         wizardIntro: "Segui questa procedura per rilevare la scheda, confermare la seriale, mappare le manopole, salvare e verificare gli eventi live.",
         wizardStart: "Avvia procedura", wizardNext: "Passo successivo", wizardReset: "Reimposta",
         connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
         identifyHeading: "Identificazione manopole", identifyIntro: "L'attivita delle manopole viene rilevata automaticamente una volta configurata la porta seriale. Ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", debugHeading: "Console debug", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
-        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (0..1)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", restoreMissingKnobs: "Ripristina manopole mancanti", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).",
+        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (0..1)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", restoreMissingKnobs: "Ripristina manopole mancanti", saveConfig: "Salva config", rollbackConfig: "Ripristina ultimo salvataggio", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", exportDiagnostics: "Esporta diagnostica", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).", nonWindowsTargetWarning: "Nota macOS/Linux: i controlli app/group dipendono dal backend sessioni audio disponibile. I controlli dispositivo e master restano disponibili.",
+        appHintActive: "App attive rilevate ({count}). Usa i suggerimenti con i nomi visibili in Windows. Se l'app e offline usa exe:nomeprocesso (esempio: exe:discord).",
+        appHintOffline: "Nessuna sessione app attiva rilevata ora. Usa exe:nomeprocesso e si colleghera quando l'app parte.",
+        groupHint: "Il gruppo accetta piu regole separate da ';' (esempio: smart:browser; exe:discord).",
+        outputHintDetected: "Dispositivi di uscita rilevati ({count}) da Windows. Puoi selezionare per nome visibile.",
+        outputHintMissing: "Nessun dispositivo di uscita rilevato ora. Lascia vuoto per l'uscita predefinita, oppure inserisci un token selettore.",
+        inputHintDetected: "Dispositivi di ingresso rilevati ({count}) da Windows. Puoi selezionare per nome visibile.",
+        inputHintMissing: "Nessun dispositivo di ingresso rilevato ora. Lascia vuoto per l'ingresso predefinito, oppure inserisci un token selettore.",
+        saveBlockedConflicts: "Impossibile salvare: ci sono conflitti nella configurazione",
+        conflictNoMappings: "Aggiungi almeno una mappatura.",
+        conflictInvalidKnob: "ID manopola non valido in una riga.",
+        conflictDuplicateKnob: "La manopola {knob} e assegnata piu volte.",
+        conflictUnknownTarget: "Tipo target sconosciuto in una riga.",
+        conflictInvalidStep: "Lo step deve essere compreso tra 0.001 e 1.",
+        conflictMissingAppSelector: "Il target app richiede nome app o selettore.",
+        conflictMissingGroupSelector: "Il target gruppo richiede almeno una regola selettore.",
+        rollbackApplied: "Snapshot di rollback ripristinata. Clicca Salva config per applicare.",
+        rollbackMissing: "Nessuna snapshot di rollback disponibile.",
+        diagnosticsExported: "Diagnostica esportata in file JSON.",
+        diagnosticsExportFailed: "Impossibile esportare la diagnostica.",
         restoreMissingKnobsDone: "Manopole mancanti ripristinate.",
         restoreMissingKnobsNone: "Tutti gli ID manopola sono gia mappati.",
         groupEditButton: "Modifica",
@@ -853,6 +1153,83 @@
       return (i18n[state.language] && i18n[state.language][key]) || i18n.en[key] || key;
     }
 
+    function formatText(template, vars = {}) {
+      let out = String(template || "");
+      for (const [key, value] of Object.entries(vars)) {
+        out = out.split("{" + key + "}").join(String(value));
+      }
+      return out;
+    }
+
+    function stableConfigSignature(cfg) {
+      if (!cfg || typeof cfg !== "object") return "";
+      const serial = (cfg.serial && typeof cfg.serial === "object") ? cfg.serial : {};
+      const normalized = {
+        serial: {
+          port: String(serial.port || "").trim(),
+          baud: parseInt(serial.baud, 10) || 115200
+        },
+        debug: !!cfg.debug,
+        mappings: Array.isArray(cfg.mappings) ? cfg.mappings.map((mapping) => {
+          const out = {
+            knob: parseInt(mapping && mapping.knob, 10) || 0,
+            target: String(mapping && mapping.target || ""),
+            step: Number(mapping && mapping.step),
+            sensitivity: String((mapping && mapping.sensitivity) || "normal").toLowerCase()
+          };
+          if (mapping && typeof mapping.name === "string" && mapping.name.trim()) {
+            out.name = mapping.name.trim();
+          }
+          if (mapping && mapping.selector && mapping.selector.kind && mapping.selector.value) {
+            out.selector = {
+              kind: String(mapping.selector.kind).trim(),
+              value: String(mapping.selector.value).trim()
+            };
+          }
+          if (mapping && Array.isArray(mapping.selectors) && mapping.selectors.length > 0) {
+            out.selectors = mapping.selectors
+              .map((selector) => ({
+                kind: String(selector && selector.kind || "").trim(),
+                value: String(selector && selector.value || "").trim()
+              }))
+              .filter((selector) => selector.kind && selector.value);
+          }
+          if (mapping && mapping.fallback_to_master) {
+            out.fallback_to_master = true;
+          }
+          return out;
+        }) : []
+      };
+      return JSON.stringify(normalized);
+    }
+
+    function setDirtyState(isDirty) {
+      state.ui.dirty = !!isDirty;
+      const badge = $("unsavedBadge");
+      if (!badge) return;
+      badge.textContent = t("unsavedChanges");
+      badge.classList.toggle("hidden", !state.ui.dirty);
+    }
+
+    function currentFormSignature() {
+      return stableConfigSignature(buildConfigFromForm());
+    }
+
+    function markFormAsSaved() {
+      state.ui.lastSavedSignature = currentFormSignature();
+      setDirtyState(false);
+    }
+
+    function refreshDirtyState() {
+      if (state.ui.suspendDirtyTracking) return;
+      if (!state.ui.lastSavedSignature) {
+        state.ui.lastSavedSignature = currentFormSignature();
+        setDirtyState(false);
+        return;
+      }
+      setDirtyState(currentFormSignature() !== state.ui.lastSavedSignature);
+    }
+
     function normalizeThemePreference(value) {
       return value === "light" || value === "dark" ? value : "system";
     }
@@ -880,11 +1257,11 @@
     function localizeStaticUI() {
       document.title = t("pageTitle");
       const bindings = {
-        titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", themeLabel: "themeLabel", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
+        titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", themeLabel: "themeLabel", settingsTitle: "settingsTitle", settingsIntro: "settingsIntro", runSetupAgain: "runSetupAgain", closeSettingsBtn: "closeSettingsBtn", unsavedBadge: "unsavedChanges", advancedHeading: "advancedHeading", advancedSummary: "advancedSummary", advancedConfigSummary: "advancedConfigSummary", onboardingTitle: "onboardingTitle", onboardingIntro: "onboardingIntro", onboardingSkip: "onboardingSkip", onboardingPrev: "onboardingPrev", onboardingNext: "onboardingNext", onboardingFinish: "onboardingFinish", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
         wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
         manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", debugHeading: "debugHeading", mappingsHeading: "mappingsHeading",
         mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerSensitivity: "headerSensitivity", headerStep: "headerStep", headerFallback: "headerFallback",
-        addMapping: "addMapping", restoreMissingKnobs: "restoreMissingKnobs", saveConfig: "saveConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
+        addMapping: "addMapping", restoreMissingKnobs: "restoreMissingKnobs", saveConfig: "saveConfig", rollbackConfig: "rollbackConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", exportDiagnostics: "exportDiagnostics", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
         groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupAddMusic: "groupAddMusic", groupAddStreaming: "groupAddStreaming", groupAddChat: "groupAddChat", groupAddCreator: "groupAddCreator", groupClearRules: "groupClearRules", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
       };
       for (const [id, key] of Object.entries(bindings)) {
@@ -895,6 +1272,8 @@
       $("themeSelect").options[1].textContent = t("themeLight");
       $("themeSelect").options[2].textContent = t("themeDark");
       $("recoveryRetry").textContent = t("recoveryRetry");
+      $("openSettingsBtn").setAttribute("aria-label", t("openSettings"));
+      $("openSettingsBtn").setAttribute("title", t("openSettings"));
     }
 
     function localizedWizardStep(stepID) {
@@ -913,6 +1292,105 @@
       if ($("mappings").children.length > 0) {
         renderMappings(collectMappings());
       }
+      if (state.onboarding.open) {
+        renderOnboarding();
+      }
+      refreshDirtyState();
+    }
+
+    function openSettingsView() {
+      $("dashboardView").classList.add("hidden");
+      $("settingsView").classList.remove("hidden");
+      state.ui.settingsOpen = true;
+    }
+
+    function closeSettingsView(force = false) {
+      if (!force && state.ui.dirty) {
+        if (!window.confirm(t("discardChangesConfirm"))) {
+          return false;
+        }
+      }
+      if (state.onboarding.open) {
+        closeOnboarding(false);
+      }
+      $("settingsView").classList.add("hidden");
+      $("dashboardView").classList.remove("hidden");
+      state.ui.settingsOpen = false;
+      return true;
+    }
+
+    function onboardingStepText(stepID) {
+      if (stepID === "serial") {
+        return { title: t("onboardingSerialTitle"), hint: t("onboardingSerialHint") };
+      }
+      if (stepID === "mappings") {
+        return { title: t("onboardingMappingsTitle"), hint: t("onboardingMappingsHint") };
+      }
+      if (stepID === "save") {
+        return { title: t("onboardingSaveTitle"), hint: t("onboardingSaveHint") };
+      }
+      return { title: stepID, hint: "" };
+    }
+
+    function clearOnboardingHighlights() {
+      for (const id of ["settingsConnectionPanel", "settingsMappingsPanel"]) {
+        const el = $(id);
+        if (el) el.classList.remove("focus-highlight");
+      }
+    }
+
+    function focusOnboardingStep() {
+      clearOnboardingHighlights();
+      const step = state.onboarding.steps[state.onboarding.index];
+      if (!step || !step.panelId) return;
+      const panel = $(step.panelId);
+      if (!panel) return;
+      panel.classList.add("focus-highlight");
+      panel.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function renderOnboarding() {
+      const host = $("onboardingSteps");
+      host.innerHTML = "";
+      for (let i = 0; i < state.onboarding.steps.length; i++) {
+        const step = state.onboarding.steps[i];
+        const text = onboardingStepText(step.id);
+        const item = document.createElement("div");
+        item.className = "onboard-step" + (i === state.onboarding.index ? " active" : "");
+        item.innerHTML = `<strong>${text.title}</strong><div class="hint">${text.hint}</div>`;
+        host.appendChild(item);
+      }
+
+      $("onboardingPrev").disabled = state.onboarding.index <= 0;
+      const last = state.onboarding.index >= state.onboarding.steps.length - 1;
+      $("onboardingNext").classList.toggle("hidden", last);
+      $("onboardingFinish").classList.toggle("hidden", !last);
+
+      const currentText = onboardingStepText(state.onboarding.steps[state.onboarding.index].id);
+      setStatus("onboardingStatus", currentText.hint || "");
+      focusOnboardingStep();
+    }
+
+    function openOnboarding() {
+      state.onboarding.open = true;
+      state.onboarding.index = 0;
+      openSettingsView();
+      $("onboardingModal").classList.remove("hidden");
+      renderOnboarding();
+    }
+
+    function closeOnboarding(markDone) {
+      state.onboarding.open = false;
+      clearOnboardingHighlights();
+      $("onboardingModal").classList.add("hidden");
+      if (markDone) {
+        localStorage.setItem(onboardingStorageKey, "1");
+      }
+    }
+
+    function maybeStartOnboarding() {
+      if (localStorage.getItem(onboardingStorageKey) === "1") return;
+      openOnboarding();
     }
 
     function bindSystemThemeListener() {
@@ -932,11 +1410,12 @@
 
     function updatePlatformWarnings() {
       const isWindows = navigator.platform.toLowerCase().includes("win");
-      $("windowsTargetWarning").textContent = isWindows ? t("windowsTargetWarning") : "";
+      $("windowsTargetWarning").textContent = isWindows ? t("windowsTargetWarning") : t("nonWindowsTargetWarning");
     }
 
     function setStatus(id, text, cls = "") {
       const el = $(id);
+      if (!el) return;
       el.textContent = text || "";
       el.className = "status" + (cls ? " " + cls : "");
       el.setAttribute("aria-live", cls === "error" ? "assertive" : "polite");
@@ -1208,7 +1687,7 @@
         option.value = id;
         const label = (tpl.labels && tpl.labels[state.language]) || tpl.label;
         const description = (tpl.descriptions && tpl.descriptions[state.language]) || tpl.description;
-        option.textContent = `${label} — ${description}`;
+        option.textContent = `${label} - ${description}`;
         select.appendChild(option);
       }
     }
@@ -1336,19 +1815,58 @@
     }
 
     function appSelectorSuggestions() {
-      const out = new Set();
+      const out = [];
+      const seen = new Set();
+      const push = (value) => {
+        const text = String(value || "").trim();
+        if (!text) return;
+        const key = text.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        out.push(text);
+      };
       for (const item of discoveredTargetsByType("app")) {
         if (!item || item.type !== "app") continue;
-        if (typeof item.name === "string" && item.name.trim()) {
-          out.add(item.name.trim());
+        const preferred = typeof item.name === "string" ? item.name.trim() : "";
+        if (preferred) {
+          push(preferred);
+          continue;
         }
         if (Array.isArray(item.aliases)) {
           for (const alias of item.aliases) {
-            if (typeof alias === "string" && alias.trim()) out.add(alias.trim());
+            const value = String(alias || "").trim();
+            if (!value) continue;
+            if (value.toLowerCase().endsWith(".exe")) continue;
+            push(value);
           }
         }
       }
-      return Array.from(out);
+      return out;
+    }
+
+    function targetInputHint(targetType) {
+      if (targetType === "app") {
+        const count = discoveredTargetsByType("app").length;
+        return count > 0
+          ? formatText(t("appHintActive"), { count })
+          : t("appHintOffline");
+      }
+      if (targetType === "group") {
+        return t("groupHint");
+      }
+      if (targetType === "master_out") {
+        const count = discoveredTargetsByType("master_out").length;
+        return count > 0
+          ? formatText(t("outputHintDetected"), { count })
+          : t("outputHintMissing");
+      }
+      if (targetType === "mic_in" || targetType === "line_in") {
+        const count = discoveredTargetsByType(targetType).length;
+        return count > 0
+          ? formatText(t("inputHintDetected"), { count })
+          : t("inputHintMissing");
+      }
+      return "";
     }
 
     function smartGroupPresetSelectors(name) {
@@ -1797,6 +2315,7 @@
 
     function addMappingWithNextKnob() {
       $("mappings").appendChild(mappingRow({ knob: nextAvailableKnobID(), target: "master_out", step: 0.02, name: "" }));
+      refreshDirtyState();
     }
 
     function restoreMissingKnobs() {
@@ -1813,6 +2332,7 @@
         $("mappings").appendChild(mappingRow({ knob: knobID, target: "master_out", step: 0.02, name: "" }));
       }
       setStatus("saveStatus", t("restoreMissingKnobsDone"), "ok");
+      refreshDirtyState();
     }
 
     function mappingRow(mapping = { knob: 1, target: "master_out", step: 0.02, sensitivity: "normal", fallback_to_master: false, name: "" }) {
@@ -1873,10 +2393,14 @@
       nameWrap.className = "map-name-wrap";
       nameWrap.appendChild(name);
       nameWrap.appendChild(groupEdit);
+      const nameHint = document.createElement("p");
+      nameHint.className = "map-hint";
+      nameWrap.appendChild(nameHint);
 
       const suggestions = document.createElement("datalist");
       suggestions.id = "map-suggestions-" + Math.random().toString(36).slice(2);
       name.setAttribute("list", suggestions.id);
+      nameWrap.appendChild(suggestions);
 
       const step = document.createElement("input");
       step.className = "map-step";
@@ -1922,7 +2446,10 @@
       remove.innerHTML = '<svg class="icon-trash" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
       remove.setAttribute("aria-label", "Remove mapping row");
       remove.setAttribute("title", state.language === "it" ? "Rimuovi mappatura" : "Remove mapping");
-      remove.addEventListener("click", () => row.remove());
+      remove.addEventListener("click", () => {
+        row.remove();
+        refreshDirtyState();
+      });
 
       function syncNameState() {
         const supportsName = ["master_out", "mic_in", "line_in", "app", "group"].includes(target.value);
@@ -1937,6 +2464,7 @@
         } else if (target.value === "mic_in" || target.value === "line_in") {
           name.placeholder = state.language === "it" ? "Dispositivo input (default se vuoto)" : "Input device (default if empty)";
         }
+        nameHint.textContent = targetInputHint(target.value);
         groupEdit.hidden = target.value !== "group";
         groupEdit.disabled = target.value !== "group" || name.disabled;
         const supportsFallback = target.value === "app" || target.value === "group";
@@ -1957,7 +2485,6 @@
       row.appendChild(target);
       row.appendChild(nameWrap);
       row.appendChild(sensitivity);
-      row.appendChild(suggestions);
       row.appendChild(step);
       row.appendChild(fallbackWrap);
       row.appendChild(remove);
@@ -1969,6 +2496,7 @@
       host.innerHTML = "";
       if (!Array.isArray(list) || list.length === 0) {
         host.appendChild(mappingRow());
+        refreshDirtyState();
         return;
       }
       let maxSeen = 0;
@@ -1980,43 +2508,147 @@
         growKnobCount(maxSeen, "config mappings");
       }
       for (const m of list) host.appendChild(mappingRow(m));
+      refreshDirtyState();
+    }
+
+    function parseMappingFromRow(row) {
+      const knob = row.querySelector(".map-knob");
+      const target = row.querySelector(".map-target");
+      const name = row.querySelector(".map-name");
+      const sensitivity = row.querySelector(".map-sensitivity");
+      const step = row.querySelector(".map-step");
+      const fallback = row.querySelector(".map-fallback-master");
+      const mapping = {
+        knob: parseInt(knob && knob.value, 10),
+        target: target && target.value,
+        step: parseFloat(step && step.value),
+        sensitivity: (sensitivity && sensitivity.value) ? sensitivity.value : "normal"
+      };
+      const targetValue = String(mapping.target || "");
+      if (fallback && fallback.checked && (targetValue === "app" || targetValue === "group")) {
+        mapping.fallback_to_master = true;
+      }
+
+      const rawName = String((name && name.value) || "").trim();
+      const selector = parseSelectorTokenInput(rawName);
+      if (targetValue === "app" && selector) {
+        mapping.selector = selector;
+      } else if (targetValue === "group" && rawName) {
+        const selectors = parseGroupSelectorsInput(rawName);
+        if (selectors.length > 0) {
+          mapping.selectors = selectors;
+        } else {
+          mapping.name = rawName;
+        }
+      } else if (targetValue === "app" && rawName) {
+        mapping.name = rawName;
+      } else if ((targetValue === "master_out" || targetValue === "mic_in" || targetValue === "line_in") && rawName) {
+        mapping.name = resolveEndpointSelectorToken(targetValue, rawName);
+      }
+      return mapping;
+    }
+
+    function collectMappingEntries() {
+      return Array.from($("mappings").querySelectorAll(".row")).map((row) => ({
+        row,
+        mapping: parseMappingFromRow(row),
+        rawName: String((row.querySelector(".map-name") && row.querySelector(".map-name").value) || "").trim()
+      }));
     }
 
     function collectMappings() {
+      return collectMappingEntries().map((entry) => entry.mapping);
+    }
+
+    function clearMappingValidationErrors() {
       const rows = Array.from($("mappings").querySelectorAll(".row"));
-      return rows.map((row) => {
-        const knob = row.querySelector(".map-knob");
-        const target = row.querySelector(".map-target");
-        const name = row.querySelector(".map-name");
-        const sensitivity = row.querySelector(".map-sensitivity");
-        const step = row.querySelector(".map-step");
-        const fallback = row.querySelector(".map-fallback-master");
-        const mapping = {
-          knob: parseInt(knob.value, 10),
-          target: target.value,
-          step: parseFloat(step.value),
-          sensitivity: (sensitivity && sensitivity.value) ? sensitivity.value : "normal"
-        };
-        if (fallback && fallback.checked && (target.value === "app" || target.value === "group")) {
-          mapping.fallback_to_master = true;
+      for (const row of rows) {
+        row.classList.remove("error-row");
+        row.removeAttribute("title");
+      }
+    }
+
+    function markMappingValidationError(row, message) {
+      if (!row) return;
+      row.classList.add("error-row");
+      if (message) row.setAttribute("title", message);
+    }
+
+    function knownTargetTypesSet() {
+      const known = new Set();
+      for (const value of state.knownTargets || []) {
+        if (typeof value === "string" && value.trim()) {
+          known.add(value.trim());
         }
-        const selector = parseSelectorTokenInput(name.value);
-        if (target.value === "app" && selector) {
-          mapping.selector = selector;
-        } else if (target.value === "group" && name.value.trim()) {
-          const selectors = parseGroupSelectorsInput(name.value);
-          if (selectors.length > 0) {
-            mapping.selectors = selectors;
-          } else {
-            mapping.name = name.value.trim();
-          }
-        } else if (target.value === "app" && name.value.trim()) {
-          mapping.name = name.value.trim();
-        } else if ((target.value === "master_out" || target.value === "mic_in" || target.value === "line_in") && name.value.trim()) {
-          mapping.name = resolveEndpointSelectorToken(target.value, name.value);
+      }
+      for (const item of state.discoveredTargets || []) {
+        if (item && typeof item.type === "string" && item.type.trim()) {
+          known.add(item.type.trim());
         }
-        return mapping;
-      });
+      }
+      return known;
+    }
+
+    function validateConfigEntries(entries) {
+      const issues = [];
+      const seenIssues = new Set();
+      const rowIssues = [];
+      const addIssue = (text) => {
+        const msg = String(text || "").trim();
+        if (!msg || seenIssues.has(msg)) return;
+        seenIssues.add(msg);
+        issues.push(msg);
+      };
+      const addRowIssue = (row, text) => {
+        rowIssues.push({ row, text });
+        addIssue(text);
+      };
+
+      if (!Array.isArray(entries) || entries.length === 0) {
+        addIssue(t("conflictNoMappings"));
+        return { ok: false, issues, rowIssues };
+      }
+
+      const validTargets = knownTargetTypesSet();
+      const byKnob = new Map();
+
+      for (const entry of entries) {
+        const row = entry.row;
+        const mapping = entry.mapping || {};
+        const knob = Number(mapping.knob);
+        const target = String(mapping.target || "").trim();
+        const step = Number(mapping.step);
+        const hasName = entry.rawName.length > 0;
+
+        if (!Number.isInteger(knob) || knob < 1 || knob > maxKnobCount) {
+          addRowIssue(row, t("conflictInvalidKnob"));
+        } else {
+          if (!byKnob.has(knob)) byKnob.set(knob, []);
+          byKnob.get(knob).push(row);
+        }
+        if (!target || !validTargets.has(target)) {
+          addRowIssue(row, t("conflictUnknownTarget"));
+        }
+        if (!Number.isFinite(step) || step < 0.001 || step > 1) {
+          addRowIssue(row, t("conflictInvalidStep"));
+        }
+        if (target === "app" && !mapping.selector && !mapping.name && !hasName) {
+          addRowIssue(row, t("conflictMissingAppSelector"));
+        }
+        if (target === "group" && (!Array.isArray(mapping.selectors) || mapping.selectors.length === 0) && !mapping.name && !hasName) {
+          addRowIssue(row, t("conflictMissingGroupSelector"));
+        }
+      }
+
+      for (const [knob, rows] of byKnob.entries()) {
+        if (rows.length <= 1) continue;
+        const text = formatText(t("conflictDuplicateKnob"), { knob });
+        for (const row of rows) {
+          addRowIssue(row, text);
+        }
+      }
+
+      return { ok: issues.length === 0, issues, rowIssues };
     }
 
     function buildConfigFromForm() {
@@ -2034,18 +2666,29 @@
       return navigator.platform.toLowerCase().includes("win");
     }
 
-    function applyConfigToForm(cfg) {
+    function applyConfigToForm(cfg, options = {}) {
       if (!cfg || typeof cfg !== "object") {
         throw new Error("Invalid config object");
       }
+      const markAsSaved = options.markAsSaved !== false;
       const serial = cfg.serial && typeof cfg.serial === "object" ? cfg.serial : {};
-      $("debugInput").checked = !!cfg.debug;
-      $("baudInput").value = String(serial.baud || 115200);
-      $("portInput").value = serial.port || "";
-      state.manualPortDirty = (serial.port || "").trim().length > 0;
-      state.userPortOverride = (serial.port || "").trim().length > 0;
-      syncDebugConsoleVisibility();
-      renderMappings(cfg.mappings || []);
+      state.ui.suspendDirtyTracking = true;
+      try {
+        $("debugInput").checked = !!cfg.debug;
+        $("baudInput").value = String(serial.baud || 115200);
+        $("portInput").value = serial.port || "";
+        state.manualPortDirty = (serial.port || "").trim().length > 0;
+        state.userPortOverride = (serial.port || "").trim().length > 0;
+        syncDebugConsoleVisibility();
+        renderMappings(cfg.mappings || []);
+      } finally {
+        state.ui.suspendDirtyTracking = false;
+      }
+      if (markAsSaved) {
+        markFormAsSaved();
+      } else {
+        refreshDirtyState();
+      }
       loadMappingStatus();
     }
 
@@ -2274,20 +2917,76 @@
     async function loadConfig() {
       const cfg = await fetchJSON("/api/config");
       state.config = cfg;
-      applyConfigToForm(cfg);
+      applyConfigToForm(cfg, { markAsSaved: true });
       await loadMappingStatus();
       setStatus("saveStatus", state.language === "it" ? "Configurazione caricata" : "Config loaded", "ok");
     }
 
+    function stashRollbackSnapshot(snapshot) {
+      if (!snapshot || typeof snapshot !== "object") return;
+      try {
+        localStorage.setItem(rollbackStorageKey, JSON.stringify({
+          at: new Date().toISOString(),
+          config: snapshot
+        }));
+      } catch (_err) {
+        // Keep save flow resilient even if browser storage is full.
+      }
+    }
+
+    function rollbackLastSave() {
+      try {
+        const raw = localStorage.getItem(rollbackStorageKey);
+        if (!raw) {
+          throw new Error(t("rollbackMissing"));
+        }
+        const parsed = JSON.parse(raw);
+        const cfg = parsed && typeof parsed === "object" ? parsed.config : null;
+        if (!cfg || typeof cfg !== "object") {
+          throw new Error(t("rollbackMissing"));
+        }
+        applyConfigToForm(cfg, { markAsSaved: false });
+        setStatus("saveStatus", t("rollbackApplied"), "ok");
+      } catch (err) {
+        setStatus("saveStatus", err.message || t("rollbackMissing"), "error");
+      }
+    }
+
     async function saveConfig() {
       try {
-        const payload = buildConfigFromForm();
+        clearMappingValidationErrors();
+        const entries = collectMappingEntries();
+        const validation = validateConfigEntries(entries);
+        if (!validation.ok) {
+          for (const issue of validation.rowIssues) {
+            markMappingValidationError(issue.row, issue.text);
+          }
+          if (validation.rowIssues.length > 0) {
+            validation.rowIssues[0].row.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+          const preview = validation.issues.slice(0, 2).join(" | ");
+          const more = validation.issues.length > 2 ? ` (+${validation.issues.length - 2})` : "";
+          setStatus("saveStatus", `${t("saveBlockedConflicts")}: ${preview}${more}`, "error");
+          return;
+        }
+
+        const payload = {
+          serial: {
+            port: effectivePort(),
+            baud: parseInt($("baudInput").value, 10) || 115200
+          },
+          debug: $("debugInput").checked,
+          mappings: entries.map((entry) => entry.mapping)
+        };
+        stashRollbackSnapshot(state.config);
         const saved = await fetchJSON("/api/config", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
+        clearMappingValidationErrors();
         state.config = saved;
+        markFormAsSaved();
         setStatus("saveStatus", state.language === "it" ? "Configurazione salvata" : "Config saved", "ok");
         await refreshRuntimeStatus();
         await loadMappingStatus();
@@ -2316,8 +3015,7 @@
           throw new Error(state.language === "it" ? "Nessuna snapshot di backup trovata in questo browser." : "No backup snapshot found in this browser.");
         }
         const parsed = JSON.parse(raw);
-        applyConfigToForm(parsed);
-        state.config = parsed;
+        applyConfigToForm(parsed, { markAsSaved: false });
         setStatus("saveStatus", state.language === "it" ? "Snapshot ripristinata. Clicca Salva config per renderla persistente." : "Backup snapshot restored. Click Save Config to persist.", "ok");
       } catch (err) {
         setStatus("saveStatus", err.message || (state.language === "it" ? "Impossibile ripristinare la snapshot di backup." : "Unable to restore backup snapshot."), "error");
@@ -2335,14 +3033,69 @@
       }
     }
 
+    async function exportDiagnostics() {
+      try {
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const safeFetch = async (url) => {
+          try {
+            return { ok: true, data: await fetchJSON(url) };
+          } catch (err) {
+            return { ok: false, error: err && err.message ? err.message : String(err) };
+          }
+        };
+
+        const [runtimeRes, targetsRes, mappingRes] = await Promise.all([
+          safeFetch("/api/runtime"),
+          safeFetch("/api/targets"),
+          safeFetch("/api/mapping-status")
+        ]);
+
+        const payload = {
+          generated_at: new Date().toISOString(),
+          app: "MAMA",
+          config_path: state.cfgPath || "",
+          ui: {
+            language: state.language,
+            theme_preference: state.themePreference,
+            settings_open: !!state.ui.settingsOpen,
+            dirty: !!state.ui.dirty
+          },
+          environment: {
+            user_agent: navigator.userAgent || "",
+            platform: navigator.platform || "",
+            language: navigator.language || ""
+          },
+          serial: {
+            effective_port: effectivePort(),
+            baud: parseInt($("baudInput").value, 10) || 115200
+          },
+          config_in_form: buildConfigFromForm(),
+          runtime: runtimeRes.ok ? runtimeRes.data : { error: runtimeRes.error },
+          targets: targetsRes.ok ? targetsRes.data : { error: targetsRes.error },
+          mapping_status: mappingRes.ok ? mappingRes.data : { error: mappingRes.error },
+          statuses: {
+            connection: $("connectionStatus") ? $("connectionStatus").textContent : "",
+            identify: $("identifyStatus") ? $("identifyStatus").textContent : "",
+            save: $("saveStatus") ? $("saveStatus").textContent : "",
+            startup: $("startupStatus") ? $("startupStatus").textContent : ""
+          },
+          debug_tail: (state.debugLines || []).slice(-300)
+        };
+
+        downloadConfig(`mama-diagnostics-${stamp}.json`, payload);
+        setStatus("saveStatus", t("diagnosticsExported"), "ok");
+      } catch (err) {
+        setStatus("saveStatus", (err && err.message) ? err.message : t("diagnosticsExportFailed"), "error");
+      }
+    }
+
     function importConfigFromFile(file) {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => {
         try {
           const parsed = JSON.parse(String(reader.result || "{}"));
-          applyConfigToForm(parsed);
-          state.config = parsed;
+          applyConfigToForm(parsed, { markAsSaved: false });
           setStatus("saveStatus", state.language === "it" ? "Configurazione importata. Controlla i valori e clicca Salva config." : "Config imported. Review values and click Save Config.", "ok");
         } catch (err) {
           setStatus("saveStatus", state.language === "it" ? "File JSON di configurazione non valido." : "Invalid config JSON file.", "error");
@@ -2363,6 +3116,7 @@
       renderMappings(cloned);
       const label = (tpl.labels && tpl.labels[state.language]) || tpl.label;
       setStatus("saveStatus", state.language === "it" ? `Template applicato: ${label}. Controlla le mappature e clicca Salva config.` : `Applied template: ${label}. Review mappings and click Save Config.`, "ok");
+      refreshDirtyState();
     }
 
     function scheduleIdentifyStart(delayMs = 260) {
@@ -2513,6 +3267,10 @@
     }
 
     function bindEvents() {
+      $("openSettingsBtn").addEventListener("click", openSettingsView);
+      $("closeSettingsBtn").addEventListener("click", () => closeSettingsView(false));
+      $("runSetupAgain").addEventListener("click", () => openOnboarding());
+      $("testConnection").addEventListener("click", testConnection);
       $("portSelect").addEventListener("change", syncManualPortFromSelect);
       $("portSelect").addEventListener("input", syncManualPortFromSelect);
       $("portInput").addEventListener("input", () => {
@@ -2558,9 +3316,11 @@
       $("restoreMissingKnobs").addEventListener("click", restoreMissingKnobs);
       $("applyTemplate").addEventListener("click", applyTemplate);
       $("saveConfig").addEventListener("click", saveConfig);
+      $("rollbackConfig").addEventListener("click", rollbackLastSave);
       $("backupConfig").addEventListener("click", backupConfig);
       $("restoreConfig").addEventListener("click", restoreConfig);
       $("exportConfig").addEventListener("click", exportConfig);
+      $("exportDiagnostics").addEventListener("click", exportDiagnostics);
       $("importConfig").addEventListener("click", () => $("importConfigFile").click());
       $("importConfigFile").addEventListener("change", (ev) => {
         const [file] = ev.target.files || [];
@@ -2568,6 +3328,14 @@
         ev.target.value = "";
       });
       $("languageSelect").addEventListener("change", (ev) => setLanguage(ev.target.value));
+      const onSettingsMutation = (ev) => {
+        if (ev && ev.target && ev.target.closest && ev.target.closest("#mappings")) {
+          clearMappingValidationErrors();
+        }
+        refreshDirtyState();
+      };
+      $("settingsView").addEventListener("input", onSettingsMutation, true);
+      $("settingsView").addEventListener("change", onSettingsMutation, true);
       $("groupAddRule").addEventListener("click", () => addGroupEditorRule());
       $("groupAddBrowser").addEventListener("click", () => addGroupEditorPreset("browser"));
       $("groupAddGame").addEventListener("click", () => addGroupEditorPreset("game"));
@@ -2581,13 +3349,53 @@
       $("groupEditorModal").addEventListener("click", (ev) => {
         if (ev.target === $("groupEditorModal")) closeGroupEditor(false);
       });
+      $("onboardingSkip").addEventListener("click", () => {
+        closeOnboarding(true);
+        closeSettingsView(true);
+      });
+      $("onboardingPrev").addEventListener("click", () => {
+        if (state.onboarding.index <= 0) return;
+        state.onboarding.index -= 1;
+        renderOnboarding();
+      });
+      $("onboardingNext").addEventListener("click", () => {
+        if (state.onboarding.index >= state.onboarding.steps.length - 1) return;
+        state.onboarding.index += 1;
+        renderOnboarding();
+      });
+      $("onboardingFinish").addEventListener("click", async () => {
+        await saveConfig();
+        if ($("saveStatus").classList.contains("error")) {
+          setStatus("onboardingStatus", $("saveStatus").textContent || (state.language === "it" ? "Errore nel salvataggio configurazione." : "Could not save configuration."), "error");
+          return;
+        }
+        closeOnboarding(true);
+        closeSettingsView(true);
+      });
+      $("onboardingModal").addEventListener("click", (ev) => {
+        if (ev.target === $("onboardingModal")) {
+          closeOnboarding(false);
+        }
+      });
       window.addEventListener("keydown", (ev) => {
-        if (ev.key === "Escape" && state.groupEditor.open) {
+        if (ev.key !== "Escape") {
+          return;
+        }
+        if (state.onboarding.open) {
+          ev.preventDefault();
+          closeOnboarding(false);
+          return;
+        }
+        if (state.groupEditor.open) {
           ev.preventDefault();
           closeGroupEditor(false);
         }
       });
-      window.addEventListener("beforeunload", () => {
+      window.addEventListener("beforeunload", (ev) => {
+        if (state.ui.dirty) {
+          ev.preventDefault();
+          ev.returnValue = "";
+        }
         stopIdentify(true);
         stopMappingStatusPolling();
       });
@@ -2609,6 +3417,7 @@
         await refreshRuntimeStatus();
         startMappingStatusPolling();
         scheduleIdentifyStart(150);
+        maybeStartOnboarding();
       } catch (err) {
         setStatus("saveStatus", err.message, "error");
       }

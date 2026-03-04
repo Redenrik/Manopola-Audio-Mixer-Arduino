@@ -68,7 +68,7 @@ func Probe(portName string, baud int) error {
 	return p.Close()
 }
 
-// ProbeProtocolHello opens a serial port and waits for a protocol hello line (V:<n>).
+// ProbeProtocolHello opens a serial port and waits for a protocol hello line (MAMA:HELLO:<n> or legacy V:<n>).
 // It returns the firmware protocol version when compatible with this host.
 func ProbeProtocolHello(portName string, baud int, timeout time.Duration) (int, error) {
 	portName = strings.TrimSpace(portName)

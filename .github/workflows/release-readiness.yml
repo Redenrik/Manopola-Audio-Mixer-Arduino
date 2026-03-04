@@ -1,0 +1,96 @@
+name: Release Readiness
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness-linux:
+    name: production-readiness-linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache-dependency-path: mama/go.sum
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run production readiness checks (bash)
+        run: bash scripts/release/production-readiness-check.sh
+
+      - name: Upload readiness artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: readiness-artifacts-linux
+          path: artifacts/readiness/**
+          if-no-files-found: warn
+
+  readiness-windows:
+    name: production-readiness-windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache-dependency-path: mama/go.sum
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run production readiness checks (PowerShell)
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release/production-readiness-check.ps1
+
+      - name: Upload readiness artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: readiness-artifacts-windows
+          path: artifacts/readiness/**
+          if-no-files-found: warn
+
+  readiness-macos:
+    name: production-readiness-macos
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache-dependency-path: mama/go.sum
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run production readiness checks (bash)
+        run: bash scripts/release/production-readiness-check.sh
+
+      - name: Upload readiness artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: readiness-artifacts-macos
+          path: artifacts/readiness/**
+          if-no-files-found: warn
