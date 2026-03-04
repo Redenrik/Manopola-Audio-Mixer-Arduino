@@ -5,9 +5,14 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"mama/internal/config"
+	"mama/internal/mixer"
 )
 
 func TestHandlePortTest_MethodNotAllowed(t *testing.T) {
@@ -200,5 +205,67 @@ func TestHandleStartup_PostUnsupportedOnNonWindows(t *testing.T) {
 
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("expected %d, got %d", http.StatusBadRequest, rr.Code)
+	}
+}
+
+func TestHandleRuntime_NoService(t *testing.T) {
+	s := New("config.yaml")
+	req := httptest.NewRequest(http.MethodGet, "/api/runtime", nil)
+	rr := httptest.NewRecorder()
+
+	s.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rr.Code)
+	}
+	var body struct {
+		Running bool `json:"running"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode json: %v", err)
+	}
+	if body.Running {
+		t.Fatalf("expected running=false without service")
+	}
+}
+
+func TestHandleRuntime_WithService(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(cfgPath, []byte(config.DefaultYAML), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	service, err := mixer.NewService(cfg, &fakeTargetsBackend{})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	s := New(cfgPath)
+	s.SetMixerService(service)
+	req := httptest.NewRequest(http.MethodGet, "/api/runtime", nil)
+	rr := httptest.NewRecorder()
+
+	s.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rr.Code)
+	}
+	var body struct {
+		Running bool `json:"running"`
+		Status  struct {
+			State string `json:"state"`
+		} `json:"status"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode json: %v", err)
+	}
+	if !body.Running {
+		t.Fatalf("expected running=true with service")
+	}
+	if body.Status.State == "" {
+		t.Fatalf("expected runtime status state to be populated")
 	}
 }

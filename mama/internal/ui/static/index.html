@@ -453,8 +453,6 @@
       knownTargets: ["master_out", "mic_in", "line_in", "app", "group"],
       discoveredTargets: [],
       identifyES: null,
-      identifyPort: "",
-      identifyBaud: 0,
       identifyStartTimer: null,
       identifyRetryTimer: null,
       autoApplyingPort: false,
@@ -1510,6 +1508,9 @@
       const status = await fetchJSON("/api/status");
       state.cfgPath = status.configPath;
       $("configPath").textContent = status.configPath;
+      if (status.runtime && typeof status.runtime === "object") {
+        applyRuntimeStatus(status.runtime);
+      }
     }
 
     async function loadTargets() {
@@ -1600,6 +1601,49 @@
       return "";
     }
 
+    function applyRuntimeStatus(status) {
+      if (!status || typeof status !== "object") return;
+      const port = typeof status.port === "string" ? status.port.trim() : "";
+      const baud = Number.isFinite(status.baud) ? status.baud : (parseInt($("baudInput").value, 10) || 115200);
+      const label = port ? (port + " @ " + baud) : "";
+      const stateValue = typeof status.state === "string" ? status.state : "";
+      const message = typeof status.message === "string" ? status.message : "";
+      const error = typeof status.error === "string" ? status.error : "";
+
+      if (status.connected) {
+        setStatus("connectionStatus", label ? ((state.language === "it" ? "Connesso: " : "Connected: ") + label) : (state.language === "it" ? "Connesso" : "Connected"), "ok");
+        return;
+      }
+
+      if (stateValue === "connecting" || stateValue === "reconnecting") {
+        const connectingMsg = label
+          ? ((state.language === "it" ? "Connessione seriale: " : "Serial connection: ") + label + " (" + stateValue + ")")
+          : (state.language === "it" ? "Connessione seriale in corso..." : "Serial connection in progress...");
+        setStatus("connectionStatus", connectingMsg, "ok");
+        return;
+      }
+
+      if (error) {
+        setStatus("connectionStatus", error, "error");
+        return;
+      }
+
+      if (message) {
+        setStatus("connectionStatus", message);
+      }
+    }
+
+    async function refreshRuntimeStatus() {
+      try {
+        const body = await fetchJSON("/api/runtime");
+        if (body && body.status) {
+          applyRuntimeStatus(body.status);
+        }
+      } catch (err) {
+        setStatus("connectionStatus", err.message, "error");
+      }
+    }
+
     async function testConnection() {
       try {
         const port = effectivePort();
@@ -1638,6 +1682,7 @@
         });
         state.config = saved;
         setStatus("saveStatus", state.language === "it" ? "Configurazione salvata" : "Config saved", "ok");
+        await refreshRuntimeStatus();
         if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "save") {
           setStatus("wizardStatus", state.language === "it" ? "Configurazione salvata. Clicca Passo successivo per la verifica finale." : "Config saved successfully. Click Next Step for final verification.", "ok");
         }
@@ -1713,16 +1758,6 @@
     }
 
     function scheduleIdentifyStart(delayMs = 260) {
-      const port = effectivePort();
-      if (!port) {
-        setStatus("connectionStatus", state.language === "it" ? "Porta seriale non configurata." : "Serial port not configured.");
-      } else {
-        const baud = parseInt($("baudInput").value, 10) || 115200;
-        const sameConfig = state.identifyES && state.identifyPort === port && state.identifyBaud === baud;
-        if (!sameConfig) {
-          setStatus("connectionStatus", state.language === "it" ? "Applicazione impostazioni seriale..." : "Applying serial settings...");
-        }
-      }
       if (state.identifyStartTimer) {
         clearTimeout(state.identifyStartTimer);
         state.identifyStartTimer = null;
@@ -1757,8 +1792,6 @@
         state.identifyES.close();
         state.identifyES = null;
       }
-      state.identifyPort = "";
-      state.identifyBaud = 0;
       if (!silent) {
         setStatus("identifyStatus", state.language === "it" ? "Identificazione arrestata" : "Identify stopped");
       }
@@ -1776,49 +1809,20 @@
     }
 
     async function startIdentify() {
-      const port = effectivePort();
-      const baud = parseInt($("baudInput").value, 10) || 115200;
-      if (!port) {
-        stopIdentify(true);
-        setStatus("identifyStatus", state.language === "it" ? "Seleziona o inserisci prima una porta seriale" : "Select or type a serial port first");
-        setStatus("connectionStatus", state.language === "it" ? "Porta seriale non configurata." : "Serial port not configured.");
-        return;
-      }
-      if (state.identifyES && state.identifyPort === port && state.identifyBaud === baud) {
-        return;
-      }
       if (state.identifyES) {
-        stopIdentify(true);
+        return;
       }
       if (state.identifyRetryTimer) {
         clearTimeout(state.identifyRetryTimer);
         state.identifyRetryTimer = null;
       }
-      setStatus("connectionStatus", (state.language === "it" ? "Test seriale su " : "Testing serial on ") + port + " @ " + baud + "...", "ok");
-      try {
-        await fetchJSON("/api/port-test", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ port, baud })
-        });
-      } catch (err) {
-        setStatus("identifyStatus", err.message, "error");
-        setStatus("connectionStatus", err.message, "error");
-        scheduleIdentifyRetry();
-        return;
-      }
-      const url = "/api/identify?port=" + encodeURIComponent(port) + "&baud=" + encodeURIComponent(String(baud));
-      const es = new EventSource(url);
+      const es = new EventSource("/api/identify");
       state.identifyES = es;
-      state.identifyPort = port;
-      state.identifyBaud = baud;
       setStatus("identifyStatus", state.language === "it" ? "Connessione stream identificazione..." : "Connecting identify stream...", "ok");
-      setStatus("connectionStatus", state.language === "it" ? "Connessione seriale..." : "Connecting serial...", "ok");
 
       es.onopen = () => {
         if (state.identifyES !== es) return;
-        setStatus("identifyStatus", (state.language === "it" ? "In ascolto su " : "Listening on ") + port + " @ " + baud, "ok");
-        setStatus("connectionStatus", (state.language === "it" ? "Connesso: " : "Connected: ") + port + " @ " + baud, "ok");
+        setStatus("identifyStatus", state.language === "it" ? "Stream identificazione attivo" : "Identify stream connected", "ok");
       };
 
       es.onmessage = (msg) => {
@@ -1827,8 +1831,13 @@
           const ev = JSON.parse(msg.data);
           if (ev.type === "event") {
             flashKnob(ev.knobId, ev.kind, ev.delta);
+          } else if (ev.type === "state") {
+            applyRuntimeStatus(ev);
           } else if (ev.type === "error") {
             setStatus("identifyStatus", ev.message || (state.language === "it" ? "errore stream" : "stream error"), "error");
+            if (ev.error) {
+              setStatus("connectionStatus", ev.error, "error");
+            }
           }
         } catch (err) {
           setStatus("identifyStatus", state.language === "it" ? "Payload stream non valido" : "Invalid stream payload", "error");
@@ -1840,15 +1849,13 @@
         if (es.readyState === EventSource.CLOSED) {
           es.close();
           state.identifyES = null;
-          state.identifyPort = "";
-          state.identifyBaud = 0;
           setStatus("identifyStatus", state.language === "it" ? "Stream identificazione disconnesso" : "Identify stream disconnected", "error");
-          setStatus("connectionStatus", state.language === "it" ? "Seriale disconnessa, nuovo tentativo..." : "Serial disconnected, retrying...", "error");
+          setStatus("connectionStatus", state.language === "it" ? "Stream eventi disconnesso, nuovo tentativo..." : "Event stream disconnected, retrying...", "error");
           scheduleIdentifyRetry();
           return;
         }
         setStatus("identifyStatus", state.language === "it" ? "Connessione stream persa, nuova connessione in corso..." : "Identify stream connection lost, reconnecting...", "error");
-        setStatus("connectionStatus", state.language === "it" ? "Connessione seriale persa, riconnessione..." : "Serial connection lost, reconnecting...", "error");
+        setStatus("connectionStatus", state.language === "it" ? "Connessione stream persa, riconnessione..." : "Event stream connection lost, reconnecting...", "error");
       };
     }
 
@@ -1960,6 +1967,7 @@
         await loadTargets();
         await Promise.all([loadPorts(), loadConfig(), loadStartupStatus()]);
         await autoDetectPort();
+        await refreshRuntimeStatus();
         scheduleIdentifyStart(150);
       } catch (err) {
         setStatus("saveStatus", err.message, "error");

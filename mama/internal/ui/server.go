@@ -14,6 +14,7 @@ import (
 
 	"mama/internal/audio"
 	"mama/internal/config"
+	"mama/internal/mixer"
 	"mama/internal/proto"
 	serialx "mama/internal/serial"
 )
@@ -24,6 +25,7 @@ var staticAssets embed.FS
 type Server struct {
 	cfgPath            string
 	backend            audio.Backend
+	mixerService       *mixer.Service
 	listPorts          func() ([]string, error)
 	probeProtocolHello func(string, int, time.Duration) (int, error)
 }
@@ -37,6 +39,10 @@ func New(cfgPath string) *Server {
 	}
 }
 
+func (s *Server) SetMixerService(service *mixer.Service) {
+	s.mixerService = service
+}
+
 func (s *Server) Run(listenAddr string) error {
 	return http.ListenAndServe(listenAddr, s.Handler())
 }
@@ -45,6 +51,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleIndex)
 	mux.HandleFunc("/api/status", s.handleStatus)
+	mux.HandleFunc("/api/runtime", s.handleRuntime)
 	mux.HandleFunc("/api/config", s.handleConfig)
 	mux.HandleFunc("/api/ports", s.handlePorts)
 	mux.HandleFunc("/api/port-test", s.handlePortTest)
@@ -80,9 +87,41 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"ok":         true,
 		"configPath": s.cfgPath,
+	}
+	if s.mixerService != nil {
+		resp["runtime"] = s.mixerService.Status()
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleRuntime(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	if s.mixerService == nil {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":      true,
+			"running": false,
+			"status": map[string]any{
+				"state":     "inactive",
+				"connected": false,
+				"message":   "runtime service not configured",
+			},
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":      true,
+		"running": true,
+		"status":  s.mixerService.Status(),
+		"metrics": s.mixerService.MetricsSnapshot(),
+		"serial":  s.mixerService.ConfigSnapshot().Serial,
 	})
 }
 
@@ -114,6 +153,12 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
+		}
+		if s.mixerService != nil {
+			if err := s.mixerService.UpdateConfig(cfg); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+				return
+			}
 		}
 		writeJSON(w, http.StatusOK, cfg)
 
@@ -157,6 +202,35 @@ func (s *Server) handlePortTest(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Baud <= 0 {
 		in.Baud = config.DefaultBaud
+	}
+
+	if s.mixerService != nil {
+		runtimeCfg := s.mixerService.ConfigSnapshot()
+		status := s.mixerService.Status()
+		samePort := strings.EqualFold(strings.TrimSpace(runtimeCfg.Serial.Port), in.Port)
+		sameBaud := runtimeCfg.Serial.Baud == in.Baud
+		if samePort && sameBaud {
+			if status.Connected {
+				writeJSON(w, http.StatusOK, map[string]any{
+					"ok":              true,
+					"port":            in.Port,
+					"baud":            in.Baud,
+					"protocolVersion": proto.HostProtocolVersion,
+					"message":         fmt.Sprintf("MAMA runtime already connected on %s @ %d", in.Port, in.Baud),
+				})
+				return
+			}
+
+			msg := status.Error
+			if msg == "" {
+				msg = status.Message
+			}
+			if msg == "" {
+				msg = "runtime is not connected yet"
+			}
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": msg})
+			return
+		}
 	}
 
 	version, err := s.probeProtocolHello(in.Port, in.Baud, 0)
@@ -295,6 +369,45 @@ func (s *Server) handleStartup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleIdentify(w http.ResponseWriter, r *http.Request) {
+	if s.mixerService != nil {
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "streaming not supported"})
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+
+		stream, cancel := s.mixerService.Subscribe(256)
+		defer cancel()
+
+		heartbeat := time.NewTicker(5 * time.Second)
+		defer heartbeat.Stop()
+
+		ctx := r.Context()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case ev, ok := <-stream:
+				if !ok {
+					return
+				}
+				if err := writeSSE(w, ev); err != nil {
+					return
+				}
+				flusher.Flush()
+			case <-heartbeat.C:
+				if _, err := io.WriteString(w, ": ping\n\n"); err != nil {
+					return
+				}
+				flusher.Flush()
+			}
+		}
+	}
+
 	port := strings.TrimSpace(r.URL.Query().Get("port"))
 	if port == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing port query parameter"})

@@ -2,49 +2,57 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
 	"mama/internal/audio"
 	"mama/internal/config"
-	"mama/internal/proto"
-	"mama/internal/runtime"
-	serialx "mama/internal/serial"
+	"mama/internal/mixer"
+	"mama/internal/ui"
 )
 
 func main() {
 	var cfgPath string
+	var listenAddr string
+	var openBrowser bool
+
 	flag.StringVar(&cfgPath, "config", "", "path to config yaml (default: auto)")
+	flag.StringVar(&listenAddr, "listen", "127.0.0.1:18765", "HTTP listen address")
+	flag.BoolVar(&openBrowser, "open", true, "open web UI in default browser")
 	flag.Parse()
 
 	if cfgPath == "" {
 		cfgPath = config.ResolveDefaultPath()
 	}
 	if _, err := config.EnsureDefaultFile(cfgPath); err != nil {
-		runtime.Log("startup_error", runtime.Fields{"error": err, "step": "ensure_config"})
+		log.Printf("startup error (ensure config): %v", err)
 		os.Exit(1)
 	}
 
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
-		runtime.Log("startup_error", runtime.Fields{"error": err, "step": "load_config"})
+		log.Printf("startup error (load config): %v", err)
 		os.Exit(1)
 	}
 
-	b := audio.NewBackend()
-
-	fmt.Printf("MAMA started. Serial=%s @ %d\n", cfg.Serial.Port, cfg.Serial.Baud)
+	mixerService, err := mixer.NewService(cfg, audio.NewBackend())
+	if err != nil {
+		log.Printf("startup error (init mixer): %v", err)
+		os.Exit(1)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Ctrl+C handling
 	sigC := make(chan os.Signal, 1)
 	signal.Notify(sigC, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigC)
@@ -54,173 +62,84 @@ func main() {
 		cancel()
 	}()
 
-	backoff := runtime.NewBackoff(500*time.Millisecond, 10*time.Second)
-	metrics := runtime.NewMetrics()
+	srv := ui.New(cfgPath)
+	srv.SetMixerService(mixerService)
 
-	for {
-		if err := ctx.Err(); err != nil {
-			return
-		}
-
-		runtime.Log("serial_state", runtime.Fields{"baud": cfg.Serial.Baud, "port": cfg.Serial.Port, "state": "connecting"})
-		r, err := serialx.Open(cfg.Serial.Port, cfg.Serial.Baud)
-		if err != nil {
-			metrics.IncReconnectCount()
-			delay := backoff.Next()
-			runtime.Log("serial_state", runtime.Fields{"error": err, "retry_in": delay, "state": "reconnecting"})
-			runtime.Log("runtime_metrics", runtime.Fields{"snapshot": metrics.Snapshot()})
-			if !sleepWithContext(ctx, delay) {
-				return
-			}
-			continue
-		}
-
-		backoff.Reset()
-		runtime.Log("serial_state", runtime.Fields{"port": cfg.Serial.Port, "state": "connected"})
-		if err := runSession(ctx, r, &cfg, b, metrics); err != nil && !errors.Is(err, context.Canceled) {
-			metrics.IncReconnectCount()
-			delay := backoff.Next()
-			runtime.Log("serial_state", runtime.Fields{"error": err, "state": "disconnected"})
-			runtime.Log("serial_state", runtime.Fields{"retry_in": delay, "state": "reconnecting"})
-			runtime.Log("runtime_metrics", runtime.Fields{"snapshot": metrics.Snapshot()})
-			if !sleepWithContext(ctx, delay) {
-				return
-			}
-			continue
-		}
-		return
-	}
-}
-
-func runSession(ctx context.Context, r *serialx.Reader, cfg *config.Config, b audio.Backend, metrics *runtime.Metrics) error {
-	lines := make(chan string, 128)
-	readErrC := make(chan error, 1)
-	stopClose := make(chan struct{})
+	mixerErrC := make(chan error, 1)
 	go func() {
-		select {
-		case <-ctx.Done():
-			_ = r.Close()
-		case <-stopClose:
-		}
-	}()
-	go func() {
-		readErrC <- r.ReadLines(ctx, lines)
+		mixerErrC <- mixerService.Run(ctx)
 	}()
 
-	defer close(stopClose)
-	defer func() { _ = r.Close() }()
-	return runSessionFromChannels(ctx, cfg, b, metrics, lines, readErrC)
-}
-
-func runSessionFromChannels(ctx context.Context, cfg *config.Config, b audio.Backend, metrics *runtime.Metrics, lines <-chan string, readErrC <-chan error) error {
-	defer runtime.Log("runtime_metrics", runtime.Fields{"snapshot": metrics.Snapshot()})
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case err := <-readErrC:
-			if err != nil {
-				return err
-			}
-			return nil
-		case line, ok := <-lines:
-			if !ok {
-				select {
-				case err := <-readErrC:
-					if err != nil {
-						return err
-					}
-					return nil
-				default:
-					return fmt.Errorf("serial reader stopped")
-				}
-			}
-			if cfg.Debug {
-				runtime.Log("serial_rx", runtime.Fields{"line": line})
-			}
-
-			ev, err := proto.ParseLine(line)
-			if err != nil {
-				metrics.IncParseErrors()
-				if cfg.Debug {
-					runtime.Log("parse_error", runtime.Fields{"error": err})
-				}
-				continue
-			}
-
-			if ev.Kind == proto.EventProtocolHello {
-				if proto.IsProtocolCompatible(ev.ProtocolVersion) {
-					runtime.Log("protocol_negotiated", runtime.Fields{"firmware": ev.ProtocolVersion, "host": proto.HostProtocolVersion})
-				} else {
-					runtime.Log("protocol_mismatch", runtime.Fields{"firmware": ev.ProtocolVersion, "host": proto.HostProtocolVersion, "note": "processing_parseable_events_best_effort"})
-				}
-				continue
-			}
-
-			m, ok := cfg.MappingForKnob(ev.KnobID)
-			if !ok {
-				metrics.IncDroppedEvents()
-				if cfg.Debug {
-					runtime.Log("event_dropped", runtime.Fields{"knob_id": ev.KnobID, "reason": "unmapped_knob"})
-				}
-				continue
-			}
-
-			switch ev.Kind {
-			case proto.EventEncoderDelta:
-				if err := b.Adjust(m.Target, backendTargetName(m), m.Step, ev.Delta); err != nil {
-					if errors.Is(err, audio.ErrTargetUnavailable) {
-						if cfg.Debug {
-							runtime.Log("target_unavailable", runtime.Fields{"knob_id": ev.KnobID, "operation": "adjust"})
-						}
-						continue
-					}
-					metrics.IncBackendFailures()
-					if cfg.Debug {
-						runtime.Log("backend_error", runtime.Fields{"error": err, "knob_id": ev.KnobID, "operation": "adjust"})
-					}
-				}
-			case proto.EventButtonPress:
-				if err := b.ToggleMute(m.Target, backendTargetName(m)); err != nil {
-					if errors.Is(err, audio.ErrTargetUnavailable) {
-						if cfg.Debug {
-							runtime.Log("target_unavailable", runtime.Fields{"knob_id": ev.KnobID, "operation": "toggle_mute"})
-						}
-						continue
-					}
-					metrics.IncBackendFailures()
-					if cfg.Debug {
-						runtime.Log("backend_error", runtime.Fields{"error": err, "knob_id": ev.KnobID, "operation": "toggle_mute"})
-					}
-				}
-			default:
-				metrics.IncDroppedEvents()
-			}
-		}
+	httpServer := &http.Server{
+		Addr:    listenAddr,
+		Handler: srv.Handler(),
 	}
-}
+	httpErrC := make(chan error, 1)
+	go func() {
+		httpErrC <- httpServer.ListenAndServe()
+	}()
 
-func backendTargetName(m config.Mapping) string {
-	if m.Target == config.TargetApp && m.Selector != nil {
-		return string(m.Selector.Kind) + ":" + m.Selector.Value
+	uiURL := fmt.Sprintf("http://%s", listenAddr)
+	fmt.Printf("MAMA running. UI=%s\n", uiURL)
+	fmt.Printf("Config file: %s\n", cfgPath)
+	fmt.Printf("Serial target: %s @ %d\n", cfg.Serial.Port, cfg.Serial.Baud)
+
+	if openBrowser {
+		go openURL(uiURL)
 	}
-	if m.Target == config.TargetGroup && len(m.Selectors) > 0 {
-		if b, err := json.Marshal(m.Selectors); err == nil {
-			return string(b)
-		}
-	}
-	return m.Name
-}
 
-func sleepWithContext(ctx context.Context, d time.Duration) bool {
-	t := time.NewTimer(d)
-	defer t.Stop()
-
+	var runErr error
 	select {
 	case <-ctx.Done():
-		return false
-	case <-t.C:
-		return true
+	case err := <-mixerErrC:
+		if err != nil && !errors.Is(err, context.Canceled) {
+			runErr = fmt.Errorf("mixer service error: %w", err)
+		}
+		cancel()
+	case err := <-httpErrC:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			runErr = fmt.Errorf("ui server error: %w", err)
+		}
+		cancel()
 	}
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer shutdownCancel()
+	if err := httpServer.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) && runErr == nil {
+		runErr = fmt.Errorf("ui shutdown error: %w", err)
+	}
+
+	select {
+	case err := <-mixerErrC:
+		if err != nil && !errors.Is(err, context.Canceled) && runErr == nil {
+			runErr = fmt.Errorf("mixer service error: %w", err)
+		}
+	case <-time.After(1500 * time.Millisecond):
+	}
+
+	select {
+	case err := <-httpErrC:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) && runErr == nil {
+			runErr = fmt.Errorf("ui server error: %w", err)
+		}
+	case <-time.After(1500 * time.Millisecond):
+	}
+
+	if runErr != nil {
+		log.Print(runErr)
+		os.Exit(1)
+	}
+}
+
+func openURL(url string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	_ = cmd.Start()
 }
