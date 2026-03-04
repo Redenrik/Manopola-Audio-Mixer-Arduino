@@ -124,7 +124,7 @@ jobs:
 
       - name: Upload workflow artifacts
         if: github.event_name != 'release'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-assets-linux
           path: |
@@ -245,7 +245,7 @@ jobs:
 
       - name: Upload workflow artifacts
         if: github.event_name != 'release'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-assets-macos
           path: |
@@ -359,7 +359,7 @@ jobs:
 
       - name: Upload workflow artifacts
         if: github.event_name != 'release'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-assets-windows
           path: |
