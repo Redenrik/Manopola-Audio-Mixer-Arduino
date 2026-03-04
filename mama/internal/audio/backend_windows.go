@@ -2,6 +2,12 @@
 
 package audio
 
+import (
+	"strings"
+
+	"mama/internal/config"
+)
+
 type windowsBackend struct{ baseBackend }
 
 func newBackend() Backend {
@@ -11,6 +17,26 @@ func newBackend() Backend {
 }
 
 func (b *windowsBackend) String() string { return "windowsBackend" }
+
+func (b *windowsBackend) Adjust(target config.TargetType, name string, step float64, deltaSteps int) error {
+	if err := b.baseBackend.Adjust(target, name, step, deltaSteps); err != nil {
+		return err
+	}
+	if target == config.TargetMasterOut && strings.TrimSpace(name) == "" {
+		showWindowsVolumeFlyout(b.baseBackend.master)
+	}
+	return nil
+}
+
+func (b *windowsBackend) ToggleMute(target config.TargetType, name string) error {
+	if err := b.baseBackend.ToggleMute(target, name); err != nil {
+		return err
+	}
+	if target == config.TargetMasterOut && strings.TrimSpace(name) == "" {
+		showWindowsVolumeFlyout(b.baseBackend.master)
+	}
+	return nil
+}
 
 func (b *windowsBackend) ListTargets() ([]DiscoveredTarget, error) {
 	targets, err := b.baseBackend.ListTargets()

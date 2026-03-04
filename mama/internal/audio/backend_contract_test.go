@@ -115,6 +115,30 @@ func TestBackendAdjustMasterOutContract(t *testing.T) {
 	}
 }
 
+func TestBackendAdjustMasterOutVolumeUpUnmutesContract(t *testing.T) {
+	fake := &fakeVolumeController{curVolume: 50, muted: true}
+	b := &baseBackend{master: fake}
+
+	if err := b.Adjust(config.TargetMasterOut, "", 0.02, 2); err != nil {
+		t.Fatalf("Adjust() error = %v", err)
+	}
+	if fake.unmuteCalls != 1 {
+		t.Fatalf("unmuteCalls = %d, want 1", fake.unmuteCalls)
+	}
+}
+
+func TestBackendAdjustMasterOutVolumeDownDoesNotUnmuteContract(t *testing.T) {
+	fake := &fakeVolumeController{curVolume: 50, muted: true}
+	b := &baseBackend{master: fake}
+
+	if err := b.Adjust(config.TargetMasterOut, "", 0.02, -2); err != nil {
+		t.Fatalf("Adjust() error = %v", err)
+	}
+	if fake.unmuteCalls != 0 {
+		t.Fatalf("unmuteCalls = %d, want 0", fake.unmuteCalls)
+	}
+}
+
 func TestBackendAdjustMasterOutClampsContract(t *testing.T) {
 	tests := []struct {
 		name       string

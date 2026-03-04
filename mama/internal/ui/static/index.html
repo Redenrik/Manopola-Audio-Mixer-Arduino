@@ -262,6 +262,71 @@
       color: var(--ink-dim);
       margin-top: 4px;
     }
+
+    .map-name-wrap {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .btn-lite {
+      background: #eef7f5;
+      border-color: #bfd6cf;
+      color: #1f4f44;
+      white-space: nowrap;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(12, 39, 33, 0.5);
+      display: grid;
+      place-items: center;
+      padding: 14px;
+      z-index: 999;
+    }
+
+    .modal-overlay.hidden {
+      display: none;
+    }
+
+    .modal-card {
+      width: min(920px, 100%);
+      max-height: calc(100vh - 28px);
+      overflow: auto;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 10px;
+    }
+
+    .group-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .group-row {
+      display: grid;
+      grid-template-columns: 150px 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .preview-box {
+      min-height: 1.3em;
+      font-size: 0.9rem;
+      color: var(--ink-dim);
+    }
+
+    @media (max-width: 900px) {
+      .group-row {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -374,6 +439,25 @@
     </section>
   </main>
 
+  <div class="modal-overlay hidden" id="groupEditorModal" role="dialog" aria-modal="true" aria-labelledby="groupEditorTitle">
+    <section class="modal-card">
+      <h2 id="groupEditorTitle">Group Editor</h2>
+      <p id="groupEditorIntro">Add matching rules for this group. Any app matching at least one rule will be controlled.</p>
+      <div class="actions">
+        <button type="button" class="btn-lite" id="groupAddRule">Add Rule</button>
+        <button type="button" class="btn-lite" id="groupAddBrowser">Add Browser Preset</button>
+        <button type="button" class="btn-lite" id="groupAddGame">Add Game Preset</button>
+        <button type="button" class="btn-lite" id="groupClearRules">Clear</button>
+      </div>
+      <div class="group-grid" id="groupEditorRows"></div>
+      <p class="preview-box" id="groupEditorPreview" role="status" aria-live="polite"></p>
+      <div class="actions">
+        <button type="button" id="groupEditorCancel">Cancel</button>
+        <button type="button" class="btn-primary" id="groupEditorApply">Apply</button>
+      </div>
+    </section>
+  </div>
+
   <script>
     const state = {
       cfgPath: "",
@@ -383,6 +467,11 @@
       identifyES: null,
       manualPortDirty: false,
       language: "en",
+      groupEditor: {
+        open: false,
+        sourceInput: null,
+        selectors: []
+      },
       wizard: {
         active: false,
         index: 0,
@@ -468,6 +557,20 @@
         connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
         identifyHeading: "Knob Identification", identifyIntro: "Click Start Identify then rotate or press any physical knob. Matching indicator flashes below.", startIdentify: "Start Identify", stopIdentify: "Stop",
         mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerStep: "Step (0..1)", addMapping: "Add Mapping", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).",
+        groupEditButton: "Edit",
+        groupEditorTitle: "Group Editor",
+        groupEditorIntro: "Add matching rules for this group. Any app matching at least one rule will be controlled.",
+        groupAddRule: "Add Rule",
+        groupAddBrowser: "Add Browser Preset",
+        groupAddGame: "Add Game Preset",
+        groupClearRules: "Clear",
+        groupEditorCancel: "Cancel",
+        groupEditorApply: "Apply",
+        groupEditorKind: "Kind",
+        groupEditorValue: "Value",
+        groupPreviewNone: "Live preview: no active apps match these rules right now.",
+        groupPreviewSome: "Live preview matched apps:",
+        groupPreviewMore: "and more",
         noPorts: "No ports detected", waiting: "waiting...", buttonPress: "button press", delta: "delta",
         wizardSteps: { detect: { title: "Detect board", hint: "Refresh detected serial ports and select your board." }, test: { title: "Test port", hint: "Run Test Connection to ensure the board is reachable." }, map: { title: "Map knobs", hint: "Use Start Identify and rotate/press knobs to confirm IDs before editing mappings." }, save: { title: "Save config", hint: "Persist serial + mapping configuration." }, verify: { title: "Verify", hint: "Run identify again to confirm knob events after save." } }
       },
@@ -483,6 +586,20 @@
         connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
         identifyHeading: "Identificazione manopole", identifyIntro: "Fai clic su Avvia identificazione, poi ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
         mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerStep: "Step (0..1)", addMapping: "Aggiungi mappatura", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).",
+        groupEditButton: "Modifica",
+        groupEditorTitle: "Editor Gruppo",
+        groupEditorIntro: "Aggiungi regole di matching per questo gruppo. Qualsiasi app che corrisponde ad almeno una regola verrà controllata.",
+        groupAddRule: "Aggiungi regola",
+        groupAddBrowser: "Preset browser",
+        groupAddGame: "Preset giochi",
+        groupClearRules: "Svuota",
+        groupEditorCancel: "Annulla",
+        groupEditorApply: "Applica",
+        groupEditorKind: "Tipo",
+        groupEditorValue: "Valore",
+        groupPreviewNone: "Anteprima live: nessuna app attiva corrisponde alle regole al momento.",
+        groupPreviewSome: "Anteprima live app corrispondenti:",
+        groupPreviewMore: "e altre",
         noPorts: "Nessuna porta rilevata", waiting: "in attesa...", buttonPress: "pressione tasto", delta: "delta",
         wizardSteps: { detect: { title: "Rileva scheda", hint: "Aggiorna le porte seriali rilevate e seleziona la tua scheda." }, test: { title: "Test porta", hint: "Esegui Test connessione per verificare che la scheda sia raggiungibile." }, map: { title: "Mappa manopole", hint: "Usa Avvia identificazione e ruota/premi le manopole per confermare gli ID prima di modificare le mappature." }, save: { title: "Salva config", hint: "Salva la configurazione seriale e delle mappature." }, verify: { title: "Verifica", hint: "Avvia di nuovo l'identificazione per confermare gli eventi dopo il salvataggio." } }
       }
@@ -503,7 +620,8 @@
         wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
         manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", mappingsHeading: "mappingsHeading",
         mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep",
-        addMapping: "addMapping", saveConfig: "saveConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning"
+        addMapping: "addMapping", saveConfig: "saveConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
+        groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupClearRules: "groupClearRules", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
       };
       for (const [id, key] of Object.entries(bindings)) {
         const el = $(id);
@@ -677,12 +795,24 @@
       return { kind, value };
     }
 
+    function selectorTokenFromSelector(selector) {
+      if (!selector || typeof selector !== "object") return "";
+      const kind = String(selector.kind || "").trim();
+      const value = String(selector.value || "").trim();
+      if (!kind || !value) return "";
+      if (kind === "exact") return value;
+      return kind + ":" + value;
+    }
+
     function selectorTokenFromMapping(mapping) {
       if (mapping && mapping.selector && mapping.selector.kind && mapping.selector.value) {
-        const kind = String(mapping.selector.kind);
-        const value = String(mapping.selector.value);
-        if (kind === "exact") return value;
-        return kind + ":" + value;
+        return selectorTokenFromSelector(mapping.selector);
+      }
+      if (mapping && Array.isArray(mapping.selectors) && mapping.selectors.length > 0) {
+        return mapping.selectors
+          .map(selectorTokenFromSelector)
+          .filter((value) => value.length > 0)
+          .join("; ");
       }
       if (mapping && typeof mapping.name === "string") {
         return mapping.name;
@@ -733,8 +863,340 @@
       return Array.from(out);
     }
 
+    function smartGroupPresetSelectors(name) {
+      const key = String(name || "").trim().toLowerCase();
+      if (key === "browser" || key === "browsers" || key === "web") {
+        return [
+          { kind: "exe", value: "chrome" },
+          { kind: "exe", value: "msedge" },
+          { kind: "exe", value: "firefox" },
+          { kind: "exe", value: "brave" },
+          { kind: "exe", value: "opera" },
+          { kind: "exe", value: "vivaldi" },
+          { kind: "exe", value: "arc" },
+          { kind: "exe", value: "waterfox" },
+          { kind: "exe", value: "librewolf" }
+        ];
+      }
+      if (key === "game" || key === "games" || key === "gaming") {
+        return [
+          { kind: "contains", value: "steamapps\\common" },
+          { kind: "contains", value: "epic games" },
+          { kind: "contains", value: "gog galaxy\\games" },
+          { kind: "contains", value: "riot games" },
+          { kind: "contains", value: "\\games\\" },
+          { kind: "glob", value: "*game*" }
+        ];
+      }
+      return [];
+    }
+
+    function dedupeSelectors(selectors) {
+      const out = [];
+      const seen = new Set();
+      for (const selector of selectors || []) {
+        if (!selector || !selector.kind || !selector.value) continue;
+        const key = String(selector.kind).trim().toLowerCase() + ":" + String(selector.value).trim().toLowerCase();
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        out.push({ kind: String(selector.kind).trim(), value: String(selector.value).trim() });
+      }
+      return out;
+    }
+
+    function parseGroupSelectorsInput(raw) {
+      const input = String(raw || "");
+      const chunks = input
+        .split(/\r?\n|;/)
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+
+      const selectors = [];
+      for (const token of chunks) {
+        const lower = token.toLowerCase();
+        if (lower.startsWith("smart:")) {
+          const presetName = token.slice(token.indexOf(":") + 1).trim();
+          const preset = smartGroupPresetSelectors(presetName);
+          if (preset.length > 0) {
+            selectors.push(...preset);
+            continue;
+          }
+        }
+        const parsed = parseSelectorTokenInput(token);
+        if (parsed) {
+          selectors.push(parsed);
+          continue;
+        }
+        selectors.push({ kind: "exact", value: token });
+      }
+      return dedupeSelectors(selectors);
+    }
+
+    function selectorKindOptions() {
+      return ["exact", "contains", "prefix", "suffix", "glob", "exe"];
+    }
+
+    function escapeRegexLiteral(value) {
+      return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function selectorMatchesValue(selector, candidateRaw) {
+      const kind = String(selector && selector.kind || "").trim().toLowerCase();
+      const needle = String(selector && selector.value || "").trim().toLowerCase();
+      const candidate = String(candidateRaw || "").trim().toLowerCase();
+      if (!kind || !needle || !candidate) return false;
+
+      if (kind === "exact" || kind === "exe") return candidate === needle;
+      if (kind === "contains") return candidate.includes(needle);
+      if (kind === "prefix") return candidate.startsWith(needle);
+      if (kind === "suffix") return candidate.endsWith(needle);
+      if (kind === "glob") {
+        try {
+          const pattern = "^" + escapeRegexLiteral(needle).replace(/\\\*/g, ".*").replace(/\\\?/g, ".") + "$";
+          return new RegExp(pattern, "i").test(candidate);
+        } catch (_err) {
+          return false;
+        }
+      }
+      return false;
+    }
+
+    function selectorMatchesAny(selector, candidates) {
+      for (const value of candidates || []) {
+        if (selectorMatchesValue(selector, value)) return true;
+      }
+      return false;
+    }
+
+    function appCandidateValues(target, exeOnly = false) {
+      const out = new Set();
+      const push = (raw) => {
+        const value = String(raw || "").trim();
+        if (!value) return;
+        const lower = value.toLowerCase();
+        if (!exeOnly) out.add(lower);
+
+        const path = value.replace(/\//g, "\\");
+        const file = path.split("\\").pop() || "";
+        const fileLower = file.toLowerCase();
+        if (fileLower) {
+          if (fileLower.endsWith(".exe")) {
+            out.add(fileLower);
+            out.add(fileLower.slice(0, -4));
+          } else if (exeOnly) {
+            out.add(fileLower);
+          }
+        }
+        if (!exeOnly && lower.endsWith(".exe")) {
+          out.add(lower.slice(0, -4));
+        }
+      };
+
+      push(target && target.name);
+      push(target && target.selector);
+      if (target && Array.isArray(target.aliases)) {
+        for (const alias of target.aliases) push(alias);
+      }
+      return Array.from(out);
+    }
+
+    function activeAppDisplayName(target) {
+      if (target && typeof target.name === "string" && target.name.trim()) {
+        return target.name.trim();
+      }
+      if (target && Array.isArray(target.aliases)) {
+        for (const alias of target.aliases) {
+          if (typeof alias === "string" && alias.trim()) return alias.trim();
+        }
+      }
+      return (target && typeof target.id === "string" && target.id.trim()) ? target.id.trim() : "app";
+    }
+
+    function currentGroupEditorSelectors() {
+      const raw = Array.isArray(state.groupEditor.selectors) ? state.groupEditor.selectors : [];
+      const valid = [];
+      for (const selector of raw) {
+        const kind = String(selector && selector.kind || "exact").trim().toLowerCase();
+        const value = String(selector && selector.value || "").trim();
+        if (!value) continue;
+        if (!selectorKindOptions().includes(kind)) continue;
+        valid.push({ kind, value });
+      }
+      return dedupeSelectors(valid);
+    }
+
+    function renderGroupEditorPreview() {
+      const preview = $("groupEditorPreview");
+      if (!preview) return;
+      const selectors = currentGroupEditorSelectors();
+      if (selectors.length === 0) {
+        preview.textContent = t("groupPreviewNone");
+        return;
+      }
+
+      const apps = discoveredTargetsByType("app");
+      const matched = [];
+      for (const app of apps) {
+        let hit = false;
+        for (const selector of selectors) {
+          const values = appCandidateValues(app, selector.kind === "exe");
+          if (selectorMatchesAny(selector, values)) {
+            hit = true;
+            break;
+          }
+        }
+        if (hit) matched.push(activeAppDisplayName(app));
+      }
+
+      if (matched.length === 0) {
+        preview.textContent = t("groupPreviewNone");
+        return;
+      }
+      const max = 7;
+      const shown = matched.slice(0, max).join(", ");
+      const more = matched.length - max;
+      preview.textContent = more > 0
+        ? `${t("groupPreviewSome")} ${shown} ${t("groupPreviewMore")} (${more})`
+        : `${t("groupPreviewSome")} ${shown}`;
+    }
+
+    function renderGroupEditorRows() {
+      const host = $("groupEditorRows");
+      if (!host) return;
+      host.innerHTML = "";
+
+      if (!Array.isArray(state.groupEditor.selectors) || state.groupEditor.selectors.length === 0) {
+        state.groupEditor.selectors = [{ kind: "exact", value: "" }];
+      }
+
+      const removeText = state.language === "it" ? "Rimuovi" : "Remove";
+      for (let i = 0; i < state.groupEditor.selectors.length; i++) {
+        const selector = state.groupEditor.selectors[i] || { kind: "exact", value: "" };
+        const row = document.createElement("div");
+        row.className = "group-row";
+
+        const kind = document.createElement("select");
+        for (const optionValue of selectorKindOptions()) {
+          const option = document.createElement("option");
+          option.value = optionValue;
+          option.textContent = optionValue;
+          kind.appendChild(option);
+        }
+        kind.value = selectorKindOptions().includes(selector.kind) ? selector.kind : "exact";
+
+        const value = document.createElement("input");
+        value.type = "text";
+        value.placeholder = t("groupEditorValue");
+        value.value = selector.value || "";
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "btn-danger";
+        remove.textContent = removeText;
+
+        kind.addEventListener("change", () => {
+          state.groupEditor.selectors[i] = {
+            kind: kind.value,
+            value: value.value
+          };
+          renderGroupEditorPreview();
+        });
+        value.addEventListener("input", () => {
+          state.groupEditor.selectors[i] = {
+            kind: kind.value,
+            value: value.value
+          };
+          renderGroupEditorPreview();
+        });
+        remove.addEventListener("click", () => {
+          state.groupEditor.selectors.splice(i, 1);
+          renderGroupEditorRows();
+          renderGroupEditorPreview();
+        });
+
+        row.appendChild(kind);
+        row.appendChild(value);
+        row.appendChild(remove);
+        host.appendChild(row);
+      }
+    }
+
+    function openGroupEditor(sourceInput) {
+      if (!sourceInput) return;
+      state.groupEditor.sourceInput = sourceInput;
+      state.groupEditor.open = true;
+      state.groupEditor.selectors = parseGroupSelectorsInput(sourceInput.value || "");
+      if (state.groupEditor.selectors.length === 0) {
+        state.groupEditor.selectors = [{ kind: "exact", value: "" }];
+      }
+      $("groupEditorModal").classList.remove("hidden");
+      renderGroupEditorRows();
+      renderGroupEditorPreview();
+      const firstInput = $("groupEditorRows").querySelector("input");
+      if (firstInput) firstInput.focus();
+    }
+
+    function closeGroupEditor(applyChanges) {
+      if (!state.groupEditor.open) return;
+      if (applyChanges && state.groupEditor.sourceInput) {
+        const serialized = currentGroupEditorSelectors()
+          .map(selectorTokenFromSelector)
+          .join("; ");
+        state.groupEditor.sourceInput.value = serialized;
+        state.groupEditor.sourceInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      state.groupEditor.open = false;
+      state.groupEditor.sourceInput = null;
+      state.groupEditor.selectors = [];
+      $("groupEditorModal").classList.add("hidden");
+    }
+
+    function addGroupEditorRule(rule) {
+      const next = rule && typeof rule === "object" ? rule : { kind: "exact", value: "" };
+      const kind = selectorKindOptions().includes(next.kind) ? next.kind : "exact";
+      const value = String(next.value || "");
+      if (!Array.isArray(state.groupEditor.selectors)) state.groupEditor.selectors = [];
+      state.groupEditor.selectors.push({ kind, value });
+      renderGroupEditorRows();
+      renderGroupEditorPreview();
+      const rows = $("groupEditorRows").querySelectorAll(".group-row input");
+      if (rows.length > 0) rows[rows.length - 1].focus();
+    }
+
+    function addGroupEditorPreset(name) {
+      const preset = smartGroupPresetSelectors(name);
+      if (preset.length === 0) return;
+      const merged = [];
+      for (const selector of state.groupEditor.selectors || []) {
+        const value = String(selector && selector.value || "").trim();
+        if (!value) continue;
+        const kind = String(selector && selector.kind || "exact").trim().toLowerCase();
+        merged.push({ kind, value });
+      }
+      merged.push(...preset);
+      state.groupEditor.selectors = dedupeSelectors(merged);
+      renderGroupEditorRows();
+      renderGroupEditorPreview();
+    }
+
+    function clearGroupEditorRules() {
+      state.groupEditor.selectors = [{ kind: "exact", value: "" }];
+      renderGroupEditorRows();
+      renderGroupEditorPreview();
+    }
+
+    function groupSelectorSuggestions() {
+      const out = new Set(appSelectorSuggestions());
+      out.add("smart:browser");
+      out.add("smart:game");
+      out.add("contains:steamapps\\common");
+      out.add("contains:epic games");
+      return Array.from(out);
+    }
+
     function suggestionsForTarget(targetType) {
-      if (targetType === "app" || targetType === "group") return appSelectorSuggestions();
+      if (targetType === "app") return appSelectorSuggestions();
+      if (targetType === "group") return groupSelectorSuggestions();
       if (targetType === "master_out") return endpointSuggestions("master_out");
       if (targetType === "mic_in") return endpointSuggestions("mic_in");
       if (targetType === "line_in") return endpointSuggestions("line_in");
@@ -811,6 +1273,17 @@
       name.placeholder = state.language === "it" ? "App, gruppo o dispositivo" : "App, group, or device";
       name.value = selectorTokenFromMapping(mapping);
 
+      const groupEdit = document.createElement("button");
+      groupEdit.type = "button";
+      groupEdit.className = "btn-lite";
+      groupEdit.textContent = t("groupEditButton");
+      groupEdit.addEventListener("click", () => openGroupEditor(name));
+
+      const nameWrap = document.createElement("div");
+      nameWrap.className = "map-name-wrap";
+      nameWrap.appendChild(name);
+      nameWrap.appendChild(groupEdit);
+
       const suggestions = document.createElement("datalist");
       suggestions.id = "map-suggestions-" + Math.random().toString(36).slice(2);
       name.setAttribute("list", suggestions.id);
@@ -835,13 +1308,17 @@
         const supportsName = ["master_out", "mic_in", "line_in", "app", "group"].includes(target.value);
         name.disabled = !supportsName;
         if (!supportsName) name.value = "";
-        if (target.value === "app" || target.value === "group") {
+        if (target.value === "app") {
           name.placeholder = state.language === "it" ? "Nome app (es. Discord, Chrome, OBS)" : "App name (e.g. Discord, Chrome, OBS)";
+        } else if (target.value === "group") {
+          name.placeholder = state.language === "it" ? "Regole gruppo (es. smart:browser; contains:steamapps\\common)" : "Group rules (e.g. smart:browser; contains:steamapps\\common)";
         } else if (target.value === "master_out") {
           name.placeholder = state.language === "it" ? "Dispositivo output (default se vuoto)" : "Output device (default if empty)";
         } else if (target.value === "mic_in" || target.value === "line_in") {
           name.placeholder = state.language === "it" ? "Dispositivo input (default se vuoto)" : "Input device (default if empty)";
         }
+        groupEdit.hidden = target.value !== "group";
+        groupEdit.disabled = target.value !== "group" || name.disabled;
         suggestions.innerHTML = "";
         for (const value of suggestionsForTarget(target.value)) {
           const option = document.createElement("option");
@@ -854,7 +1331,7 @@
 
       row.appendChild(knob);
       row.appendChild(target);
-      row.appendChild(name);
+      row.appendChild(nameWrap);
       row.appendChild(suggestions);
       row.appendChild(step);
       row.appendChild(remove);
@@ -886,7 +1363,14 @@
         const selector = parseSelectorTokenInput(name.value);
         if (target.value === "app" && selector) {
           mapping.selector = selector;
-        } else if ((target.value === "app" || target.value === "group") && name.value.trim()) {
+        } else if (target.value === "group" && name.value.trim()) {
+          const selectors = parseGroupSelectorsInput(name.value);
+          if (selectors.length > 0) {
+            mapping.selectors = selectors;
+          } else {
+            mapping.name = name.value.trim();
+          }
+        } else if (target.value === "app" && name.value.trim()) {
           mapping.name = name.value.trim();
         } else if ((target.value === "master_out" || target.value === "mic_in" || target.value === "line_in") && name.value.trim()) {
           mapping.name = resolveEndpointSelectorToken(target.value, name.value);
@@ -1249,6 +1733,21 @@
       $("wizardNext").addEventListener("click", nextWizardStep);
       $("wizardReset").addEventListener("click", resetWizard);
       $("languageSelect").addEventListener("change", (ev) => setLanguage(ev.target.value));
+      $("groupAddRule").addEventListener("click", () => addGroupEditorRule());
+      $("groupAddBrowser").addEventListener("click", () => addGroupEditorPreset("browser"));
+      $("groupAddGame").addEventListener("click", () => addGroupEditorPreset("game"));
+      $("groupClearRules").addEventListener("click", clearGroupEditorRules);
+      $("groupEditorCancel").addEventListener("click", () => closeGroupEditor(false));
+      $("groupEditorApply").addEventListener("click", () => closeGroupEditor(true));
+      $("groupEditorModal").addEventListener("click", (ev) => {
+        if (ev.target === $("groupEditorModal")) closeGroupEditor(false);
+      });
+      window.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && state.groupEditor.open) {
+          ev.preventDefault();
+          closeGroupEditor(false);
+        }
+      });
       window.addEventListener("beforeunload", stopIdentify);
     }
 

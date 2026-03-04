@@ -131,3 +131,72 @@ Sink Input #9
 		t.Fatalf("unexpected group mute calls: %v", calls)
 	}
 }
+
+func TestUnixAppControllerAdjustVolumeUpUnmutes(t *testing.T) {
+	var calls []string
+	controller := &unixAppSessionController{run: func(name string, args ...string) (string, error) {
+		cmd := name + " " + strings.Join(args, " ")
+		calls = append(calls, cmd)
+		if len(args) >= 2 && args[0] == "list" && args[1] == "sink-inputs" {
+			return `Sink Input #7
+    Volume: front-left: 32768 /  50% / -18.06 dB
+    Mute: yes
+    Properties:
+        application.name = "Discord"
+        application.process.binary = "discord"`, nil
+		}
+		return "", nil
+	}}
+
+	if err := controller.Adjust("exact:Discord", 0.02, 2); err != nil {
+		t.Fatalf("Adjust error: %v", err)
+	}
+
+	if len(calls) < 3 {
+		t.Fatalf("calls=%v", calls)
+	}
+	if calls[1] != "pactl set-sink-input-volume 7 54%" {
+		t.Fatalf("unexpected set volume call: %s", calls[1])
+	}
+	if calls[2] != "pactl set-sink-input-mute 7 0" {
+		t.Fatalf("expected unmute call after volume-up, calls=%v", calls)
+	}
+}
+
+func TestUnixAppControllerAdjustGroupVolumeUpUnmutesMatchedMutedSessions(t *testing.T) {
+	var calls []string
+	controller := &unixAppSessionController{run: func(name string, args ...string) (string, error) {
+		cmd := name + " " + strings.Join(args, " ")
+		calls = append(calls, cmd)
+		if len(args) >= 2 && args[0] == "list" && args[1] == "sink-inputs" {
+			return `Sink Input #7
+    Volume: front-left: 32768 /  50% / -18.06 dB
+    Mute: yes
+    Properties:
+        application.name = "Discord"
+        application.process.binary = "discord"
+Sink Input #9
+    Volume: front-left: 32768 /  50% / -18.06 dB
+    Mute: no
+    Properties:
+        application.name = "Spotify"
+        application.process.binary = "spotify"`, nil
+		}
+		return "", nil
+	}}
+
+	selectors := []config.Selector{{Kind: config.SelectorExact, Value: "Discord"}, {Kind: config.SelectorExe, Value: "spotify"}}
+	if err := controller.AdjustGroup(selectors, 0.02, 1); err != nil {
+		t.Fatalf("AdjustGroup error: %v", err)
+	}
+
+	if len(calls) < 4 {
+		t.Fatalf("calls=%v", calls)
+	}
+	if calls[1] != "pactl set-sink-input-volume 7 52%" || calls[3] != "pactl set-sink-input-volume 9 52%" {
+		t.Fatalf("unexpected group volume calls: %v", calls)
+	}
+	if calls[2] != "pactl set-sink-input-mute 7 0" {
+		t.Fatalf("expected unmute call for muted session, calls=%v", calls)
+	}
+}

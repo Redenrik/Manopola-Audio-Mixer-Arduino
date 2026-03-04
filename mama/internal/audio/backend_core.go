@@ -84,7 +84,16 @@ func (b *baseBackend) Adjust(target config.TargetType, name string, step float64
 	curF := float64(cur) / 100.0
 	next := curF + (step * float64(deltaSteps))
 	next = math.Max(0, math.Min(1, next))
-	return setVolume(controller, name, int(math.Round(next*100)))
+	if err := setVolume(controller, name, int(math.Round(next*100))); err != nil {
+		return err
+	}
+	if deltaSteps > 0 {
+		// QoL: turning volume up should unmute the same target.
+		if muted, err := getMuted(controller, name); err == nil && muted {
+			_ = unmute(controller, name)
+		}
+	}
+	return nil
 }
 
 func (b *baseBackend) ToggleMute(target config.TargetType, name string) error {

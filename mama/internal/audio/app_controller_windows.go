@@ -51,7 +51,13 @@ func (w *windowsAppSessionController) Adjust(selectorToken string, step float64,
 		next = 100
 	}
 	return w.applyToSessionByID(target.id, func(volume *iSimpleAudioVolume) error {
-		return volume.SetMasterVolume(float32(next)/100.0, nil)
+		if err := volume.SetMasterVolume(float32(next)/100.0, nil); err != nil {
+			return err
+		}
+		if deltaSteps > 0 && target.isMuted {
+			_ = volume.SetMute(false, nil)
+		}
+		return nil
 	})
 }
 
@@ -80,7 +86,13 @@ func (w *windowsAppSessionController) AdjustGroup(selectors []config.Selector, s
 			next = 100
 		}
 		if err := w.applyToSessionByID(target.id, func(volume *iSimpleAudioVolume) error {
-			return volume.SetMasterVolume(float32(next)/100.0, nil)
+			if err := volume.SetMasterVolume(float32(next)/100.0, nil); err != nil {
+				return err
+			}
+			if deltaSteps > 0 && target.isMuted {
+				_ = volume.SetMute(false, nil)
+			}
+			return nil
 		}); err != nil {
 			return err
 		}

@@ -61,8 +61,13 @@ func (u *unixAppSessionController) Adjust(selectorToken string, step float64, de
 	if next > 100 {
 		next = 100
 	}
-	_, err = u.run("pactl", "set-sink-input-volume", target.id, fmt.Sprintf("%d%%", next))
-	return err
+	if _, err := u.run("pactl", "set-sink-input-volume", target.id, fmt.Sprintf("%d%%", next)); err != nil {
+		return err
+	}
+	if deltaSteps > 0 && target.isMuted {
+		_, _ = u.run("pactl", "set-sink-input-mute", target.id, "0")
+	}
+	return nil
 }
 
 func (u *unixAppSessionController) ToggleMute(selectorToken string) error {
@@ -93,6 +98,9 @@ func (u *unixAppSessionController) AdjustGroup(selectors []config.Selector, step
 		}
 		if _, err := u.run("pactl", "set-sink-input-volume", target.id, fmt.Sprintf("%d%%", next)); err != nil {
 			return err
+		}
+		if deltaSteps > 0 && target.isMuted {
+			_, _ = u.run("pactl", "set-sink-input-mute", target.id, "0")
 		}
 	}
 	return nil
