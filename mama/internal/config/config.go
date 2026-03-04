@@ -70,7 +70,7 @@ const (
 type Mapping struct {
 	Knob      int        `yaml:"knob" json:"knob"`
 	Target    TargetType `yaml:"target" json:"target"`
-	Name      string     `yaml:"name,omitempty" json:"name,omitempty"` // legacy alias; migrated to selector(s) for app/group
+	Name      string     `yaml:"name,omitempty" json:"name,omitempty"` // app/group legacy alias and optional endpoint selector token for system targets
 	Selector  *Selector  `yaml:"selector,omitempty" json:"selector,omitempty"`
 	Selectors []Selector `yaml:"selectors,omitempty" json:"selectors,omitempty"`
 	Priority  int        `yaml:"priority,omitempty" json:"priority,omitempty"`
@@ -460,8 +460,8 @@ func validateMappingSelectors(m *Mapping) error {
 		}
 		return nil
 	default:
-		if m.Name != "" || m.Selector != nil || len(m.Selectors) > 0 {
-			return fmt.Errorf("target %q must not set name/selector(s)", m.Target)
+		if m.Selector != nil || len(m.Selectors) > 0 {
+			return fmt.Errorf("target %q must not set selector(s)", m.Target)
 		}
 		return nil
 	}

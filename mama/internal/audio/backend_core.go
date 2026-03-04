@@ -17,6 +17,14 @@ type volumeController interface {
 	Unmute() error
 }
 
+type selectableVolumeController interface {
+	GetVolumeFor(selectorToken string) (int, error)
+	SetVolumeFor(selectorToken string, volume int) error
+	GetMutedFor(selectorToken string) (bool, error)
+	MuteFor(selectorToken string) error
+	UnmuteFor(selectorToken string) error
+}
+
 type systemVolumeController struct{}
 
 type baseBackend struct {
@@ -69,14 +77,14 @@ func (b *baseBackend) Adjust(target config.TargetType, name string, step float64
 	if controller == nil {
 		return Unsupported(target)
 	}
-	cur, err := controller.GetVolume()
+	cur, err := getVolume(controller, name)
 	if err != nil {
 		return err
 	}
 	curF := float64(cur) / 100.0
 	next := curF + (step * float64(deltaSteps))
 	next = math.Max(0, math.Min(1, next))
-	return controller.SetVolume(int(math.Round(next * 100)))
+	return setVolume(controller, name, int(math.Round(next*100)))
 }
 
 func (b *baseBackend) ToggleMute(target config.TargetType, name string) error {
@@ -101,14 +109,14 @@ func (b *baseBackend) ToggleMute(target config.TargetType, name string) error {
 	if controller == nil {
 		return Unsupported(target)
 	}
-	muted, err := controller.GetMuted()
+	muted, err := getMuted(controller, name)
 	if err != nil {
 		return err
 	}
 	if muted {
-		return controller.Unmute()
+		return unmute(controller, name)
 	}
-	return controller.Mute()
+	return mute(controller, name)
 }
 
 func (b *baseBackend) ListTargets() ([]DiscoveredTarget, error) {
@@ -157,4 +165,39 @@ func parseGroupSelectorsToken(token string) ([]config.Selector, error) {
 		return nil, fmt.Errorf("group target requires at least one selector")
 	}
 	return selectors, nil
+}
+
+func getVolume(controller volumeController, selectorToken string) (int, error) {
+	if selectable, ok := controller.(selectableVolumeController); ok {
+		return selectable.GetVolumeFor(selectorToken)
+	}
+	return controller.GetVolume()
+}
+
+func setVolume(controller volumeController, selectorToken string, volume int) error {
+	if selectable, ok := controller.(selectableVolumeController); ok {
+		return selectable.SetVolumeFor(selectorToken, volume)
+	}
+	return controller.SetVolume(volume)
+}
+
+func getMuted(controller volumeController, selectorToken string) (bool, error) {
+	if selectable, ok := controller.(selectableVolumeController); ok {
+		return selectable.GetMutedFor(selectorToken)
+	}
+	return controller.GetMuted()
+}
+
+func mute(controller volumeController, selectorToken string) error {
+	if selectable, ok := controller.(selectableVolumeController); ok {
+		return selectable.MuteFor(selectorToken)
+	}
+	return controller.Mute()
+}
+
+func unmute(controller volumeController, selectorToken string) error {
+	if selectable, ok := controller.(selectableVolumeController); ok {
+		return selectable.UnmuteFor(selectorToken)
+	}
+	return controller.Unmute()
 }

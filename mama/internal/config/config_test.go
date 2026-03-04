@@ -30,6 +30,25 @@ mappings:
 	}
 }
 
+func TestLoadAllowsSystemTargetSelectorToken(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 1
+    target: master_out
+    name: "id:{0.0.0.00000000}.device-token"
+    step: 0.02
+`)
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Mappings[0].Name != "id:{0.0.0.00000000}.device-token" {
+		t.Fatalf("expected system selector token to be preserved, got %q", cfg.Mappings[0].Name)
+	}
+}
+
 func TestLoadRejectsDuplicateKnob(t *testing.T) {
 	cfgPath := writeConfig(t, `
 serial:

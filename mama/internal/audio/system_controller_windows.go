@@ -10,7 +10,11 @@ import (
 )
 
 func (systemVolumeController) GetVolume() (int, error) {
-	vol, err := invokeEndpointVolume(wca.ERender, func(aev *wca.IAudioEndpointVolume) (interface{}, error) {
+	return systemVolumeController{}.GetVolumeFor("")
+}
+
+func (systemVolumeController) GetVolumeFor(selectorToken string) (int, error) {
+	vol, err := invokeEndpointVolumeFor(wca.ERender, selectorToken, func(aev *wca.IAudioEndpointVolume) (interface{}, error) {
 		var level float32
 		if err := aev.GetMasterVolumeLevelScalar(&level); err != nil {
 			return nil, err
@@ -24,17 +28,25 @@ func (systemVolumeController) GetVolume() (int, error) {
 }
 
 func (systemVolumeController) SetVolume(volume int) error {
+	return systemVolumeController{}.SetVolumeFor("", volume)
+}
+
+func (systemVolumeController) SetVolumeFor(selectorToken string, volume int) error {
 	if volume < 0 || volume > 100 {
 		return errors.New("out of valid volume range")
 	}
-	_, err := invokeEndpointVolume(wca.ERender, func(aev *wca.IAudioEndpointVolume) (interface{}, error) {
+	_, err := invokeEndpointVolumeFor(wca.ERender, selectorToken, func(aev *wca.IAudioEndpointVolume) (interface{}, error) {
 		return nil, aev.SetMasterVolumeLevelScalar(float32(volume)/100, nil)
 	})
 	return err
 }
 
 func (systemVolumeController) GetMuted() (bool, error) {
-	muted, err := invokeEndpointVolume(wca.ERender, func(aev *wca.IAudioEndpointVolume) (interface{}, error) {
+	return systemVolumeController{}.GetMutedFor("")
+}
+
+func (systemVolumeController) GetMutedFor(selectorToken string) (bool, error) {
+	muted, err := invokeEndpointVolumeFor(wca.ERender, selectorToken, func(aev *wca.IAudioEndpointVolume) (interface{}, error) {
 		var muted bool
 		if err := aev.GetMute(&muted); err != nil {
 			return nil, err
@@ -48,14 +60,22 @@ func (systemVolumeController) GetMuted() (bool, error) {
 }
 
 func (systemVolumeController) Mute() error {
-	_, err := invokeEndpointVolume(wca.ERender, func(aev *wca.IAudioEndpointVolume) (interface{}, error) {
+	return systemVolumeController{}.MuteFor("")
+}
+
+func (systemVolumeController) MuteFor(selectorToken string) error {
+	_, err := invokeEndpointVolumeFor(wca.ERender, selectorToken, func(aev *wca.IAudioEndpointVolume) (interface{}, error) {
 		return nil, aev.SetMute(true, nil)
 	})
 	return err
 }
 
 func (systemVolumeController) Unmute() error {
-	_, err := invokeEndpointVolume(wca.ERender, func(aev *wca.IAudioEndpointVolume) (interface{}, error) {
+	return systemVolumeController{}.UnmuteFor("")
+}
+
+func (systemVolumeController) UnmuteFor(selectorToken string) error {
+	_, err := invokeEndpointVolumeFor(wca.ERender, selectorToken, func(aev *wca.IAudioEndpointVolume) (interface{}, error) {
 		return nil, aev.SetMute(false, nil)
 	})
 	return err

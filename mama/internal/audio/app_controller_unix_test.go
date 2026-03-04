@@ -46,6 +46,8 @@ func TestSessionMatchesSelector(t *testing.T) {
 		{config.Selector{Kind: config.SelectorSuffix, Value: "PTB"}, true},
 		{config.Selector{Kind: config.SelectorGlob, Value: "Disc*PTB"}, true},
 		{config.Selector{Kind: config.SelectorExe, Value: "discord"}, true},
+		{config.Selector{Kind: config.SelectorExact, Value: "discord"}, true},
+		{config.Selector{Kind: config.SelectorExact, Value: "Discord PTB"}, true},
 		{config.Selector{Kind: config.SelectorExact, Value: "Slack"}, false},
 	}
 	for _, tc := range cases {

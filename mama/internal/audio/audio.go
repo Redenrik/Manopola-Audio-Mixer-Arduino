@@ -15,9 +15,11 @@ type Backend interface {
 }
 
 type DiscoveredTarget struct {
-	ID   string            `json:"id"`
-	Type config.TargetType `json:"type"`
-	Name string            `json:"name,omitempty"`
+	ID       string            `json:"id"`
+	Type     config.TargetType `json:"type"`
+	Name     string            `json:"name,omitempty"`
+	Selector string            `json:"selector,omitempty"`
+	Aliases  []string          `json:"aliases,omitempty"`
 }
 
 func NewBackend() Backend {

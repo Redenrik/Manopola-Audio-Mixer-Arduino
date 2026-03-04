@@ -354,7 +354,7 @@
       <div class="row header">
         <div id="headerKnob">Knob</div>
         <div id="headerTarget">Target</div>
-        <div id="headerName">Name (app/group)</div>
+        <div id="headerName">Name / Selector</div>
         <div id="headerStep">Step (0..1)</div>
         <div></div>
       </div>
@@ -467,7 +467,7 @@
         wizardStart: "Start Wizard", wizardNext: "Next Step", wizardReset: "Reset",
         connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
         identifyHeading: "Knob Identification", identifyIntro: "Click Start Identify then rotate or press any physical knob. Matching indicator flashes below.", startIdentify: "Start Identify", stopIdentify: "Stop",
-        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name (app/group)", headerStep: "Step (0..1)", addMapping: "Add Mapping", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).",
+        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerStep: "Step (0..1)", addMapping: "Add Mapping", saveConfig: "Save Config", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).",
         noPorts: "No ports detected", waiting: "waiting...", buttonPress: "button press", delta: "delta",
         wizardSteps: { detect: { title: "Detect board", hint: "Refresh detected serial ports and select your board." }, test: { title: "Test port", hint: "Run Test Connection to ensure the board is reachable." }, map: { title: "Map knobs", hint: "Use Start Identify and rotate/press knobs to confirm IDs before editing mappings." }, save: { title: "Save config", hint: "Persist serial + mapping configuration." }, verify: { title: "Verify", hint: "Run identify again to confirm knob events after save." } }
       },
@@ -482,7 +482,7 @@
         wizardStart: "Avvia procedura", wizardNext: "Passo successivo", wizardReset: "Reimposta",
         connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
         identifyHeading: "Identificazione manopole", identifyIntro: "Fai clic su Avvia identificazione, poi ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
-        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome (app/gruppo)", headerStep: "Step (0..1)", addMapping: "Aggiungi mappatura", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).",
+        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerStep: "Step (0..1)", addMapping: "Aggiungi mappatura", saveConfig: "Salva config", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).",
         noPorts: "Nessuna porta rilevata", waiting: "in attesa...", buttonPress: "pressione tasto", delta: "delta",
         wizardSteps: { detect: { title: "Rileva scheda", hint: "Aggiorna le porte seriali rilevate e seleziona la tua scheda." }, test: { title: "Test porta", hint: "Esegui Test connessione per verificare che la scheda sia raggiungibile." }, map: { title: "Mappa manopole", hint: "Usa Avvia identificazione e ruota/premi le manopole per confermare gli ID prima di modificare le mappature." }, save: { title: "Salva config", hint: "Salva la configurazione seriale e delle mappature." }, verify: { title: "Verifica", hint: "Avvia di nuovo l'identificazione per confermare gli eventi dopo il salvataggio." } }
       }
@@ -679,7 +679,10 @@
 
     function selectorTokenFromMapping(mapping) {
       if (mapping && mapping.selector && mapping.selector.kind && mapping.selector.value) {
-        return String(mapping.selector.kind) + ":" + String(mapping.selector.value);
+        const kind = String(mapping.selector.kind);
+        const value = String(mapping.selector.value);
+        if (kind === "exact") return value;
+        return kind + ":" + value;
       }
       if (mapping && typeof mapping.name === "string") {
         return mapping.name;
@@ -687,17 +690,77 @@
       return "";
     }
 
-    function appSelectorSuggestions() {
+    function targetLabel(targetID) {
+      const it = state.language === "it";
+      if (targetID === "master_out") return it ? "Uscita principale" : "Master Output";
+      if (targetID === "mic_in") return it ? "Microfono" : "Microphone";
+      if (targetID === "line_in") return it ? "Ingresso linea" : "Line Input";
+      if (targetID === "app") return it ? "Applicazione" : "Application";
+      if (targetID === "group") return it ? "Gruppo" : "Group";
+      return targetID;
+    }
+
+    function discoveredTargetsByType(targetType) {
+      return (state.discoveredTargets || []).filter((item) => item && item.type === targetType);
+    }
+
+    function endpointSuggestions(targetType) {
       const out = new Set();
-      for (const item of state.discoveredTargets || []) {
-        if (!item || item.type !== "app") continue;
+      for (const item of discoveredTargetsByType(targetType)) {
+        if (!item || typeof item !== "object") continue;
+        const id = typeof item.id === "string" ? item.id : "";
+        if (!id.startsWith("endpoint:")) continue;
         if (typeof item.name === "string" && item.name.trim()) {
           out.add(item.name.trim());
-          out.add("exact:" + item.name.trim());
-          out.add("exe:" + item.name.trim());
         }
       }
       return Array.from(out);
+    }
+
+    function appSelectorSuggestions() {
+      const out = new Set();
+      for (const item of discoveredTargetsByType("app")) {
+        if (!item || item.type !== "app") continue;
+        if (typeof item.name === "string" && item.name.trim()) {
+          out.add(item.name.trim());
+        }
+        if (Array.isArray(item.aliases)) {
+          for (const alias of item.aliases) {
+            if (typeof alias === "string" && alias.trim()) out.add(alias.trim());
+          }
+        }
+      }
+      return Array.from(out);
+    }
+
+    function suggestionsForTarget(targetType) {
+      if (targetType === "app" || targetType === "group") return appSelectorSuggestions();
+      if (targetType === "master_out") return endpointSuggestions("master_out");
+      if (targetType === "mic_in") return endpointSuggestions("mic_in");
+      if (targetType === "line_in") return endpointSuggestions("line_in");
+      return [];
+    }
+
+    function resolveEndpointSelectorToken(targetType, rawInput) {
+      const value = (rawInput || "").trim();
+      if (!value) return "";
+      const normalized = value.toLowerCase();
+      for (const item of discoveredTargetsByType(targetType)) {
+        if (!item || typeof item !== "object") continue;
+        if (typeof item.selector !== "string" || !item.selector.trim()) continue;
+        const itemName = typeof item.name === "string" ? item.name.trim().toLowerCase() : "";
+        if (itemName && itemName === normalized) {
+          return item.selector.trim();
+        }
+        if (Array.isArray(item.aliases)) {
+          for (const alias of item.aliases) {
+            if (typeof alias === "string" && alias.trim().toLowerCase() === normalized) {
+              return item.selector.trim();
+            }
+          }
+        }
+      }
+      return value;
     }
 
     function mappingRow(mapping = { knob: 1, target: "master_out", step: 0.02, name: "" }) {
@@ -727,7 +790,7 @@
         for (const targetID of ids) {
           const o = document.createElement("option");
           o.value = targetID;
-          o.textContent = targetID;
+          o.textContent = targetLabel(targetID);
           group.appendChild(o);
         }
         target.appendChild(group);
@@ -745,7 +808,7 @@
       const name = document.createElement("input");
       name.className = "map-name";
       name.setAttribute("aria-label", "Application or group name");
-      name.placeholder = state.language === "it" ? "discord.exe / gruppo-musica" : "discord.exe / music-group";
+      name.placeholder = state.language === "it" ? "App, gruppo o dispositivo" : "App, group, or device";
       name.value = selectorTokenFromMapping(mapping);
 
       const suggestions = document.createElement("datalist");
@@ -769,16 +832,21 @@
       remove.addEventListener("click", () => row.remove());
 
       function syncNameState() {
-        const requiresName = target.value === "app" || target.value === "group";
-        name.disabled = !requiresName;
-        if (!requiresName) name.value = "";
+        const supportsName = ["master_out", "mic_in", "line_in", "app", "group"].includes(target.value);
+        name.disabled = !supportsName;
+        if (!supportsName) name.value = "";
+        if (target.value === "app" || target.value === "group") {
+          name.placeholder = state.language === "it" ? "Nome app (es. Discord, Chrome, OBS)" : "App name (e.g. Discord, Chrome, OBS)";
+        } else if (target.value === "master_out") {
+          name.placeholder = state.language === "it" ? "Dispositivo output (default se vuoto)" : "Output device (default if empty)";
+        } else if (target.value === "mic_in" || target.value === "line_in") {
+          name.placeholder = state.language === "it" ? "Dispositivo input (default se vuoto)" : "Input device (default if empty)";
+        }
         suggestions.innerHTML = "";
-        if (target.value === "app") {
-          for (const value of appSelectorSuggestions()) {
-            const option = document.createElement("option");
-            option.value = value;
-            suggestions.appendChild(option);
-          }
+        for (const value of suggestionsForTarget(target.value)) {
+          const option = document.createElement("option");
+          option.value = value;
+          suggestions.appendChild(option);
         }
       }
       target.addEventListener("change", syncNameState);
@@ -820,6 +888,8 @@
           mapping.selector = selector;
         } else if ((target.value === "app" || target.value === "group") && name.value.trim()) {
           mapping.name = name.value.trim();
+        } else if ((target.value === "master_out" || target.value === "mic_in" || target.value === "line_in") && name.value.trim()) {
+          mapping.name = resolveEndpointSelectorToken(target.value, name.value);
         }
         return mapping;
       });

@@ -7,6 +7,7 @@ import (
 	"math"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"unsafe"
 
@@ -19,11 +20,15 @@ import (
 type windowsAppSessionController struct{}
 
 type windowsAppSession struct {
-	id      string
-	name    string
-	exe     string
-	volume  int
-	isMuted bool
+	id         string
+	name       string
+	exe        string
+	exeNoExt   string
+	path       string
+	aliases    []string
+	exeAliases []string
+	volume     int
+	isMuted    bool
 }
 
 // go-wca v0.1.1 contains a malformed IID_IAudioSessionManager2 string; keep a local valid GUID.
@@ -110,7 +115,16 @@ func (w *windowsAppSessionController) ListTargets() ([]DiscoveredTarget, error) 
 		if name == "" {
 			name = s.exe
 		}
-		targets = append(targets, DiscoveredTarget{ID: "app:" + s.id, Type: config.TargetApp, Name: name})
+		target := DiscoveredTarget{
+			ID:       "app:" + s.id,
+			Type:     config.TargetApp,
+			Name:     name,
+			Selector: name,
+		}
+		if len(s.aliases) > 0 {
+			target.Aliases = append(target.Aliases, s.aliases...)
+		}
+		targets = append(targets, target)
 	}
 	return targets, nil
 }
@@ -155,52 +169,46 @@ func (w *windowsAppSessionController) selectSessions(selectors []config.Selector
 }
 
 func (w *windowsAppSessionController) applyToSessionByID(id string, apply func(volume *iSimpleAudioVolume) error) error {
-	return withWindowsSessions(func(sessions []windowsAppSessionHandle) error {
-		for _, s := range sessions {
-			if s.id != id {
-				continue
-			}
-			return apply(s.volume)
+	found := false
+	err := forEachWindowsSession(func(session windowsAppSession, volume *iSimpleAudioVolume) (bool, error) {
+		if session.id != id {
+			return false, nil
 		}
-		return fmt.Errorf("audio session %q no longer available", id)
+		found = true
+		if err := apply(volume); err != nil {
+			return false, err
+		}
+		return true, nil
 	})
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("audio session %q no longer available", id)
+	}
+	return nil
 }
 
 func (w *windowsAppSessionController) listSessions() ([]windowsAppSession, error) {
-	var sessions []windowsAppSession
-	err := withWindowsSessions(func(handles []windowsAppSessionHandle) error {
-		sessions = make([]windowsAppSession, 0, len(handles))
-		for _, h := range handles {
-			var level float32
-			if err := h.volume.GetMasterVolume(&level); err != nil {
-				continue
-			}
-			var muted bool
-			if err := h.volume.GetMute(&muted); err != nil {
-				continue
-			}
-			sessions = append(sessions, windowsAppSession{
-				id:      h.id,
-				name:    h.name,
-				exe:     h.exe,
-				volume:  int(math.Floor(float64(level*100.0 + 0.5))),
-				isMuted: muted,
-			})
+	sessions := make([]windowsAppSession, 0, 16)
+	err := forEachWindowsSession(func(session windowsAppSession, volume *iSimpleAudioVolume) (bool, error) {
+		var level float32
+		if err := volume.GetMasterVolume(&level); err != nil {
+			return false, nil
 		}
-		return nil
+		var muted bool
+		if err := volume.GetMute(&muted); err != nil {
+			return false, nil
+		}
+		session.volume = int(math.Floor(float64(level*100.0 + 0.5)))
+		session.isMuted = muted
+		sessions = append(sessions, session)
+		return false, nil
 	})
 	return sessions, err
 }
 
-type windowsAppSessionHandle struct {
-	id      string
-	name    string
-	exe     string
-	control *iAudioSessionControl2
-	volume  *iSimpleAudioVolume
-}
-
-func withWindowsSessions(fn func([]windowsAppSessionHandle) error) (err error) {
+func forEachWindowsSession(fn func(session windowsAppSession, volume *iSimpleAudioVolume) (bool, error)) (err error) {
 	return withCOMApartment(func() error {
 		var mmde *wca.IMMDeviceEnumerator
 		if err = wca.CoCreateInstance(wca.CLSID_MMDeviceEnumerator, 0, wca.CLSCTX_ALL, wca.IID_IMMDeviceEnumerator, &mmde); err != nil {
@@ -208,122 +216,316 @@ func withWindowsSessions(fn func([]windowsAppSessionHandle) error) (err error) {
 		}
 		defer mmde.Release()
 
-		var mmd *wca.IMMDevice
-		if err = mmde.GetDefaultAudioEndpoint(wca.ERender, wca.EConsole, &mmd); err != nil {
-			return fmt.Errorf("get default render endpoint: %w", err)
+		var devices *wca.IMMDeviceCollection
+		if err := mmde.EnumAudioEndpoints(wca.ERender, wca.DEVICE_STATE_ACTIVE, &devices); err != nil {
+			return fmt.Errorf("enumerate render endpoints: %w", err)
 		}
-		defer mmd.Release()
+		defer devices.Release()
 
-		var mgr *iAudioSessionManager2
-		if err = activateIMMDevice(mmd, iidIAudioSessionManager2, wca.CLSCTX_ALL, &mgr); err != nil {
-			return fmt.Errorf("activate IAudioSessionManager2: %w", err)
-		}
-		defer mgr.Release()
-
-		var enum *iAudioSessionEnumerator
-		if err = mgr.GetSessionEnumerator(&enum); err != nil {
-			return fmt.Errorf("get audio session enumerator: %w", err)
-		}
-		defer enum.Release()
-
-		count, err := enum.GetCount()
-		if err != nil {
-			return fmt.Errorf("get audio session count: %w", err)
+		var endpointCount uint32
+		if err := devices.GetCount(&endpointCount); err != nil {
+			return fmt.Errorf("get render endpoint count: %w", err)
 		}
 
-		sessions := make([]windowsAppSessionHandle, 0, count)
-		for i := 0; i < count; i++ {
-			ctrl, err := enum.GetSession(i)
+		seen := make(map[string]struct{}, endpointCount*4)
+
+		for i := uint32(0); i < endpointCount; i++ {
+			var device *wca.IMMDevice
+			if err := devices.Item(i, &device); err != nil || device == nil {
+				continue
+			}
+
+			endpointID, err := endpointID(device)
 			if err != nil {
-				continue
-			}
-			if ctrl == nil {
-				continue
-			}
-			defer ctrl.Release()
-
-			ctrl2 := &iAudioSessionControl2{}
-			if err := ctrl.PutQueryInterface(wca.IID_IAudioSessionControl2, &ctrl2); err != nil {
-				continue
-			}
-			defer ctrl2.Release()
-
-			pid, err := ctrl2.GetProcessID()
-			if err != nil || pid == 0 {
+				device.Release()
 				continue
 			}
 
-			simple := &iSimpleAudioVolume{}
-			if err := ctrl.PutQueryInterface(wca.IID_ISimpleAudioVolume, &simple); err != nil {
-				continue
+			stop, err := forEachEndpointSession(device, endpointID, seen, fn)
+			device.Release()
+			if err != nil {
+				return err
 			}
-			defer simple.Release()
-
-			exePath, exeName := processInfoFromPID(pid)
-			sessionID := fmt.Sprintf("pid:%d:%d", pid, i)
-			if exePath != "" {
-				sessionID = exePath
+			if stop {
+				return nil
 			}
-			sessions = append(sessions, windowsAppSessionHandle{
-				id:      sessionID,
-				name:    exeName,
-				exe:     exeName,
-				control: ctrl2,
-				volume:  simple,
-			})
 		}
 
-		return fn(sessions)
+		return nil
 	})
 }
 
-func processInfoFromPID(pid uint32) (string, string) {
+func forEachEndpointSession(device *wca.IMMDevice, endpointID string, seen map[string]struct{}, fn func(session windowsAppSession, volume *iSimpleAudioVolume) (bool, error)) (bool, error) {
+	var mgr *iAudioSessionManager2
+	if err := activateIMMDevice(device, iidIAudioSessionManager2, wca.CLSCTX_ALL, &mgr); err != nil {
+		return false, fmt.Errorf("activate IAudioSessionManager2: %w", err)
+	}
+	defer mgr.Release()
+
+	var enum *iAudioSessionEnumerator
+	if err := mgr.GetSessionEnumerator(&enum); err != nil {
+		return false, fmt.Errorf("get audio session enumerator: %w", err)
+	}
+	defer enum.Release()
+
+	count, err := enum.GetCount()
+	if err != nil {
+		return false, fmt.Errorf("get audio session count: %w", err)
+	}
+
+	for i := 0; i < count; i++ {
+		ctrl, err := enum.GetSession(i)
+		if err != nil || ctrl == nil {
+			continue
+		}
+
+		ctrl2 := &iAudioSessionControl2{}
+		if err := ctrl.PutQueryInterface(wca.IID_IAudioSessionControl2, &ctrl2); err != nil || ctrl2 == nil {
+			ctrl.Release()
+			continue
+		}
+
+		simple := &iSimpleAudioVolume{}
+		if err := ctrl.PutQueryInterface(wca.IID_ISimpleAudioVolume, &simple); err != nil || simple == nil {
+			ctrl2.Release()
+			ctrl.Release()
+			continue
+		}
+
+		pid, err := ctrl2.GetProcessID()
+		if err != nil || pid == 0 {
+			simple.Release()
+			ctrl2.Release()
+			ctrl.Release()
+			continue
+		}
+
+		session := makeWindowsAppSession(ctrl2, pid, endpointID, i)
+		key := windowsSessionDedupKey(session)
+		if key == "" {
+			simple.Release()
+			ctrl2.Release()
+			ctrl.Release()
+			continue
+		}
+		if _, exists := seen[key]; exists {
+			simple.Release()
+			ctrl2.Release()
+			ctrl.Release()
+			continue
+		}
+		seen[key] = struct{}{}
+
+		stop, callbackErr := fn(session, simple)
+		simple.Release()
+		ctrl2.Release()
+		ctrl.Release()
+		if callbackErr != nil {
+			return false, callbackErr
+		}
+		if stop {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func makeWindowsAppSession(ctrl2 *iAudioSessionControl2, pid uint32, endpointID string, index int) windowsAppSession {
+	processInfo := processInfoFromPID(pid)
+	displayName, _ := ctrl2.GetDisplayName()
+	displayName = strings.TrimSpace(displayName)
+	sessionID, _ := ctrl2.GetSessionInstanceIdentifier()
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		if fallback, err := ctrl2.GetSessionIdentifier(); err == nil {
+			sessionID = strings.TrimSpace(fallback)
+		}
+	}
+	if sessionID == "" {
+		if processInfo.path != "" {
+			sessionID = processInfo.path + "#" + endpointID
+		} else {
+			sessionID = fmt.Sprintf("pid:%d:%s:%d", pid, endpointID, index)
+		}
+	}
+
+	name := resolveSessionName(displayName, processInfo)
+	aliases := normalizeMatchValues(displayName, processInfo.displayName, processInfo.exe, processInfo.exeNoExt, processInfo.path, name)
+	exeAliases := normalizeMatchValues(processInfo.exe, processInfo.exeNoExt)
+	if len(aliases) == 0 && len(exeAliases) > 0 {
+		aliases = append(aliases, exeAliases...)
+	}
+
+	return windowsAppSession{
+		id:         sessionID,
+		name:       name,
+		exe:        processInfo.exe,
+		exeNoExt:   processInfo.exeNoExt,
+		path:       processInfo.path,
+		aliases:    aliases,
+		exeAliases: exeAliases,
+	}
+}
+
+func windowsSessionDedupKey(session windowsAppSession) string {
+	for _, value := range []string{session.id, session.path, session.exe} {
+		key := strings.ToLower(strings.TrimSpace(value))
+		if key != "" {
+			return key
+		}
+	}
+	return ""
+}
+
+type windowsProcessInfo struct {
+	path        string
+	exe         string
+	exeNoExt    string
+	displayName string
+}
+
+var processInfoCache sync.Map
+
+func processInfoFromPID(pid uint32) windowsProcessInfo {
 	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
 	if err != nil {
-		return "", ""
+		return windowsProcessInfo{}
 	}
 	defer windows.CloseHandle(h)
 
 	buf := make([]uint16, windows.MAX_PATH)
 	size := uint32(len(buf))
 	if err := windows.QueryFullProcessImageName(h, 0, &buf[0], &size); err != nil {
-		return "", ""
+		return windowsProcessInfo{}
 	}
-	full := syscall.UTF16ToString(buf[:size])
-	exe := strings.TrimSpace(filepath.Base(full))
-	return strings.ToLower(full), strings.ToLower(exe)
+
+	fullPath := strings.TrimSpace(syscall.UTF16ToString(buf[:size]))
+	if fullPath == "" {
+		return windowsProcessInfo{}
+	}
+
+	cacheKey := strings.ToLower(fullPath)
+	if cached, ok := processInfoCache.Load(cacheKey); ok {
+		if info, ok := cached.(windowsProcessInfo); ok {
+			return info
+		}
+	}
+
+	exeName := strings.TrimSpace(filepath.Base(fullPath))
+	exeLower := strings.ToLower(exeName)
+	info := windowsProcessInfo{
+		path:     strings.ToLower(fullPath),
+		exe:      exeLower,
+		exeNoExt: strings.TrimSuffix(exeLower, strings.ToLower(filepath.Ext(exeLower))),
+	}
+
+	description := strings.TrimSpace(fileDescriptionFromExecutable(fullPath))
+	if description != "" {
+		info.displayName = description
+	} else {
+		info.displayName = strings.TrimSpace(strings.TrimSuffix(exeName, filepath.Ext(exeName)))
+	}
+
+	processInfoCache.Store(cacheKey, info)
+	return info
+}
+
+func resolveSessionName(displayName string, processInfo windowsProcessInfo) string {
+	if name := strings.TrimSpace(displayName); name != "" {
+		return name
+	}
+	if name := strings.TrimSpace(processInfo.displayName); name != "" {
+		return name
+	}
+	if name := strings.TrimSpace(processInfo.exeNoExt); name != "" {
+		return name
+	}
+	return strings.TrimSpace(processInfo.exe)
+}
+
+type langCodePage struct {
+	Language uint16
+	CodePage uint16
+}
+
+func fileDescriptionFromExecutable(path string) string {
+	var zero windows.Handle
+	infoSize, err := windows.GetFileVersionInfoSize(path, &zero)
+	if err != nil || infoSize == 0 {
+		return ""
+	}
+
+	versionInfo := make([]byte, infoSize)
+	if err := windows.GetFileVersionInfo(path, 0, infoSize, unsafe.Pointer(&versionInfo[0])); err != nil {
+		return ""
+	}
+
+	translations := queryFileTranslations(versionInfo)
+	for _, entry := range translations {
+		block := fmt.Sprintf(`\StringFileInfo\%04x%04x\FileDescription`, entry.Language, entry.CodePage)
+		if value := queryVersionString(versionInfo, block); value != "" {
+			return value
+		}
+	}
+
+	for _, fallback := range []string{`\StringFileInfo\040904b0\FileDescription`, `\StringFileInfo\040904e4\FileDescription`} {
+		if value := queryVersionString(versionInfo, fallback); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func queryFileTranslations(versionInfo []byte) []langCodePage {
+	if len(versionInfo) == 0 {
+		return nil
+	}
+
+	var ptr unsafe.Pointer
+	var length uint32
+	if err := windows.VerQueryValue(unsafe.Pointer(&versionInfo[0]), `\VarFileInfo\Translation`, unsafe.Pointer(&ptr), &length); err != nil {
+		return nil
+	}
+	if ptr == nil || length < 4 {
+		return nil
+	}
+	count := int(length / 4)
+	return unsafe.Slice((*langCodePage)(ptr), count)
+}
+
+func queryVersionString(versionInfo []byte, block string) string {
+	if len(versionInfo) == 0 {
+		return ""
+	}
+
+	var valuePtr *uint16
+	var length uint32
+	if err := windows.VerQueryValue(unsafe.Pointer(&versionInfo[0]), block, unsafe.Pointer(&valuePtr), &length); err != nil {
+		return ""
+	}
+	if valuePtr == nil || length == 0 {
+		return ""
+	}
+	return strings.TrimSpace(windows.UTF16PtrToString(valuePtr))
 }
 
 func windowsSessionMatchesSelector(s windowsAppSession, selector config.Selector) bool {
-	value := strings.TrimSpace(selector.Value)
-	if value == "" {
-		return false
+	aliases := s.aliases
+	exeAliases := s.exeAliases
+	if len(aliases) == 0 || len(exeAliases) == 0 {
+		if len(aliases) == 0 {
+			aliases = normalizeMatchValues(s.name, s.exe, s.exeNoExt, s.path)
+		}
+		if len(exeAliases) == 0 {
+			exeAliases = normalizeMatchValues(s.exe, s.exeNoExt)
+		}
 	}
-	value = strings.ToLower(value)
 
-	target := strings.ToLower(strings.TrimSpace(s.name))
 	if selector.Kind == config.SelectorExe {
-		target = strings.ToLower(strings.TrimSpace(s.exe))
+		return selectorMatchesAnyValue(selector, exeAliases)
 	}
-	if target == "" {
-		return false
-	}
-
-	switch selector.Kind {
-	case config.SelectorExact, config.SelectorExe:
-		return target == value
-	case config.SelectorContains:
-		return strings.Contains(target, value)
-	case config.SelectorPrefix:
-		return strings.HasPrefix(target, value)
-	case config.SelectorSuffix:
-		return strings.HasSuffix(target, value)
-	case config.SelectorGlob:
-		ok, err := filepath.Match(value, target)
-		return err == nil && ok
-	default:
-		return false
-	}
+	return selectorMatchesAnyValue(selector, aliases)
 }
 
 type iAudioSessionManager2 struct{ ole.IUnknown }
@@ -436,6 +638,37 @@ func (v *iAudioSessionControl2) GetProcessID() (uint32, error) {
 		return 0, ole.NewError(hr)
 	}
 	return pid, nil
+}
+
+func (v *iAudioSessionControl2) GetDisplayName() (string, error) {
+	return callCOMStringMethod(v, v.VTable().GetDisplayName)
+}
+
+func (v *iAudioSessionControl2) GetSessionIdentifier() (string, error) {
+	return callCOMStringMethod(v, v.VTable().GetSessionIdentifier)
+}
+
+func (v *iAudioSessionControl2) GetSessionInstanceIdentifier() (string, error) {
+	return callCOMStringMethod(v, v.VTable().GetSessionInstanceIdentifier)
+}
+
+func callCOMStringMethod(v *iAudioSessionControl2, method uintptr) (string, error) {
+	var str *uint16
+	hr, _, _ := syscall.Syscall(
+		method,
+		2,
+		uintptr(unsafe.Pointer(v)),
+		uintptr(unsafe.Pointer(&str)),
+		0,
+	)
+	if hr != 0 {
+		return "", ole.NewError(hr)
+	}
+	if str == nil {
+		return "", nil
+	}
+	defer ole.CoTaskMemFree(uintptr(unsafe.Pointer(str)))
+	return strings.TrimSpace(windows.UTF16PtrToString(str)), nil
 }
 
 type iSimpleAudioVolume struct{ ole.IUnknown }

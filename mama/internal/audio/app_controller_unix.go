@@ -16,11 +16,13 @@ import (
 type commandRunner func(name string, args ...string) (string, error)
 
 type appSession struct {
-	id      string
-	name    string
-	exe     string
-	volume  int
-	isMuted bool
+	id         string
+	name       string
+	exe        string
+	aliases    []string
+	exeAliases []string
+	volume     int
+	isMuted    bool
 }
 
 type unixAppSessionController struct {
@@ -124,7 +126,16 @@ func (u *unixAppSessionController) ListTargets() ([]DiscoveredTarget, error) {
 		if name == "" {
 			name = s.exe
 		}
-		targets = append(targets, DiscoveredTarget{ID: "app:" + s.id, Type: config.TargetApp, Name: name})
+		target := DiscoveredTarget{
+			ID:       "app:" + s.id,
+			Type:     config.TargetApp,
+			Name:     name,
+			Selector: name,
+		}
+		if len(s.aliases) > 0 {
+			target.Aliases = append(target.Aliases, s.aliases...)
+		}
+		targets = append(targets, target)
 	}
 	return targets, nil
 }
@@ -173,7 +184,16 @@ func (u *unixAppSessionController) listSessions() ([]appSession, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parsePactlSinkInputs(out), nil
+	sessions := parsePactlSinkInputs(out)
+	for i := range sessions {
+		exeNoExt := strings.TrimSuffix(strings.TrimSpace(sessions[i].exe), filepath.Ext(strings.TrimSpace(sessions[i].exe)))
+		sessions[i].aliases = normalizeMatchValues(sessions[i].name, sessions[i].exe, exeNoExt)
+		sessions[i].exeAliases = normalizeMatchValues(sessions[i].exe, exeNoExt)
+		if len(sessions[i].aliases) == 0 && len(sessions[i].exeAliases) > 0 {
+			sessions[i].aliases = append(sessions[i].aliases, sessions[i].exeAliases...)
+		}
+	}
+	return sessions, nil
 }
 
 func parsePactlSinkInputs(out string) []appSession {
@@ -230,31 +250,20 @@ func trimPactlValue(line string) string {
 }
 
 func sessionMatchesSelector(s appSession, selector config.Selector) bool {
-	value := strings.TrimSpace(selector.Value)
-	if value == "" {
-		return false
+	aliases := s.aliases
+	exeAliases := s.exeAliases
+	if len(aliases) == 0 || len(exeAliases) == 0 {
+		exeNoExt := strings.TrimSuffix(strings.TrimSpace(s.exe), filepath.Ext(strings.TrimSpace(s.exe)))
+		if len(aliases) == 0 {
+			aliases = normalizeMatchValues(s.name, s.exe, exeNoExt)
+		}
+		if len(exeAliases) == 0 {
+			exeAliases = normalizeMatchValues(s.exe, exeNoExt)
+		}
 	}
-	target := s.name
+
 	if selector.Kind == config.SelectorExe {
-		target = s.exe
+		return selectorMatchesAnyValue(selector, exeAliases)
 	}
-	target = strings.TrimSpace(target)
-	if target == "" {
-		return false
-	}
-	switch selector.Kind {
-	case config.SelectorExact, config.SelectorExe:
-		return strings.EqualFold(target, value)
-	case config.SelectorContains:
-		return strings.Contains(strings.ToLower(target), strings.ToLower(value))
-	case config.SelectorPrefix:
-		return strings.HasPrefix(strings.ToLower(target), strings.ToLower(value))
-	case config.SelectorSuffix:
-		return strings.HasSuffix(strings.ToLower(target), strings.ToLower(value))
-	case config.SelectorGlob:
-		ok, err := filepath.Match(strings.ToLower(value), strings.ToLower(target))
-		return err == nil && ok
-	default:
-		return false
-	}
+	return selectorMatchesAnyValue(selector, aliases)
 }

@@ -5,6 +5,10 @@ package audio
 import "github.com/moutend/go-wca"
 
 func invokeEndpointVolume(dataFlow uint32, fn func(*wca.IAudioEndpointVolume) (interface{}, error)) (ret interface{}, err error) {
+	return invokeEndpointVolumeFor(dataFlow, "", fn)
+}
+
+func invokeEndpointVolumeFor(dataFlow uint32, selectorToken string, fn func(*wca.IAudioEndpointVolume) (interface{}, error)) (ret interface{}, err error) {
 	err = withCOMApartment(func() error {
 		var mmde *wca.IMMDeviceEnumerator
 		if err := wca.CoCreateInstance(wca.CLSID_MMDeviceEnumerator, 0, wca.CLSCTX_ALL, wca.IID_IMMDeviceEnumerator, &mmde); err != nil {
@@ -12,8 +16,8 @@ func invokeEndpointVolume(dataFlow uint32, fn func(*wca.IAudioEndpointVolume) (i
 		}
 		defer mmde.Release()
 
-		var mmd *wca.IMMDevice
-		if err := mmde.GetDefaultAudioEndpoint(dataFlow, wca.EConsole, &mmd); err != nil {
+		mmd, err := selectEndpointDevice(mmde, dataFlow, selectorToken)
+		if err != nil {
 			return err
 		}
 		defer mmd.Release()
