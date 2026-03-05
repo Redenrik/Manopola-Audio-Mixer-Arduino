@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -81,6 +82,15 @@ mappings:
 	}
 }
 
+func TestDefaultDisablesDebugLogs(t *testing.T) {
+	if Default().Debug {
+		t.Fatal("expected default config debug=false")
+	}
+	if !strings.Contains(DefaultYAML, "debug: false") {
+		t.Fatal("expected DefaultYAML to set debug: false")
+	}
+}
+
 func TestLoadAcceptsAppSelectorSchema(t *testing.T) {
 	cfgPath := writeConfig(t, `
 serial:
@@ -127,6 +137,67 @@ mappings:
 	}
 	if got := len(cfg.Mappings[0].Selectors); got != 2 {
 		t.Fatalf("expected 2 selectors, got %d", got)
+	}
+}
+
+func TestLoadMigratesLegacyFallbackFlagToTarget(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 1
+    target: app
+    selector:
+      kind: exact
+      value: "Discord"
+    fallback_to_master: true
+    step: 0.02
+`)
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if got := cfg.Mappings[0].FallbackTarget; got != TargetMasterOut {
+		t.Fatalf("fallback target = %q, want %q", got, TargetMasterOut)
+	}
+	if cfg.Mappings[0].FallbackToMaster {
+		t.Fatal("expected legacy fallback_to_master to be canonicalized to fallback_target")
+	}
+}
+
+func TestLoadRejectsFallbackTargetForNonSessionMapping(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 1
+    target: master_out
+    fallback_target: mic_in
+    step: 0.02
+`)
+
+	if _, err := Load(cfgPath); err == nil {
+		t.Fatal("expected error for fallback on non app/group mapping")
+	}
+}
+
+func TestLoadRejectsMissingFallbackSelectorForAppGroupFallback(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+mappings:
+  - knob: 1
+    target: app
+    selector:
+      kind: exact
+      value: "Discord"
+    fallback_target: app
+    step: 0.02
+`)
+
+	if _, err := Load(cfgPath); err == nil {
+		t.Fatal("expected error for fallback app without fallback_name")
 	}
 }
 

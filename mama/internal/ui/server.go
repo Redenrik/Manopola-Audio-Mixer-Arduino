@@ -138,6 +138,9 @@ type mappingStatusItem struct {
 	Volume           int               `json:"volume,omitempty"`
 	Muted            bool              `json:"muted"`
 	SessionCount     int               `json:"sessionCount,omitempty"`
+	FallbackEnabled  bool              `json:"fallbackEnabled,omitempty"`
+	FallbackTarget   config.TargetType `json:"fallbackTarget,omitempty"`
+	FallbackName     string            `json:"fallbackName,omitempty"`
 	FallbackToMaster bool              `json:"fallbackToMaster,omitempty"`
 	Health           string            `json:"health"`
 	HealthMessage    string            `json:"healthMessage,omitempty"`
@@ -159,13 +162,17 @@ func (s *Server) handleMappingStatus(w http.ResponseWriter, r *http.Request) {
 	items := make([]mappingStatusItem, 0, len(cfg.ActiveMappings()))
 	for _, mapping := range cfg.ActiveMappings() {
 		selectorToken := mappingSelectorToken(mapping)
+		fallbackTarget, fallbackName, fallbackEnabled := mapping.EffectiveFallback()
 		item := mappingStatusItem{
 			Knob:             mapping.Knob,
 			Target:           mapping.Target,
 			Selector:         selectorToken,
 			Display:          mappingDisplayName(mapping),
 			Available:        false,
-			FallbackToMaster: mapping.FallbackToMaster,
+			FallbackEnabled:  fallbackEnabled,
+			FallbackTarget:   fallbackTarget,
+			FallbackName:     fallbackName,
+			FallbackToMaster: fallbackEnabled && fallbackTarget == config.TargetMasterOut && strings.TrimSpace(fallbackName) == "",
 			Health:           "unknown",
 		}
 
@@ -276,8 +283,8 @@ func classifyMappingHealth(mapping config.Mapping, item mappingStatusItem, readE
 
 	msg := readErr.Error()
 	if errors.Is(readErr, audio.ErrTargetUnavailable) {
-		if mapping.FallbackToMaster && (mapping.Target == config.TargetApp || mapping.Target == config.TargetGroup) {
-			return "fallback", "target unavailable, fallback to master is enabled"
+		if fallbackTarget, _, fallbackEnabled := mapping.EffectiveFallback(); fallbackEnabled && (mapping.Target == config.TargetApp || mapping.Target == config.TargetGroup) {
+			return "fallback", fmt.Sprintf("target unavailable, fallback to %s is enabled", fallbackTarget)
 		}
 		return "unavailable", "target unavailable"
 	}

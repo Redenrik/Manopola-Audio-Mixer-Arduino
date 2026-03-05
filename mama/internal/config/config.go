@@ -27,7 +27,7 @@ const DefaultYAML = `serial:
   port: "COM3"     # Windows example. On Linux: /dev/ttyACM0 or /dev/ttyUSB0
   baud: 115200
 
-debug: true
+debug: false
 
 # Current backend support:
 # - implemented: master_out
@@ -77,6 +77,8 @@ type Mapping struct {
 	Step             float64           `yaml:"step" json:"step"` // e.g. 0.02 = 2% per detent
 	Sensitivity      SensitivityPreset `yaml:"sensitivity,omitempty" json:"sensitivity,omitempty"`
 	FallbackToMaster bool              `yaml:"fallback_to_master,omitempty" json:"fallback_to_master,omitempty"`
+	FallbackTarget   TargetType        `yaml:"fallback_target,omitempty" json:"fallback_target,omitempty"`
+	FallbackName     string            `yaml:"fallback_name,omitempty" json:"fallback_name,omitempty"`
 }
 
 type SensitivityPreset string
@@ -147,6 +149,8 @@ type rawMapping struct {
 	Priority         int               `yaml:"priority"`
 	Sensitivity      SensitivityPreset `yaml:"sensitivity"`
 	FallbackToMaster bool              `yaml:"fallback_to_master"`
+	FallbackTarget   TargetType        `yaml:"fallback_target"`
+	FallbackName     string            `yaml:"fallback_name"`
 	LegacyID         int               `yaml:"id"`
 	LegacyType       TargetType        `yaml:"type"`
 	LegacyApp        string            `yaml:"app"`
@@ -223,6 +227,8 @@ func migrateRawMapping(rm rawMapping) Mapping {
 		Step:             rm.Step,
 		Sensitivity:      rm.Sensitivity,
 		FallbackToMaster: rm.FallbackToMaster,
+		FallbackTarget:   rm.FallbackTarget,
+		FallbackName:     rm.FallbackName,
 	}
 
 	if m.Knob == 0 {
@@ -305,6 +311,14 @@ func validateMappingSet(mappings []Mapping) error {
 
 		m.Name = strings.TrimSpace(m.Name)
 		m.Sensitivity = normalizeSensitivity(m.Sensitivity)
+		m.FallbackName = strings.TrimSpace(m.FallbackName)
+		if m.FallbackTarget == "" && m.FallbackToMaster {
+			m.FallbackTarget = TargetMasterOut
+		}
+		if m.FallbackTarget != "" {
+			// Canonicalize to the flexible schema while remaining backward-compatible on load.
+			m.FallbackToMaster = false
+		}
 		if m.Selector != nil {
 			m.Selector.Value = strings.TrimSpace(m.Selector.Value)
 		}
@@ -333,8 +347,19 @@ func validateMappingSet(mappings []Mapping) error {
 		if err := validateSensitivity(m.Sensitivity); err != nil {
 			return fmt.Errorf("knob %d: %w", m.Knob, err)
 		}
-		if m.FallbackToMaster && m.Target != TargetApp && m.Target != TargetGroup {
-			return fmt.Errorf("knob %d: fallback_to_master is allowed only for target app/group", m.Knob)
+		if m.FallbackTarget != "" {
+			if m.Target != TargetApp && m.Target != TargetGroup {
+				return fmt.Errorf("knob %d: fallback is allowed only for target app/group", m.Knob)
+			}
+			switch m.FallbackTarget {
+			case TargetMasterOut, TargetMicIn, TargetLineIn, TargetApp, TargetGroup:
+				// valid
+			default:
+				return fmt.Errorf("knob %d: invalid fallback_target %q", m.Knob, m.FallbackTarget)
+			}
+			if (m.FallbackTarget == TargetApp || m.FallbackTarget == TargetGroup) && m.FallbackName == "" {
+				return fmt.Errorf("knob %d: fallback_name is required for fallback_target %q", m.Knob, m.FallbackTarget)
+			}
 		}
 
 		if math.IsNaN(m.Step) || math.IsInf(m.Step, 0) || m.Step <= 0 || m.Step > 1 {
@@ -350,6 +375,16 @@ func validateMappingSet(mappings []Mapping) error {
 	}
 
 	return nil
+}
+
+func (m Mapping) EffectiveFallback() (TargetType, string, bool) {
+	if m.FallbackTarget != "" {
+		return m.FallbackTarget, strings.TrimSpace(m.FallbackName), true
+	}
+	if m.FallbackToMaster {
+		return TargetMasterOut, "", true
+	}
+	return "", "", false
 }
 
 func validateMappingPrecedence(mappings []Mapping) error {
@@ -569,7 +604,7 @@ func Default() Config {
 			Port: "COM3",
 			Baud: DefaultBaud,
 		},
-		Debug:    true,
+		Debug:    false,
 		Mappings: mappings,
 	}
 }

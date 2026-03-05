@@ -2,7 +2,7 @@ serial:
   port: "COM3"     # Windows example. On Linux: /dev/ttyACM0 or /dev/ttyUSB0
   baud: 115200
 
-debug: true
+debug: false
 
 # Current backend support:
 # - implemented: master_out

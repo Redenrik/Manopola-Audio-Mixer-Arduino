@@ -631,52 +631,46 @@ func (s *Service) noteObservedKnob(knobID int) {
 
 func effectiveAdjustStep(m config.Mapping) float64 {
 	step := m.Step
-	multiplier := 1.0
-	switch m.Sensitivity {
-	case config.SensitivitySlow:
-		multiplier = 0.5
-	case config.SensitivityFast:
-		multiplier = 1.6
-	default:
-		multiplier = 1.0
-	}
-
-	next := step * multiplier
+	next := step
 	next = math.Max(0.001, math.Min(1.0, next))
 	return next
 }
 
 func (s *Service) tryFallbackAdjust(m config.Mapping, step float64, delta int, knobID int, debug bool) (bool, error) {
-	if !m.FallbackToMaster {
+	if m.Target != config.TargetApp && m.Target != config.TargetGroup {
 		return false, nil
 	}
-	if m.Target != config.TargetApp && m.Target != config.TargetGroup {
+	fallbackTarget, fallbackName, enabled := m.EffectiveFallback()
+	if !enabled {
 		return false, nil
 	}
 	if debug {
 		runtime.Log("fallback_adjust", runtime.Fields{
-			"knob_id": knobID,
-			"target":  "master_out",
-			"delta":   delta,
+			"knob_id":         knobID,
+			"fallback_target": fallbackTarget,
+			"fallback_name":   fallbackName,
+			"delta":           delta,
 		})
 	}
-	return true, s.backend.Adjust(config.TargetMasterOut, "", step, delta)
+	return true, s.backend.Adjust(fallbackTarget, fallbackName, step, delta)
 }
 
 func (s *Service) tryFallbackToggle(m config.Mapping, knobID int, debug bool) (bool, error) {
-	if !m.FallbackToMaster {
+	if m.Target != config.TargetApp && m.Target != config.TargetGroup {
 		return false, nil
 	}
-	if m.Target != config.TargetApp && m.Target != config.TargetGroup {
+	fallbackTarget, fallbackName, enabled := m.EffectiveFallback()
+	if !enabled {
 		return false, nil
 	}
 	if debug {
 		runtime.Log("fallback_toggle", runtime.Fields{
-			"knob_id": knobID,
-			"target":  "master_out",
+			"knob_id":         knobID,
+			"fallback_target": fallbackTarget,
+			"fallback_name":   fallbackName,
 		})
 	}
-	return true, s.backend.ToggleMute(config.TargetMasterOut, "")
+	return true, s.backend.ToggleMute(fallbackTarget, fallbackName)
 }
 
 func backendTargetName(m config.Mapping) string {

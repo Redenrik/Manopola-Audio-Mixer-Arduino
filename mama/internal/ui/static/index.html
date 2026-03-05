@@ -229,7 +229,7 @@
     .row {
       display: grid;
       gap: 8px;
-      grid-template-columns: 92px minmax(150px, 1fr) minmax(220px, 1.4fr) 118px 118px 146px 42px;
+      grid-template-columns: 92px minmax(150px, 1fr) minmax(220px, 1.4fr) 118px 182px 42px;
       align-items: center;
       margin-bottom: 8px;
     }
@@ -265,7 +265,7 @@
       }
 
       .row {
-        grid-template-columns: 108px minmax(190px, 1fr) minmax(320px, 1.6fr) 130px 148px 170px 48px;
+        grid-template-columns: 108px minmax(190px, 1fr) minmax(320px, 1.6fr) 148px 208px 48px;
       }
     }
 
@@ -590,11 +590,17 @@
     }
 
     .map-fallback {
-      display: inline-flex;
-      align-items: center;
+      display: grid;
       gap: 6px;
-      font-size: 0.84rem;
+      font-size: 0.78rem;
       margin: 0;
+    }
+
+    .map-fallback select,
+    .map-fallback input {
+      width: 100%;
+      padding: 7px 8px;
+      font-size: 0.82rem;
     }
 
     .modal-overlay {
@@ -704,7 +710,7 @@
     </section>
 
     <section class="settings-view hidden" id="settingsView">
-      <section class="panel">
+      <section class="panel" id="settingsAppearancePanel">
         <div class="settings-header">
           <div class="settings-meta">
             <h2 id="settingsTitle">Settings</h2>
@@ -754,6 +760,7 @@
             <input id="baudInput" aria-label="Serial baud rate" type="number" min="1" step="1" value="115200">
           </label>
           <div class="actions">
+            <button type="button" id="autoDetectPort">Auto-Detect MAMA</button>
             <button type="button" id="testConnection">Test Connection</button>
           </div>
         </div>
@@ -795,15 +802,14 @@
           <div id="headerKnob">Knob</div>
           <div id="headerTarget">Target</div>
           <div id="headerName">Name / Selector</div>
-          <div id="headerSensitivity">Sensitivity</div>
-          <div id="headerStep">Step (0..1)</div>
+          <div id="headerStep">Step (%)</div>
           <div id="headerFallback">Fallback</div>
           <div></div>
         </div>
         <div id="mappings"></div>
         <div class="actions">
           <button id="addMapping" type="button">Add Mapping</button>
-          <button id="restoreMissingKnobs" type="button">Restore Missing Knobs</button>
+          <button id="addKnob" type="button">Add Knob</button>
           <button class="btn-primary" id="saveConfig" type="button">Save Config</button>
           <button id="rollbackConfig" type="button">Rollback Last Save</button>
         </div>
@@ -876,6 +882,8 @@
       identifyRetryTimer: null,
       mappingStatusTimer: null,
       mappingStatusInFlight: false,
+      runtimeStatusTimer: null,
+      runtimeStatusInFlight: false,
       lastMappingStatus: [],
       observedKnobs: [],
       debugLines: [],
@@ -893,7 +901,9 @@
       onboarding: {
         open: false,
         index: 0,
+        serialAutoDetected: false,
         steps: [
+          { id: "appearance", panelId: "settingsAppearancePanel" },
           { id: "serial", panelId: "settingsConnectionPanel" },
           { id: "mappings", panelId: "settingsMappingsPanel" },
           { id: "save", panelId: "settingsMappingsPanel" }
@@ -1009,18 +1019,20 @@
         onboardingPrev: "Back",
         onboardingNext: "Next",
         onboardingFinish: "Finish",
-        onboardingSerialTitle: "1. Serial connection",
-        onboardingSerialHint: "Select your board port and baud, then run Test Connection.",
-        onboardingMappingsTitle: "2. Knob mappings",
-        onboardingMappingsHint: "Assign targets and sensitivity per knob. Use a template if needed.",
-        onboardingSaveTitle: "3. Save and start",
+        onboardingAppearanceTitle: "1. Language and theme",
+        onboardingAppearanceHint: "Choose UI language and theme preference (System, Light, or Dark).",
+        onboardingSerialTitle: "2. Serial connection",
+        onboardingSerialHint: "Use Auto-Detect MAMA to find the board, then run Test Connection.",
+        onboardingMappingsTitle: "3. Knob mappings",
+        onboardingMappingsHint: "Assign targets and per-click step (%) for each knob. Use a template if needed.",
+        onboardingSaveTitle: "4. Save and start",
         onboardingSaveHint: "Save configuration. Changes apply immediately while the app is running.",
         wizardHeading: "First-Run Wizard",
         wizardIntro: "Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.",
         wizardStart: "Start Wizard", wizardNext: "Next Step", wizardReset: "Reset",
-        connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
+        connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", autoDetectPort: "Auto-Detect MAMA", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
         identifyHeading: "Knob Identification", identifyIntro: "Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.", debugHeading: "Debug Console", startIdentify: "Start Identify", stopIdentify: "Stop",
-        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (0..1)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", restoreMissingKnobs: "Restore Missing Knobs", saveConfig: "Save Config", rollbackConfig: "Rollback Last Save", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", exportDiagnostics: "Export Diagnostics", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).", nonWindowsTargetWarning: "macOS/Linux note: app/group controls depend on available audio session backend. Device and master controls remain available.",
+        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackNone: "No fallback", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", addKnob: "Add Knob", saveConfig: "Save Config", rollbackConfig: "Rollback Last Save", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", exportDiagnostics: "Export Diagnostics", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).", nonWindowsTargetWarning: "macOS/Linux note: app/group controls depend on available audio session backend. Device and master controls remain available.",
         appHintActive: "Detected active apps ({count}). Use suggestions with Windows names. If the app is offline, use exe:processname (example: exe:discord).",
         appHintOffline: "No active app sessions detected now. Use exe:processname and it will attach when the app starts.",
         groupHint: "Group accepts multiple rules separated by ';' (example: smart:browser; exe:discord).",
@@ -1033,15 +1045,18 @@
         conflictInvalidKnob: "Invalid knob id in a mapping row.",
         conflictDuplicateKnob: "Knob {knob} is assigned more than once.",
         conflictUnknownTarget: "Unknown target type in a mapping row.",
-        conflictInvalidStep: "Step must be between 0.001 and 1.",
+        conflictUnknownFallbackTarget: "Unknown fallback target type.",
+        conflictInvalidStep: "Step must be between 1 and 100.",
         conflictMissingAppSelector: "App target requires an app name or selector.",
         conflictMissingGroupSelector: "Group target requires at least one selector rule.",
+        conflictFallbackSource: "Fallback can be enabled only for app/group mappings.",
         rollbackApplied: "Rollback snapshot restored. Click Save Config to apply.",
         rollbackMissing: "No rollback snapshot available yet.",
         diagnosticsExported: "Diagnostics exported to JSON file.",
         diagnosticsExportFailed: "Could not export diagnostics.",
-        restoreMissingKnobsDone: "Missing knobs restored.",
-        restoreMissingKnobsNone: "All knob IDs are already mapped.",
+        addKnobDone: "Knob {knob} added.",
+        addKnobLimit: "Maximum knob count reached.",
+        conflictMissingFallbackSelector: "Fallback app/group requires a selector.",
         groupEditButton: "Edit",
         groupEditorTitle: "Group Editor",
         groupEditorIntro: "Add matching rules for this group. Any app matching at least one rule will be controlled.",
@@ -1089,18 +1104,20 @@
         onboardingPrev: "Indietro",
         onboardingNext: "Avanti",
         onboardingFinish: "Fine",
-        onboardingSerialTitle: "1. Connessione seriale",
-        onboardingSerialHint: "Seleziona porta e baud della scheda, poi esegui Test connessione.",
-        onboardingMappingsTitle: "2. Mappature manopole",
-        onboardingMappingsHint: "Assegna target e sensibilita per ogni manopola. Puoi usare un template.",
-        onboardingSaveTitle: "3. Salva e avvia",
+        onboardingAppearanceTitle: "1. Lingua e tema",
+        onboardingAppearanceHint: "Scegli lingua interfaccia e preferenza tema (Sistema, Chiaro o Scuro).",
+        onboardingSerialTitle: "2. Connessione seriale",
+        onboardingSerialHint: "Usa Auto-Rileva MAMA per trovare la scheda, poi esegui Test connessione.",
+        onboardingMappingsTitle: "3. Mappature manopole",
+        onboardingMappingsHint: "Assegna target e step (%) per click per ogni manopola. Puoi usare un template.",
+        onboardingSaveTitle: "4. Salva e avvia",
         onboardingSaveHint: "Salva la configurazione. Le modifiche vengono applicate subito.",
         wizardHeading: "Procedura guidata iniziale",
         wizardIntro: "Segui questa procedura per rilevare la scheda, confermare la seriale, mappare le manopole, salvare e verificare gli eventi live.",
         wizardStart: "Avvia procedura", wizardNext: "Passo successivo", wizardReset: "Reimposta",
-        connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
+        connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", autoDetectPort: "Auto-Rileva MAMA", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
         identifyHeading: "Identificazione manopole", identifyIntro: "L'attivita delle manopole viene rilevata automaticamente una volta configurata la porta seriale. Ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", debugHeading: "Console debug", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
-        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (0..1)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", restoreMissingKnobs: "Ripristina manopole mancanti", saveConfig: "Salva config", rollbackConfig: "Ripristina ultimo salvataggio", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", exportDiagnostics: "Esporta diagnostica", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).", nonWindowsTargetWarning: "Nota macOS/Linux: i controlli app/group dipendono dal backend sessioni audio disponibile. I controlli dispositivo e master restano disponibili.",
+        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackNone: "Nessun fallback", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", addKnob: "Aggiungi manopola", saveConfig: "Salva config", rollbackConfig: "Ripristina ultimo salvataggio", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", exportDiagnostics: "Esporta diagnostica", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).", nonWindowsTargetWarning: "Nota macOS/Linux: i controlli app/group dipendono dal backend sessioni audio disponibile. I controlli dispositivo e master restano disponibili.",
         appHintActive: "App attive rilevate ({count}). Usa i suggerimenti con i nomi visibili in Windows. Se l'app e offline usa exe:nomeprocesso (esempio: exe:discord).",
         appHintOffline: "Nessuna sessione app attiva rilevata ora. Usa exe:nomeprocesso e si colleghera quando l'app parte.",
         groupHint: "Il gruppo accetta piu regole separate da ';' (esempio: smart:browser; exe:discord).",
@@ -1113,15 +1130,18 @@
         conflictInvalidKnob: "ID manopola non valido in una riga.",
         conflictDuplicateKnob: "La manopola {knob} e assegnata piu volte.",
         conflictUnknownTarget: "Tipo target sconosciuto in una riga.",
-        conflictInvalidStep: "Lo step deve essere compreso tra 0.001 e 1.",
+        conflictUnknownFallbackTarget: "Tipo target fallback sconosciuto.",
+        conflictInvalidStep: "Lo step deve essere compreso tra 1 e 100.",
         conflictMissingAppSelector: "Il target app richiede nome app o selettore.",
         conflictMissingGroupSelector: "Il target gruppo richiede almeno una regola selettore.",
+        conflictFallbackSource: "Il fallback puo essere abilitato solo su mappature app/gruppo.",
         rollbackApplied: "Snapshot di rollback ripristinata. Clicca Salva config per applicare.",
         rollbackMissing: "Nessuna snapshot di rollback disponibile.",
         diagnosticsExported: "Diagnostica esportata in file JSON.",
         diagnosticsExportFailed: "Impossibile esportare la diagnostica.",
-        restoreMissingKnobsDone: "Manopole mancanti ripristinate.",
-        restoreMissingKnobsNone: "Tutti gli ID manopola sono gia mappati.",
+        addKnobDone: "Manopola {knob} aggiunta.",
+        addKnobLimit: "Raggiunto il numero massimo di manopole.",
+        conflictMissingFallbackSelector: "Il fallback app/gruppo richiede un selettore.",
         groupEditButton: "Modifica",
         groupEditorTitle: "Editor Gruppo",
         groupEditorIntro: "Aggiungi regole di matching per questo gruppo. Qualsiasi app che corrisponde ad almeno una regola verrà controllata.",
@@ -1161,6 +1181,21 @@
       return out;
     }
 
+    function configStepToPercent(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return 2;
+      const percent = Math.round(n * 100);
+      return Math.max(1, Math.min(100, percent));
+    }
+
+    function percentStepToConfig(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return 0.02;
+      const percent = Math.round(n);
+      const clamped = Math.max(1, Math.min(100, percent));
+      return clamped / 100;
+    }
+
     function stableConfigSignature(cfg) {
       if (!cfg || typeof cfg !== "object") return "";
       const serial = (cfg.serial && typeof cfg.serial === "object") ? cfg.serial : {};
@@ -1174,8 +1209,7 @@
           const out = {
             knob: parseInt(mapping && mapping.knob, 10) || 0,
             target: String(mapping && mapping.target || ""),
-            step: Number(mapping && mapping.step),
-            sensitivity: String((mapping && mapping.sensitivity) || "normal").toLowerCase()
+            step: Number(mapping && mapping.step)
           };
           if (mapping && typeof mapping.name === "string" && mapping.name.trim()) {
             out.name = mapping.name.trim();
@@ -1196,6 +1230,12 @@
           }
           if (mapping && mapping.fallback_to_master) {
             out.fallback_to_master = true;
+          }
+          if (mapping && typeof mapping.fallback_target === "string" && mapping.fallback_target.trim()) {
+            out.fallback_target = mapping.fallback_target.trim();
+          }
+          if (mapping && typeof mapping.fallback_name === "string" && mapping.fallback_name.trim()) {
+            out.fallback_name = mapping.fallback_name.trim();
           }
           return out;
         }) : []
@@ -1259,9 +1299,9 @@
       const bindings = {
         titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", themeLabel: "themeLabel", settingsTitle: "settingsTitle", settingsIntro: "settingsIntro", runSetupAgain: "runSetupAgain", closeSettingsBtn: "closeSettingsBtn", unsavedBadge: "unsavedChanges", advancedHeading: "advancedHeading", advancedSummary: "advancedSummary", advancedConfigSummary: "advancedConfigSummary", onboardingTitle: "onboardingTitle", onboardingIntro: "onboardingIntro", onboardingSkip: "onboardingSkip", onboardingPrev: "onboardingPrev", onboardingNext: "onboardingNext", onboardingFinish: "onboardingFinish", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
         wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
-        manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", debugHeading: "debugHeading", mappingsHeading: "mappingsHeading",
-        mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerSensitivity: "headerSensitivity", headerStep: "headerStep", headerFallback: "headerFallback",
-        addMapping: "addMapping", restoreMissingKnobs: "restoreMissingKnobs", saveConfig: "saveConfig", rollbackConfig: "rollbackConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", exportDiagnostics: "exportDiagnostics", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
+        manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", autoDetectPort: "autoDetectPort", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", debugHeading: "debugHeading", mappingsHeading: "mappingsHeading",
+        mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep", headerFallback: "headerFallback",
+        addMapping: "addMapping", addKnob: "addKnob", saveConfig: "saveConfig", rollbackConfig: "rollbackConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", exportDiagnostics: "exportDiagnostics", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
         groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupAddMusic: "groupAddMusic", groupAddStreaming: "groupAddStreaming", groupAddChat: "groupAddChat", groupAddCreator: "groupAddCreator", groupClearRules: "groupClearRules", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
       };
       for (const [id, key] of Object.entries(bindings)) {
@@ -1320,6 +1360,9 @@
     }
 
     function onboardingStepText(stepID) {
+      if (stepID === "appearance") {
+        return { title: t("onboardingAppearanceTitle"), hint: t("onboardingAppearanceHint") };
+      }
       if (stepID === "serial") {
         return { title: t("onboardingSerialTitle"), hint: t("onboardingSerialHint") };
       }
@@ -1333,7 +1376,7 @@
     }
 
     function clearOnboardingHighlights() {
-      for (const id of ["settingsConnectionPanel", "settingsMappingsPanel"]) {
+      for (const id of ["settingsAppearancePanel", "settingsConnectionPanel", "settingsMappingsPanel"]) {
         const el = $(id);
         if (el) el.classList.remove("focus-highlight");
       }
@@ -1369,11 +1412,19 @@
       const currentText = onboardingStepText(state.onboarding.steps[state.onboarding.index].id);
       setStatus("onboardingStatus", currentText.hint || "");
       focusOnboardingStep();
+      const current = state.onboarding.steps[state.onboarding.index];
+      if (current && current.id === "serial" && !state.onboarding.serialAutoDetected) {
+        state.onboarding.serialAutoDetected = true;
+        autoDetectPort().catch((err) => {
+          setStatus("onboardingStatus", err && err.message ? err.message : currentText.hint || "", "error");
+        });
+      }
     }
 
     function openOnboarding() {
       state.onboarding.open = true;
       state.onboarding.index = 0;
+      state.onboarding.serialAutoDetected = false;
       openSettingsView();
       $("onboardingModal").classList.remove("hidden");
       renderOnboarding();
@@ -2310,32 +2361,34 @@
       for (let i = 1; i <= knobCount; i++) {
         if (!used.has(i)) return i;
       }
+      if (knobCount < maxKnobCount) {
+        return knobCount + 1;
+      }
       return 1;
     }
 
     function addMappingWithNextKnob() {
-      $("mappings").appendChild(mappingRow({ knob: nextAvailableKnobID(), target: "master_out", step: 0.02, name: "" }));
+      const nextKnob = nextAvailableKnobID();
+      if (nextKnob > knobCount) {
+        growKnobCount(nextKnob, "manual add mapping");
+      }
+      $("mappings").appendChild(mappingRow({ knob: nextKnob, target: "master_out", step: 0.02, name: "" }));
       refreshDirtyState();
     }
 
-    function restoreMissingKnobs() {
-      const used = mappedKnobSet();
-      const missing = [];
-      for (let i = 1; i <= knobCount; i++) {
-        if (!used.has(i)) missing.push(i);
-      }
-      if (missing.length === 0) {
-        setStatus("saveStatus", t("restoreMissingKnobsNone"));
+    function addKnobSlot() {
+      if (knobCount >= maxKnobCount) {
+        setStatus("saveStatus", t("addKnobLimit"), "error");
         return;
       }
-      for (const knobID of missing) {
-        $("mappings").appendChild(mappingRow({ knob: knobID, target: "master_out", step: 0.02, name: "" }));
-      }
-      setStatus("saveStatus", t("restoreMissingKnobsDone"), "ok");
+      const newKnob = knobCount + 1;
+      growKnobCount(newKnob, "manual add knob");
+      $("mappings").appendChild(mappingRow({ knob: newKnob, target: "master_out", step: 0.02, name: "" }));
+      setStatus("saveStatus", formatText(t("addKnobDone"), { knob: newKnob }), "ok");
       refreshDirtyState();
     }
 
-    function mappingRow(mapping = { knob: 1, target: "master_out", step: 0.02, sensitivity: "normal", fallback_to_master: false, name: "" }) {
+    function mappingRow(mapping = { knob: 1, target: "master_out", step: 0.02, fallback_target: "", fallback_name: "", name: "" }) {
       const row = document.createElement("div");
       row.className = "row";
 
@@ -2406,39 +2459,51 @@
       step.className = "map-step";
       step.setAttribute("aria-label", "Volume step");
       step.type = "number";
-      step.min = "0.001";
-      step.max = "1";
-      step.step = "0.001";
-      step.value = String(mapping.step || 0.02);
+      step.min = "1";
+      step.max = "100";
+      step.step = "1";
+      step.value = String(configStepToPercent(mapping.step));
 
-      const sensitivity = document.createElement("select");
-      sensitivity.className = "map-sensitivity";
-      sensitivity.setAttribute("aria-label", "Sensitivity preset");
-      const sensitivityOptions = [
-        { value: "slow", label: t("sensitivitySlow") },
-        { value: "normal", label: t("sensitivityNormal") },
-        { value: "fast", label: t("sensitivityFast") }
+      const fallbackWrap = document.createElement("div");
+      fallbackWrap.className = "map-fallback";
+      const fallbackTarget = document.createElement("select");
+      fallbackTarget.className = "map-fallback-target";
+      fallbackTarget.setAttribute("aria-label", "Fallback target");
+      const fallbackOptions = [
+        { value: "", label: t("fallbackNone") },
+        { value: "master_out", label: targetLabel("master_out") },
+        { value: "mic_in", label: targetLabel("mic_in") },
+        { value: "line_in", label: targetLabel("line_in") },
+        { value: "app", label: targetLabel("app") },
+        { value: "group", label: targetLabel("group") }
       ];
-      for (const entry of sensitivityOptions) {
+      for (const entry of fallbackOptions) {
         const option = document.createElement("option");
         option.value = entry.value;
         option.textContent = entry.label;
-        sensitivity.appendChild(option);
+        fallbackTarget.appendChild(option);
       }
-      sensitivity.value = ["slow", "normal", "fast"].includes(String(mapping.sensitivity || "").toLowerCase())
-        ? String(mapping.sensitivity).toLowerCase()
-        : "normal";
+      const fallbackName = document.createElement("input");
+      fallbackName.className = "map-fallback-name";
+      fallbackName.setAttribute("aria-label", "Fallback selector");
+      fallbackName.placeholder = state.language === "it" ? "Selettore fallback" : "Fallback selector";
+      const fallbackHint = document.createElement("span");
+      fallbackHint.className = "hint";
 
-      const fallbackWrap = document.createElement("label");
-      fallbackWrap.className = "map-fallback";
-      const fallback = document.createElement("input");
-      fallback.type = "checkbox";
-      fallback.className = "map-fallback-master";
-      fallback.checked = !!mapping.fallback_to_master;
-      const fallbackText = document.createElement("span");
-      fallbackText.textContent = t("fallbackToMaster");
-      fallbackWrap.appendChild(fallback);
-      fallbackWrap.appendChild(fallbackText);
+      const initialFallbackTarget = String((mapping && mapping.fallback_target) || "").trim()
+        || ((mapping && mapping.fallback_to_master) ? "master_out" : "");
+      const hasFallbackTarget = Array.from(fallbackTarget.options).some((opt) => opt.value === initialFallbackTarget);
+      if (!hasFallbackTarget && initialFallbackTarget) {
+        const option = document.createElement("option");
+        option.value = initialFallbackTarget;
+        option.textContent = initialFallbackTarget;
+        fallbackTarget.appendChild(option);
+      }
+      fallbackTarget.value = initialFallbackTarget;
+      fallbackName.value = String((mapping && mapping.fallback_name) || "").trim();
+      fallbackWrap.appendChild(fallbackTarget);
+      fallbackWrap.appendChild(fallbackName);
+      fallbackWrap.appendChild(fallbackHint);
 
       const remove = document.createElement("button");
       remove.type = "button";
@@ -2467,10 +2532,6 @@
         nameHint.textContent = targetInputHint(target.value);
         groupEdit.hidden = target.value !== "group";
         groupEdit.disabled = target.value !== "group" || name.disabled;
-        const supportsFallback = target.value === "app" || target.value === "group";
-        fallbackWrap.style.visibility = supportsFallback ? "visible" : "hidden";
-        fallback.disabled = !supportsFallback;
-        if (!supportsFallback) fallback.checked = false;
         suggestions.innerHTML = "";
         for (const value of suggestionsForTarget(target.value)) {
           const option = document.createElement("option");
@@ -2478,13 +2539,44 @@
           suggestions.appendChild(option);
         }
       }
+      function syncFallbackState() {
+        const supportsFallback = target.value === "app" || target.value === "group";
+        fallbackTarget.disabled = !supportsFallback;
+        if (!supportsFallback) {
+          fallbackTarget.value = "";
+          fallbackName.value = "";
+          fallbackName.disabled = true;
+          fallbackHint.textContent = t("fallbackNone");
+          return;
+        }
+        const selectedFallback = String(fallbackTarget.value || "").trim();
+        if (!selectedFallback) {
+          fallbackName.disabled = true;
+          fallbackName.value = "";
+          fallbackHint.textContent = t("fallbackNone");
+          return;
+        }
+        fallbackName.disabled = false;
+        if (selectedFallback === "app") {
+          fallbackName.placeholder = state.language === "it" ? "App fallback (es. Discord o exe:discord)" : "Fallback app (e.g. Discord or exe:discord)";
+        } else if (selectedFallback === "group") {
+          fallbackName.placeholder = state.language === "it" ? "Gruppo fallback (es. smart:browser; exe:discord)" : "Fallback group (e.g. smart:browser; exe:discord)";
+        } else if (selectedFallback === "master_out") {
+          fallbackName.placeholder = state.language === "it" ? "Output fallback (vuoto = predefinito)" : "Fallback output (empty = default)";
+        } else {
+          fallbackName.placeholder = state.language === "it" ? "Dispositivo fallback (vuoto = predefinito)" : "Fallback device (empty = default)";
+        }
+        fallbackHint.textContent = targetLabel(selectedFallback);
+      }
       target.addEventListener("change", syncNameState);
+      target.addEventListener("change", syncFallbackState);
+      fallbackTarget.addEventListener("change", syncFallbackState);
       syncNameState();
+      syncFallbackState();
 
       row.appendChild(knob);
       row.appendChild(target);
       row.appendChild(nameWrap);
-      row.appendChild(sensitivity);
       row.appendChild(step);
       row.appendChild(fallbackWrap);
       row.appendChild(remove);
@@ -2515,19 +2607,16 @@
       const knob = row.querySelector(".map-knob");
       const target = row.querySelector(".map-target");
       const name = row.querySelector(".map-name");
-      const sensitivity = row.querySelector(".map-sensitivity");
       const step = row.querySelector(".map-step");
-      const fallback = row.querySelector(".map-fallback-master");
+      const fallbackTarget = row.querySelector(".map-fallback-target");
+      const fallbackName = row.querySelector(".map-fallback-name");
       const mapping = {
         knob: parseInt(knob && knob.value, 10),
         target: target && target.value,
-        step: parseFloat(step && step.value),
-        sensitivity: (sensitivity && sensitivity.value) ? sensitivity.value : "normal"
+        step: percentStepToConfig(parseFloat(step && step.value)),
+        sensitivity: "normal"
       };
       const targetValue = String(mapping.target || "");
-      if (fallback && fallback.checked && (targetValue === "app" || targetValue === "group")) {
-        mapping.fallback_to_master = true;
-      }
 
       const rawName = String((name && name.value) || "").trim();
       const selector = parseSelectorTokenInput(rawName);
@@ -2545,6 +2634,30 @@
       } else if ((targetValue === "master_out" || targetValue === "mic_in" || targetValue === "line_in") && rawName) {
         mapping.name = resolveEndpointSelectorToken(targetValue, rawName);
       }
+
+      const fallbackTargetValue = String((fallbackTarget && fallbackTarget.value) || "").trim();
+      const rawFallbackName = String((fallbackName && fallbackName.value) || "").trim();
+      if (fallbackTargetValue && (targetValue === "app" || targetValue === "group")) {
+        mapping.fallback_target = fallbackTargetValue;
+        if (fallbackTargetValue === "app") {
+          const fallbackSelector = parseSelectorTokenInput(rawFallbackName);
+          if (fallbackSelector) {
+            mapping.fallback_name = selectorTokenFromSelector(fallbackSelector);
+          } else if (rawFallbackName) {
+            mapping.fallback_name = rawFallbackName;
+          }
+        } else if (fallbackTargetValue === "group") {
+          const fallbackSelectors = parseGroupSelectorsInput(rawFallbackName);
+          if (fallbackSelectors.length > 0) {
+            mapping.fallback_name = JSON.stringify(fallbackSelectors);
+          } else if (rawFallbackName) {
+            mapping.fallback_name = rawFallbackName;
+          }
+        } else if (rawFallbackName) {
+          mapping.fallback_name = resolveEndpointSelectorToken(fallbackTargetValue, rawFallbackName);
+        }
+      }
+
       return mapping;
     }
 
@@ -2619,6 +2732,8 @@
         const target = String(mapping.target || "").trim();
         const step = Number(mapping.step);
         const hasName = entry.rawName.length > 0;
+        const fallbackTarget = String(mapping.fallback_target || "").trim();
+        const fallbackName = String(mapping.fallback_name || "").trim();
 
         if (!Number.isInteger(knob) || knob < 1 || knob > maxKnobCount) {
           addRowIssue(row, t("conflictInvalidKnob"));
@@ -2629,7 +2744,7 @@
         if (!target || !validTargets.has(target)) {
           addRowIssue(row, t("conflictUnknownTarget"));
         }
-        if (!Number.isFinite(step) || step < 0.001 || step > 1) {
+        if (!Number.isFinite(step) || step < 0.01 || step > 1) {
           addRowIssue(row, t("conflictInvalidStep"));
         }
         if (target === "app" && !mapping.selector && !mapping.name && !hasName) {
@@ -2637,6 +2752,17 @@
         }
         if (target === "group" && (!Array.isArray(mapping.selectors) || mapping.selectors.length === 0) && !mapping.name && !hasName) {
           addRowIssue(row, t("conflictMissingGroupSelector"));
+        }
+        if (fallbackTarget) {
+          if (target !== "app" && target !== "group") {
+            addRowIssue(row, t("conflictFallbackSource"));
+          }
+          if (!validTargets.has(fallbackTarget)) {
+            addRowIssue(row, t("conflictUnknownFallbackTarget"));
+          }
+          if ((fallbackTarget === "app" || fallbackTarget === "group") && !fallbackName) {
+            addRowIssue(row, t("conflictMissingFallbackSelector"));
+          }
         }
       }
 
@@ -2873,7 +2999,11 @@
       }
     }
 
-    async function refreshRuntimeStatus() {
+    async function refreshRuntimeStatus(options = {}) {
+      if (state.runtimeStatusInFlight && !options.force) {
+        return;
+      }
+      state.runtimeStatusInFlight = true;
       try {
         const body = await fetchJSON("/api/runtime");
         if (body && body.status) {
@@ -2890,7 +3020,24 @@
         }
       } catch (err) {
         setStatus("connectionStatus", err.message, "error");
+      } finally {
+        state.runtimeStatusInFlight = false;
       }
+    }
+
+    function stopRuntimeStatusPolling() {
+      if (state.runtimeStatusTimer) {
+        clearInterval(state.runtimeStatusTimer);
+        state.runtimeStatusTimer = null;
+      }
+    }
+
+    function startRuntimeStatusPolling() {
+      stopRuntimeStatusPolling();
+      refreshRuntimeStatus({ force: true });
+      state.runtimeStatusTimer = setInterval(() => {
+        refreshRuntimeStatus();
+      }, 1400);
     }
 
     async function testConnection() {
@@ -3207,9 +3354,9 @@
           } else if (ev.type === "error") {
             setStatus("identifyStatus", ev.message || (state.language === "it" ? "errore stream" : "stream error"), "error");
             if (ev.error) {
-              setStatus("connectionStatus", ev.error, "error");
               appendDebugLine("ERR " + ev.error);
             }
+            refreshRuntimeStatus();
           }
         } catch (err) {
           setStatus("identifyStatus", state.language === "it" ? "Payload stream non valido" : "Invalid stream payload", "error");
@@ -3223,14 +3370,14 @@
           es.close();
           state.identifyES = null;
           setStatus("identifyStatus", state.language === "it" ? "Stream identificazione disconnesso" : "Identify stream disconnected", "error");
-          setStatus("connectionStatus", state.language === "it" ? "Stream eventi disconnesso, nuovo tentativo..." : "Event stream disconnected, retrying...", "error");
           appendDebugLine("ERR Identify stream disconnected");
+          refreshRuntimeStatus();
           scheduleIdentifyRetry();
           return;
         }
         setStatus("identifyStatus", state.language === "it" ? "Connessione stream persa, nuova connessione in corso..." : "Identify stream connection lost, reconnecting...", "error");
-        setStatus("connectionStatus", state.language === "it" ? "Connessione stream persa, riconnessione..." : "Event stream connection lost, reconnecting...", "error");
         appendDebugLine("ERR Identify stream connection lost");
+        refreshRuntimeStatus();
       };
     }
 
@@ -3311,9 +3458,18 @@
           setStatus("saveStatus", err.message, "error");
         }
       });
+      $("autoDetectPort").addEventListener("click", async () => {
+        try {
+          await autoDetectPort();
+          await refreshRuntimeStatus();
+          scheduleIdentifyStart(120);
+        } catch (err) {
+          setStatus("connectionStatus", err.message, "error");
+        }
+      });
       $("applyStartup").addEventListener("click", applyStartupSetting);
       $("addMapping").addEventListener("click", addMappingWithNextKnob);
-      $("restoreMissingKnobs").addEventListener("click", restoreMissingKnobs);
+      $("addKnob").addEventListener("click", addKnobSlot);
       $("applyTemplate").addEventListener("click", applyTemplate);
       $("saveConfig").addEventListener("click", saveConfig);
       $("rollbackConfig").addEventListener("click", rollbackLastSave);
@@ -3398,6 +3554,7 @@
         }
         stopIdentify(true);
         stopMappingStatusPolling();
+        stopRuntimeStatusPolling();
       });
     }
 
@@ -3414,7 +3571,8 @@
         await loadTargets();
         await Promise.all([loadPorts(), loadConfig(), loadStartupStatus()]);
         await autoDetectPort();
-        await refreshRuntimeStatus();
+        await refreshRuntimeStatus({ force: true });
+        startRuntimeStatusPolling();
         startMappingStatusPolling();
         scheduleIdentifyStart(150);
         maybeStartOnboarding();

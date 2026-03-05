@@ -35,21 +35,34 @@ func showWindowsVolumeFlyoutForAdjust(master volumeController) {
 	}
 	atomic.StoreInt64(&lastFlyoutAtUnixMilli, now)
 
-	// Force OSD with a neutral volume-key sequence.
-	// We do not restore volume via API here to avoid racing the real knob adjustment.
-	vol, volErr := getVolume(master, "")
-	muted, mutedErr := getMuted(master, "")
+	// Force OSD with a neutral volume-key sequence, then restore exact state.
+	// Without restore, single-detent changes can be canceled by the synthetic up/down pair.
+	expectedVolume, volumeErr := getVolume(master, "")
+	expectedMuted, mutedErr := getMuted(master, "")
 
-	if volErr == nil && vol >= 100 {
+	if volumeErr == nil && expectedVolume >= 100 {
 		sendVolumeAppCommand(appCommandVolumeDown)
 		sendVolumeAppCommand(appCommandVolumeUp)
 	} else {
 		sendVolumeAppCommand(appCommandVolumeUp)
 		sendVolumeAppCommand(appCommandVolumeDown)
 	}
+	// Let WM_APPCOMMAND events settle before we read/restore.
+	time.Sleep(35 * time.Millisecond)
 
-	if mutedErr == nil && muted {
-		_ = mute(master, "")
+	if volumeErr == nil {
+		if actualVolume, err := getVolume(master, ""); err == nil && actualVolume != expectedVolume {
+			_ = setVolume(master, "", expectedVolume)
+		}
+	}
+	if mutedErr == nil {
+		if actualMuted, err := getMuted(master, ""); err == nil && actualMuted != expectedMuted {
+			if expectedMuted {
+				_ = mute(master, "")
+			} else {
+				_ = unmute(master, "")
+			}
+		}
 	}
 }
 
