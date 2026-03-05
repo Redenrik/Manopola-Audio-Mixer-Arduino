@@ -614,12 +614,6 @@
       min-width: 132px;
     }
 
-    .map-hint {
-      grid-column: 1 / -1;
-      margin: 0;
-      font-size: 0.8rem;
-    }
-
     .row.error-row {
       border: 1px solid var(--danger-border);
       border-radius: 12px;
@@ -861,7 +855,6 @@
         <div id="mappings"></div>
         <div class="actions">
           <button id="addMapping" type="button">Add Mapping</button>
-          <button id="addKnob" type="button">Add Knob</button>
           <button class="btn-primary" id="saveConfig" type="button">Save Config</button>
           <button id="rollbackConfig" type="button">Rollback Last Save</button>
         </div>
@@ -1387,7 +1380,7 @@
         wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
         manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", autoDetectPort: "autoDetectPort", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", debugHeading: "debugHeading", mappingsHeading: "mappingsHeading",
         mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep", headerFallback: "headerFallback",
-        addMapping: "addMapping", addKnob: "addKnob", saveConfig: "saveConfig", rollbackConfig: "rollbackConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", exportDiagnostics: "exportDiagnostics", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
+        addMapping: "addMapping", saveConfig: "saveConfig", rollbackConfig: "rollbackConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", exportDiagnostics: "exportDiagnostics", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
         groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupAddMusic: "groupAddMusic", groupAddStreaming: "groupAddStreaming", groupAddChat: "groupAddChat", groupAddCreator: "groupAddCreator", groupClearRules: "groupClearRules", groupNameLabel: "groupNameLabel", groupSaveDefinition: "groupSaveDefinition", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
       };
       for (const [id, key] of Object.entries(bindings)) {
@@ -2767,18 +2760,6 @@
       refreshDirtyState();
     }
 
-    function addKnobSlot() {
-      if (knobCount >= maxKnobCount) {
-        setStatus("saveStatus", t("addKnobLimit"), "error");
-        return;
-      }
-      const newKnob = knobCount + 1;
-      growKnobCount(newKnob, "manual add knob");
-      $("mappings").appendChild(mappingRow({ knob: newKnob, target: "master_out", step: 0.02, name: "" }));
-      setStatus("saveStatus", formatText(t("addKnobDone"), { knob: newKnob }), "ok");
-      refreshDirtyState();
-    }
-
     function mappingRow(mapping = { knob: 1, target: "master_out", step: 0.02, fallback_target: "", fallback_name: "", name: "" }) {
       const row = document.createElement("div");
       row.className = "row";
@@ -2837,9 +2818,6 @@
       nameWrap.className = "map-name-wrap";
       nameWrap.appendChild(name);
       nameWrap.appendChild(groupEdit);
-      const nameHint = document.createElement("p");
-      nameHint.className = "map-hint";
-      nameWrap.appendChild(nameHint);
 
       const suggestions = document.createElement("datalist");
       suggestions.id = "map-suggestions-" + Math.random().toString(36).slice(2);
@@ -2934,7 +2912,6 @@
         } else if (target.value === "mic_in" || target.value === "line_in") {
           name.placeholder = state.language === "it" ? "Dispositivo input (default se vuoto)" : "Input device (default if empty)";
         }
-        nameHint.textContent = targetInputHint(target.value);
         groupEdit.hidden = target.value !== "group";
         groupEdit.disabled = target.value !== "group" || name.disabled;
         const options = suggestionsForTarget(target.value);
@@ -4051,7 +4028,6 @@
       });
       $("applyStartup").addEventListener("click", applyStartupSetting);
       $("addMapping").addEventListener("click", addMappingWithNextKnob);
-      $("addKnob").addEventListener("click", addKnobSlot);
       $("applyTemplate").addEventListener("click", applyTemplate);
       $("saveConfig").addEventListener("click", saveConfig);
       $("rollbackConfig").addEventListener("click", rollbackLastSave);
