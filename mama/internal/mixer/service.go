@@ -704,6 +704,7 @@ func backendTargetName(m config.Mapping) string {
 func cloneConfig(in config.Config) config.Config {
 	out := in
 	out.Mappings = cloneMappings(in.Mappings)
+	out.Groups = cloneGroupDefinitions(in.Groups)
 	out.Profiles = make([]config.Profile, len(in.Profiles))
 	for i := range in.Profiles {
 		out.Profiles[i] = config.Profile{
@@ -729,6 +730,20 @@ func cloneMappings(in []config.Mapping) []config.Mapping {
 			out[i].Selectors = append([]config.Selector(nil), in[i].Selectors...)
 		} else {
 			out[i].Selectors = nil
+		}
+	}
+	return out
+}
+
+func cloneGroupDefinitions(in []config.GroupDefinition) []config.GroupDefinition {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]config.GroupDefinition, len(in))
+	for i := range in {
+		out[i] = config.GroupDefinition{
+			Name:      in[i].Name,
+			Selectors: append([]config.Selector(nil), in[i].Selectors...),
 		}
 	}
 	return out

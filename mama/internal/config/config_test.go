@@ -140,6 +140,65 @@ mappings:
 	}
 }
 
+func TestLoadAcceptsGroupDefinitions(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+groups:
+  - name: browser
+    selectors:
+      - kind: exe
+        value: "chrome"
+      - kind: exe
+        value: "firefox"
+mappings:
+  - knob: 1
+    target: group
+    selectors:
+      - kind: exact
+        value: "Discord"
+    step: 0.02
+`)
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if len(cfg.Groups) != 1 {
+		t.Fatalf("expected 1 group definition, got %d", len(cfg.Groups))
+	}
+	if cfg.Groups[0].Name != "browser" {
+		t.Fatalf("group name = %q, want browser", cfg.Groups[0].Name)
+	}
+	if got := len(cfg.Groups[0].Selectors); got != 2 {
+		t.Fatalf("selectors len = %d, want 2", got)
+	}
+}
+
+func TestLoadRejectsDuplicateGroupNames(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+groups:
+  - name: browser
+    selectors:
+      - kind: exe
+        value: "chrome"
+  - name: Browser
+    selectors:
+      - kind: exe
+        value: "firefox"
+mappings:
+  - knob: 1
+    target: master_out
+    step: 0.02
+`)
+
+	if _, err := Load(cfgPath); err == nil {
+		t.Fatal("expected error for duplicate group definitions")
+	}
+}
+
 func TestLoadMigratesLegacyFallbackFlagToTarget(t *testing.T) {
 	cfgPath := writeConfig(t, `
 serial:

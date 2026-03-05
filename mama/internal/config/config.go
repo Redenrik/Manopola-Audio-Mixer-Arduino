@@ -105,17 +105,23 @@ type Selector struct {
 	Value string       `yaml:"value" json:"value"`
 }
 
+type GroupDefinition struct {
+	Name      string     `yaml:"name" json:"name"`
+	Selectors []Selector `yaml:"selectors" json:"selectors"`
+}
+
 type SerialCfg struct {
 	Port string `yaml:"port" json:"port"`
 	Baud int    `yaml:"baud" json:"baud"`
 }
 
 type Config struct {
-	Serial        SerialCfg `yaml:"serial" json:"serial"`
-	Mappings      []Mapping `yaml:"mappings" json:"mappings"`
-	Profiles      []Profile `yaml:"profiles,omitempty" json:"profiles,omitempty"`
-	ActiveProfile string    `yaml:"active_profile,omitempty" json:"active_profile,omitempty"`
-	Debug         bool      `yaml:"debug" json:"debug"`
+	Serial        SerialCfg         `yaml:"serial" json:"serial"`
+	Mappings      []Mapping         `yaml:"mappings" json:"mappings"`
+	Groups        []GroupDefinition `yaml:"groups,omitempty" json:"groups,omitempty"`
+	Profiles      []Profile         `yaml:"profiles,omitempty" json:"profiles,omitempty"`
+	ActiveProfile string            `yaml:"active_profile,omitempty" json:"active_profile,omitempty"`
+	Debug         bool              `yaml:"debug" json:"debug"`
 }
 
 type Profile struct {
@@ -124,14 +130,15 @@ type Profile struct {
 }
 
 type rawConfig struct {
-	Serial        SerialCfg    `yaml:"serial"`
-	Mappings      []rawMapping `yaml:"mappings"`
-	Profiles      []rawProfile `yaml:"profiles"`
-	ActiveProfile string       `yaml:"active_profile"`
-	Debug         *bool        `yaml:"debug"`
-	LegacyPort    string       `yaml:"port"`
-	LegacyBaud    int          `yaml:"baud"`
-	LegacyKnobs   []rawMapping `yaml:"knobs"`
+	Serial        SerialCfg         `yaml:"serial"`
+	Mappings      []rawMapping      `yaml:"mappings"`
+	Groups        []GroupDefinition `yaml:"groups"`
+	Profiles      []rawProfile      `yaml:"profiles"`
+	ActiveProfile string            `yaml:"active_profile"`
+	Debug         *bool             `yaml:"debug"`
+	LegacyPort    string            `yaml:"port"`
+	LegacyBaud    int               `yaml:"baud"`
+	LegacyKnobs   []rawMapping      `yaml:"knobs"`
 }
 
 type rawProfile struct {
@@ -180,6 +187,7 @@ func ParseYAML(b []byte) (Config, error) {
 func migrateRawConfig(raw rawConfig) Config {
 	c := Config{
 		Serial:        raw.Serial,
+		Groups:        append([]GroupDefinition(nil), raw.Groups...),
 		Profiles:      make([]Profile, 0, len(raw.Profiles)),
 		ActiveProfile: raw.ActiveProfile,
 		Debug:         raw.Debug != nil && *raw.Debug,
@@ -265,6 +273,10 @@ func Validate(c Config) (Config, error) {
 		return Config{}, fmt.Errorf("at least one mapping is required")
 	}
 
+	if err := validateGroupDefinitions(c.Groups); err != nil {
+		return Config{}, err
+	}
+
 	if err := validateMappingSet(c.Mappings); err != nil {
 		return Config{}, err
 	}
@@ -302,6 +314,35 @@ func Validate(c Config) (Config, error) {
 	}
 
 	return c, nil
+}
+
+func validateGroupDefinitions(groups []GroupDefinition) error {
+	if len(groups) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(groups))
+	for i := range groups {
+		g := &groups[i]
+		g.Name = strings.TrimSpace(g.Name)
+		if g.Name == "" {
+			return fmt.Errorf("group %d: name must be set", i+1)
+		}
+		key := strings.ToLower(g.Name)
+		if _, exists := seen[key]; exists {
+			return fmt.Errorf("duplicate group name %q", g.Name)
+		}
+		seen[key] = struct{}{}
+		if len(g.Selectors) == 0 {
+			return fmt.Errorf("group %q: selectors must not be empty", g.Name)
+		}
+		for j := range g.Selectors {
+			g.Selectors[j].Value = strings.TrimSpace(g.Selectors[j].Value)
+			if err := validateSelector(g.Selectors[j]); err != nil {
+				return fmt.Errorf("group %q: %w", g.Name, err)
+			}
+		}
+	}
+	return nil
 }
 
 func validateMappingSet(mappings []Mapping) error {

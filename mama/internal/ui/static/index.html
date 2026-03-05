@@ -604,9 +604,14 @@
 
     .map-name-wrap {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr auto auto;
       gap: 6px;
       align-items: center;
+    }
+
+    .map-name-picker,
+    .map-fallback-picker {
+      min-width: 132px;
     }
 
     .map-hint {
@@ -894,6 +899,14 @@
         <button type="button" class="btn-lite" id="groupAddCreator">Add Creator Preset</button>
         <button type="button" class="btn-lite" id="groupClearRules">Clear</button>
       </div>
+      <div class="actions">
+        <label style="min-width: 240px; margin: 0;">
+          <span id="groupNameLabel">Group name</span>
+          <input id="groupEditorName" type="text" aria-label="Group name" placeholder="browser">
+        </label>
+        <button type="button" class="btn-lite" id="groupSaveDefinition">Save Group</button>
+      </div>
+      <p class="status" id="groupEditorStatus" role="status" aria-live="polite"></p>
       <div class="group-grid" id="groupEditorRows"></div>
       <p class="preview-box" id="groupEditorPreview" role="status" aria-live="polite"></p>
       <div class="actions">
@@ -931,6 +944,9 @@
       mappingStatusInFlight: false,
       runtimeStatusTimer: null,
       runtimeStatusInFlight: false,
+      targetRefreshTimer: null,
+      targetRefreshInFlight: false,
+      targetsSignature: "",
       lastMappingStatus: [],
       observedKnobs: [],
       debugLines: [],
@@ -972,8 +988,10 @@
       groupEditor: {
         open: false,
         sourceInput: null,
-        selectors: []
+        selectors: [],
+        name: ""
       },
+      customGroups: [],
       templates: {
         streaming: {
           label: "Streaming",
@@ -1084,10 +1102,10 @@
         bootApplying: "Applying detected serial port...",
         bootReady: "Ready",
         identifyHeading: "Knob Identification", identifyIntro: "Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.", debugHeading: "Debug Console", startIdentify: "Start Identify", stopIdentify: "Stop",
-        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackNone: "No fallback", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", addKnob: "Add Knob", saveConfig: "Save Config", rollbackConfig: "Rollback Last Save", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", exportDiagnostics: "Export Diagnostics", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).", nonWindowsTargetWarning: "macOS/Linux note: app/group controls depend on available audio session backend. Device and master controls remain available.",
+        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackNone: "No fallback", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", addKnob: "Add Knob", saveConfig: "Save Config", rollbackConfig: "Rollback Last Save", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", exportDiagnostics: "Export Diagnostics", importConfig: "Import Config", selectorPick: "Pick detected item", fallbackPick: "Pick fallback item", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).", nonWindowsTargetWarning: "macOS/Linux note: app/group controls depend on available audio session backend. Device and master controls remain available.",
         appHintActive: "Detected active apps ({count}). Use suggestions with Windows names. If the app is offline, use exe:processname (example: exe:discord).",
         appHintOffline: "No active app sessions detected now. Use exe:processname and it will attach when the app starts.",
-        groupHint: "Group accepts multiple rules separated by ';' (example: smart:browser; exe:discord).",
+        groupHint: "Group accepts one or more group names or selector rules separated by ';' (example: browser; exe:discord).",
         outputHintDetected: "Detected output devices ({count}) from Windows. You can pick by visible device name.",
         outputHintMissing: "No output devices detected now. Leave empty for default output, or type a selector token.",
         inputHintDetected: "Detected input devices ({count}) from Windows. You can pick by visible device name.",
@@ -1124,6 +1142,11 @@
         groupEditorApply: "Apply",
         groupEditorKind: "Kind",
         groupEditorValue: "Value",
+        groupNameLabel: "Group name",
+        groupSaveDefinition: "Save Group",
+        groupSaveMissingName: "Type a group name before saving.",
+        groupSaveMissingRules: "Add at least one selector rule before saving this group.",
+        groupSaveDone: "Group {name} saved.",
         groupPreviewNone: "Live preview: no active apps match these rules right now.",
         groupPreviewSome: "Live preview matched apps:",
         groupPreviewMore: "and more",
@@ -1173,10 +1196,10 @@
         bootApplying: "Applicazione porta seriale rilevata...",
         bootReady: "Pronto",
         identifyHeading: "Identificazione manopole", identifyIntro: "L'attivita delle manopole viene rilevata automaticamente una volta configurata la porta seriale. Ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", debugHeading: "Console debug", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
-        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackNone: "Nessun fallback", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", addKnob: "Aggiungi manopola", saveConfig: "Salva config", rollbackConfig: "Ripristina ultimo salvataggio", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", exportDiagnostics: "Esporta diagnostica", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).", nonWindowsTargetWarning: "Nota macOS/Linux: i controlli app/group dipendono dal backend sessioni audio disponibile. I controlli dispositivo e master restano disponibili.",
+        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackNone: "Nessun fallback", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", addKnob: "Aggiungi manopola", saveConfig: "Salva config", rollbackConfig: "Ripristina ultimo salvataggio", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", exportDiagnostics: "Esporta diagnostica", importConfig: "Importa config", selectorPick: "Scegli elemento rilevato", fallbackPick: "Scegli fallback", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).", nonWindowsTargetWarning: "Nota macOS/Linux: i controlli app/group dipendono dal backend sessioni audio disponibile. I controlli dispositivo e master restano disponibili.",
         appHintActive: "App attive rilevate ({count}). Usa i suggerimenti con i nomi visibili in Windows. Se l'app e offline usa exe:nomeprocesso (esempio: exe:discord).",
         appHintOffline: "Nessuna sessione app attiva rilevata ora. Usa exe:nomeprocesso e si colleghera quando l'app parte.",
-        groupHint: "Il gruppo accetta piu regole separate da ';' (esempio: smart:browser; exe:discord).",
+        groupHint: "Il gruppo accetta uno o piu nomi gruppo o regole selettore separati da ';' (esempio: browser; exe:discord).",
         outputHintDetected: "Dispositivi di uscita rilevati ({count}) da Windows. Puoi selezionare per nome visibile.",
         outputHintMissing: "Nessun dispositivo di uscita rilevato ora. Lascia vuoto per l'uscita predefinita, oppure inserisci un token selettore.",
         inputHintDetected: "Dispositivi di ingresso rilevati ({count}) da Windows. Puoi selezionare per nome visibile.",
@@ -1213,6 +1236,11 @@
         groupEditorApply: "Applica",
         groupEditorKind: "Tipo",
         groupEditorValue: "Valore",
+        groupNameLabel: "Nome gruppo",
+        groupSaveDefinition: "Salva gruppo",
+        groupSaveMissingName: "Inserisci un nome gruppo prima di salvare.",
+        groupSaveMissingRules: "Aggiungi almeno una regola selettore prima di salvare il gruppo.",
+        groupSaveDone: "Gruppo {name} salvato.",
         groupPreviewNone: "Anteprima live: nessuna app attiva corrisponde alle regole al momento.",
         groupPreviewSome: "Anteprima live app corrispondenti:",
         groupPreviewMore: "e altre",
@@ -1260,6 +1288,7 @@
           port: String(serial.port || "").trim(),
           baud: parseInt(serial.baud, 10) || 115200
         },
+        groups: normalizedCustomGroupsForConfig(cfg.groups),
         debug: !!cfg.debug,
         mappings: Array.isArray(cfg.mappings) ? cfg.mappings.map((mapping) => {
           const out = {
@@ -1359,7 +1388,7 @@
         manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", autoDetectPort: "autoDetectPort", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", debugHeading: "debugHeading", mappingsHeading: "mappingsHeading",
         mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep", headerFallback: "headerFallback",
         addMapping: "addMapping", addKnob: "addKnob", saveConfig: "saveConfig", rollbackConfig: "rollbackConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", exportDiagnostics: "exportDiagnostics", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
-        groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupAddMusic: "groupAddMusic", groupAddStreaming: "groupAddStreaming", groupAddChat: "groupAddChat", groupAddCreator: "groupAddCreator", groupClearRules: "groupClearRules", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
+        groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupAddMusic: "groupAddMusic", groupAddStreaming: "groupAddStreaming", groupAddChat: "groupAddChat", groupAddCreator: "groupAddCreator", groupClearRules: "groupClearRules", groupNameLabel: "groupNameLabel", groupSaveDefinition: "groupSaveDefinition", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
       };
       for (const [id, key] of Object.entries(bindings)) {
         const el = $(id);
@@ -1371,6 +1400,9 @@
       $("recoveryRetry").textContent = t("recoveryRetry");
       if (state.autoDetectPromise) {
         $("autoDetectPort").textContent = t("autoDetectBusy");
+      }
+      if ($("groupEditorName")) {
+        $("groupEditorName").placeholder = state.language === "it" ? "es. browser" : "e.g. browser";
       }
       $("openSettingsBtn").setAttribute("aria-label", t("openSettings"));
       $("openSettingsBtn").setAttribute("title", t("openSettings"));
@@ -1919,6 +1951,10 @@
         return selectorTokenFromSelector(mapping.selector);
       }
       if (mapping && Array.isArray(mapping.selectors) && mapping.selectors.length > 0) {
+        if (String(mapping.target || "").trim() === "group") {
+          const knownGroup = groupNameForSelectors(mapping.selectors);
+          if (knownGroup) return knownGroup;
+        }
         return mapping.selectors
           .map(selectorTokenFromSelector)
           .filter((value) => value.length > 0)
@@ -1928,6 +1964,38 @@
         return mapping.name;
       }
       return "";
+    }
+
+    function parseGroupSelectorsSerialized(raw) {
+      const text = String(raw || "").trim();
+      if (!text) return [];
+      if (text.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) {
+            return dedupeSelectors(cloneSelectors(parsed));
+          }
+        } catch (_err) {
+          // Fall back to token parsing below.
+        }
+      }
+      return parseGroupSelectorsInput(text);
+    }
+
+    function fallbackTokenFromMapping(mapping) {
+      if (!mapping || typeof mapping !== "object") return "";
+      const fallbackTarget = String(mapping.fallback_target || "").trim();
+      const fallbackName = String(mapping.fallback_name || "").trim();
+      if (!fallbackName) return "";
+      if (fallbackTarget === "group") {
+        const selectors = parseGroupSelectorsSerialized(fallbackName);
+        const knownGroup = groupNameForSelectors(selectors);
+        if (knownGroup) return knownGroup;
+        if (selectors.length > 0) {
+          return selectors.map(selectorTokenFromSelector).join("; ");
+        }
+      }
+      return fallbackName;
     }
 
     function targetLabel(targetID) {
@@ -2109,6 +2177,112 @@
       return out;
     }
 
+    function normalizeGroupName(name) {
+      const compact = String(name || "").trim().replace(/\s+/g, " ");
+      return compact;
+    }
+
+    function cloneSelectors(selectors) {
+      return (selectors || []).map((selector) => ({
+        kind: String(selector && selector.kind || "").trim(),
+        value: String(selector && selector.value || "").trim()
+      })).filter((selector) => selector.kind && selector.value);
+    }
+
+    function sanitizeCustomGroups(raw) {
+      if (!Array.isArray(raw)) return [];
+      const byKey = new Map();
+      for (const entry of raw) {
+        const name = normalizeGroupName(entry && entry.name);
+        if (!name) continue;
+        const selectors = dedupeSelectors(cloneSelectors(entry && entry.selectors));
+        if (selectors.length === 0) continue;
+        byKey.set(name.toLowerCase(), { name, selectors });
+      }
+      return Array.from(byKey.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    }
+
+    function normalizedCustomGroupsForConfig(raw) {
+      return sanitizeCustomGroups(raw).map((entry) => ({
+        name: entry.name,
+        selectors: cloneSelectors(entry.selectors)
+      }));
+    }
+
+    function allGroupDefinitions() {
+      const byKey = new Map();
+      for (const name of ["browser", "game", "music", "streaming", "chat", "creator"]) {
+        const selectors = dedupeSelectors(cloneSelectors(smartGroupPresetSelectors(name)));
+        if (selectors.length === 0) continue;
+        byKey.set(name.toLowerCase(), { name, selectors });
+      }
+      for (const entry of state.customGroups || []) {
+        const name = normalizeGroupName(entry && entry.name);
+        if (!name) continue;
+        const selectors = dedupeSelectors(cloneSelectors(entry && entry.selectors));
+        if (selectors.length === 0) continue;
+        byKey.set(name.toLowerCase(), { name, selectors });
+      }
+      return Array.from(byKey.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    }
+
+    function findGroupDefinitionByName(name) {
+      const needle = normalizeGroupName(name).toLowerCase();
+      if (!needle) return null;
+      for (const group of allGroupDefinitions()) {
+        if (normalizeGroupName(group.name).toLowerCase() === needle) {
+          return { name: group.name, selectors: cloneSelectors(group.selectors) };
+        }
+      }
+      return null;
+    }
+
+    function selectorFingerprint(selectors) {
+      return dedupeSelectors(cloneSelectors(selectors))
+        .map((selector) => `${String(selector.kind).toLowerCase()}:${String(selector.value).toLowerCase()}`)
+        .sort()
+        .join("|");
+    }
+
+    function groupNameForSelectors(selectors) {
+      const fp = selectorFingerprint(selectors);
+      if (!fp) return "";
+      for (const group of allGroupDefinitions()) {
+        if (selectorFingerprint(group.selectors) === fp) {
+          return group.name;
+        }
+      }
+      return "";
+    }
+
+    function upsertCustomGroupDefinition(name, selectors) {
+      const normalizedName = normalizeGroupName(name);
+      const normalizedSelectors = dedupeSelectors(cloneSelectors(selectors));
+      if (!normalizedName || normalizedSelectors.length === 0) {
+        return false;
+      }
+      const next = [];
+      const key = normalizedName.toLowerCase();
+      let replaced = false;
+      for (const entry of state.customGroups || []) {
+        const entryName = normalizeGroupName(entry && entry.name);
+        if (!entryName) continue;
+        if (entryName.toLowerCase() === key) {
+          if (!replaced) {
+            next.push({ name: normalizedName, selectors: normalizedSelectors });
+            replaced = true;
+          }
+          continue;
+        }
+        next.push({ name: entryName, selectors: dedupeSelectors(cloneSelectors(entry.selectors)) });
+      }
+      if (!replaced) {
+        next.push({ name: normalizedName, selectors: normalizedSelectors });
+      }
+      state.customGroups = sanitizeCustomGroups(next);
+      return true;
+    }
+
     function parseGroupSelectorsInput(raw) {
       const input = String(raw || "");
       const chunks = input
@@ -2117,15 +2291,22 @@
         .filter((item) => item.length > 0);
 
       const selectors = [];
+      const expandNamedGroup = (nameToken) => {
+        const group = findGroupDefinitionByName(nameToken);
+        if (!group || !Array.isArray(group.selectors) || group.selectors.length === 0) return false;
+        selectors.push(...cloneSelectors(group.selectors));
+        return true;
+      };
       for (const token of chunks) {
         const lower = token.toLowerCase();
         if (lower.startsWith("smart:")) {
           const presetName = token.slice(token.indexOf(":") + 1).trim();
-          const preset = smartGroupPresetSelectors(presetName);
-          if (preset.length > 0) {
-            selectors.push(...preset);
+          if (expandNamedGroup(presetName)) {
             continue;
           }
+        }
+        if (expandNamedGroup(token)) {
+          continue;
         }
         const parsed = parseSelectorTokenInput(token);
         if (parsed) {
@@ -2230,6 +2411,10 @@
       return dedupeSelectors(valid);
     }
 
+    function setGroupEditorStatus(text, cls = "") {
+      setStatus("groupEditorStatus", text, cls);
+    }
+
     function renderGroupEditorPreview() {
       const preview = $("groupEditorPreview");
       if (!preview) return;
@@ -2330,11 +2515,34 @@
       if (!sourceInput) return;
       state.groupEditor.sourceInput = sourceInput;
       state.groupEditor.open = true;
-      state.groupEditor.selectors = parseGroupSelectorsInput(sourceInput.value || "");
-      if (state.groupEditor.selectors.length === 0) {
+      state.groupEditor.name = "";
+      state.groupEditor.selectors = [];
+      const rawInput = String(sourceInput.value || "").trim();
+      const tokens = rawInput
+        .split(/\r?\n|;/)
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+      if (tokens.length === 1) {
+        const token = tokens[0];
+        const normalized = token.toLowerCase().startsWith("smart:") ? token.slice(token.indexOf(":") + 1).trim() : token;
+        const known = findGroupDefinitionByName(normalized);
+        if (known) {
+          state.groupEditor.name = known.name;
+          state.groupEditor.selectors = cloneSelectors(known.selectors);
+        }
+      }
+      if (!Array.isArray(state.groupEditor.selectors) || state.groupEditor.selectors.length === 0) {
+        state.groupEditor.selectors = parseGroupSelectorsInput(rawInput);
+      }
+      if (!state.groupEditor.name) {
+        state.groupEditor.name = groupNameForSelectors(state.groupEditor.selectors);
+      }
+      if (!Array.isArray(state.groupEditor.selectors) || state.groupEditor.selectors.length === 0) {
         state.groupEditor.selectors = [{ kind: "exact", value: "" }];
       }
       $("groupEditorModal").classList.remove("hidden");
+      $("groupEditorName").value = state.groupEditor.name || "";
+      setGroupEditorStatus("");
       renderGroupEditorRows();
       renderGroupEditorPreview();
       const firstInput = $("groupEditorRows").querySelector("input");
@@ -2344,16 +2552,48 @@
     function closeGroupEditor(applyChanges) {
       if (!state.groupEditor.open) return;
       if (applyChanges && state.groupEditor.sourceInput) {
-        const serialized = currentGroupEditorSelectors()
-          .map(selectorTokenFromSelector)
-          .join("; ");
+        const selectors = currentGroupEditorSelectors();
+        const editedName = normalizeGroupName($("groupEditorName").value);
+        const known = editedName ? findGroupDefinitionByName(editedName) : null;
+        const serialized = (known && selectorFingerprint(known.selectors) === selectorFingerprint(selectors))
+          ? known.name
+          : selectors.map(selectorTokenFromSelector).join("; ");
         state.groupEditor.sourceInput.value = serialized;
         state.groupEditor.sourceInput.dispatchEvent(new Event("input", { bubbles: true }));
       }
       state.groupEditor.open = false;
       state.groupEditor.sourceInput = null;
       state.groupEditor.selectors = [];
+      state.groupEditor.name = "";
+      $("groupEditorName").value = "";
+      setGroupEditorStatus("");
       $("groupEditorModal").classList.add("hidden");
+    }
+
+    function saveGroupDefinitionFromEditor() {
+      const name = normalizeGroupName($("groupEditorName").value);
+      if (!name) {
+        setGroupEditorStatus(t("groupSaveMissingName"), "error");
+        return;
+      }
+      const selectors = currentGroupEditorSelectors();
+      if (selectors.length === 0) {
+        setGroupEditorStatus(t("groupSaveMissingRules"), "error");
+        return;
+      }
+      if (!upsertCustomGroupDefinition(name, selectors)) {
+        setGroupEditorStatus(t("groupSaveMissingRules"), "error");
+        return;
+      }
+      state.groupEditor.name = name;
+      $("groupEditorName").value = name;
+      if (state.groupEditor.sourceInput) {
+        state.groupEditor.sourceInput.value = name;
+        state.groupEditor.sourceInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      refreshMappingSuggestionControls();
+      refreshDirtyState();
+      setGroupEditorStatus(formatText(t("groupSaveDone"), { name }), "ok");
     }
 
     function addGroupEditorRule(rule) {
@@ -2391,15 +2631,12 @@
     }
 
     function groupSelectorSuggestions() {
-      const out = new Set(appSelectorSuggestions());
-      out.add("smart:browser");
-      out.add("smart:game");
-      out.add("smart:music");
-      out.add("smart:streaming");
-      out.add("smart:chat");
-      out.add("smart:creator");
-      out.add("contains:steamapps\\common");
-      out.add("contains:epic games");
+      const out = new Set();
+      for (const group of allGroupDefinitions()) {
+        if (group && typeof group.name === "string" && group.name.trim()) {
+          out.add(group.name.trim());
+        }
+      }
       return Array.from(out);
     }
 
@@ -2410,6 +2647,68 @@
       if (targetType === "mic_in") return endpointSuggestions("mic_in");
       if (targetType === "line_in") return endpointSuggestions("line_in");
       return [];
+    }
+
+    function setDatalistOptions(list, values) {
+      if (!list) return;
+      list.innerHTML = "";
+      for (const value of values || []) {
+        const option = document.createElement("option");
+        option.value = value;
+        list.appendChild(option);
+      }
+    }
+
+    function setPickerOptions(select, values, placeholder) {
+      if (!select) return;
+      const previous = String(select.value || "");
+      select.innerHTML = "";
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = placeholder || "";
+      select.appendChild(empty);
+      const seen = new Set();
+      for (const rawValue of values || []) {
+        const value = String(rawValue || "").trim();
+        if (!value) continue;
+        const key = value.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      }
+      if (previous && seen.has(previous.toLowerCase())) {
+        select.value = previous;
+      } else {
+        select.value = "";
+      }
+    }
+
+    function refreshMappingSuggestionControls() {
+      const rows = Array.from($("mappings").querySelectorAll(".row"));
+      for (const row of rows) {
+        if (typeof row.refreshSuggestionControls === "function") {
+          row.refreshSuggestionControls();
+          continue;
+        }
+        const target = row.querySelector(".map-target");
+        const suggestions = row.querySelector(".map-suggestions");
+        const picker = row.querySelector(".map-name-picker");
+        const fallbackTarget = row.querySelector(".map-fallback-target");
+        const fallbackSuggestions = row.querySelector(".map-fallback-suggestions");
+        const fallbackPicker = row.querySelector(".map-fallback-picker");
+        const targetValues = suggestionsForTarget(String(target && target.value || "").trim());
+        setDatalistOptions(suggestions, targetValues);
+        setPickerOptions(picker, targetValues, t("selectorPick"));
+        const fallbackValues = suggestionsForTarget(String(fallbackTarget && fallbackTarget.value || "").trim());
+        setDatalistOptions(fallbackSuggestions, fallbackValues);
+        setPickerOptions(fallbackPicker, fallbackValues, t("fallbackPick"));
+      }
+      if (state.groupEditor.open) {
+        renderGroupEditorPreview();
+      }
     }
 
     function resolveEndpointSelectorToken(targetType, rawInput) {
@@ -2544,8 +2843,13 @@
 
       const suggestions = document.createElement("datalist");
       suggestions.id = "map-suggestions-" + Math.random().toString(36).slice(2);
+      suggestions.className = "map-suggestions";
       name.setAttribute("list", suggestions.id);
       nameWrap.appendChild(suggestions);
+      const namePicker = document.createElement("select");
+      namePicker.className = "map-name-picker";
+      namePicker.setAttribute("aria-label", "Select detected target");
+      nameWrap.appendChild(namePicker);
 
       const step = document.createElement("input");
       step.className = "map-step";
@@ -2579,6 +2883,13 @@
       fallbackName.className = "map-fallback-name";
       fallbackName.setAttribute("aria-label", "Fallback selector");
       fallbackName.placeholder = state.language === "it" ? "Selettore fallback" : "Fallback selector";
+      const fallbackSuggestions = document.createElement("datalist");
+      fallbackSuggestions.id = "map-fallback-suggestions-" + Math.random().toString(36).slice(2);
+      fallbackSuggestions.className = "map-fallback-suggestions";
+      fallbackName.setAttribute("list", fallbackSuggestions.id);
+      const fallbackPicker = document.createElement("select");
+      fallbackPicker.className = "map-fallback-picker";
+      fallbackPicker.setAttribute("aria-label", "Select detected fallback");
       const fallbackHint = document.createElement("span");
       fallbackHint.className = "hint";
 
@@ -2592,9 +2903,11 @@
         fallbackTarget.appendChild(option);
       }
       fallbackTarget.value = initialFallbackTarget;
-      fallbackName.value = String((mapping && mapping.fallback_name) || "").trim();
+      fallbackName.value = fallbackTokenFromMapping(mapping);
       fallbackWrap.appendChild(fallbackTarget);
       fallbackWrap.appendChild(fallbackName);
+      fallbackWrap.appendChild(fallbackSuggestions);
+      fallbackWrap.appendChild(fallbackPicker);
       fallbackWrap.appendChild(fallbackHint);
 
       const remove = document.createElement("button");
@@ -2615,7 +2928,7 @@
         if (target.value === "app") {
           name.placeholder = state.language === "it" ? "Nome app (es. Discord, Chrome, OBS)" : "App name (e.g. Discord, Chrome, OBS)";
         } else if (target.value === "group") {
-          name.placeholder = state.language === "it" ? "Regole gruppo (es. smart:browser; contains:steamapps\\common)" : "Group rules (e.g. smart:browser; contains:steamapps\\common)";
+          name.placeholder = state.language === "it" ? "Nome gruppo o regole (es. browser; contains:steamapps\\common)" : "Group name or rules (e.g. browser; contains:steamapps\\common)";
         } else if (target.value === "master_out") {
           name.placeholder = state.language === "it" ? "Dispositivo output (default se vuoto)" : "Output device (default if empty)";
         } else if (target.value === "mic_in" || target.value === "line_in") {
@@ -2624,12 +2937,9 @@
         nameHint.textContent = targetInputHint(target.value);
         groupEdit.hidden = target.value !== "group";
         groupEdit.disabled = target.value !== "group" || name.disabled;
-        suggestions.innerHTML = "";
-        for (const value of suggestionsForTarget(target.value)) {
-          const option = document.createElement("option");
-          option.value = value;
-          suggestions.appendChild(option);
-        }
+        const options = suggestionsForTarget(target.value);
+        setDatalistOptions(suggestions, options);
+        setPickerOptions(namePicker, options, t("selectorPick"));
       }
       function syncFallbackState() {
         const supportsFallback = target.value === "app" || target.value === "group";
@@ -2642,6 +2952,9 @@
           return;
         }
         const selectedFallback = String(fallbackTarget.value || "").trim();
+        const fallbackOptions = suggestionsForTarget(selectedFallback);
+        setDatalistOptions(fallbackSuggestions, fallbackOptions);
+        setPickerOptions(fallbackPicker, fallbackOptions, t("fallbackPick"));
         if (!selectedFallback) {
           fallbackName.disabled = true;
           fallbackName.value = "";
@@ -2652,7 +2965,7 @@
         if (selectedFallback === "app") {
           fallbackName.placeholder = state.language === "it" ? "App fallback (es. Discord o exe:discord)" : "Fallback app (e.g. Discord or exe:discord)";
         } else if (selectedFallback === "group") {
-          fallbackName.placeholder = state.language === "it" ? "Gruppo fallback (es. smart:browser; exe:discord)" : "Fallback group (e.g. smart:browser; exe:discord)";
+          fallbackName.placeholder = state.language === "it" ? "Gruppo fallback (es. browser; exe:discord)" : "Fallback group (e.g. browser; exe:discord)";
         } else if (selectedFallback === "master_out") {
           fallbackName.placeholder = state.language === "it" ? "Output fallback (vuoto = predefinito)" : "Fallback output (empty = default)";
         } else {
@@ -2660,11 +2973,45 @@
         }
         fallbackHint.textContent = targetLabel(selectedFallback);
       }
-      target.addEventListener("change", syncNameState);
-      target.addEventListener("change", syncFallbackState);
-      fallbackTarget.addEventListener("change", syncFallbackState);
+      namePicker.addEventListener("change", () => {
+        const picked = String(namePicker.value || "").trim();
+        if (!picked) return;
+        name.value = picked;
+        name.dispatchEvent(new Event("input", { bubbles: true }));
+        namePicker.value = "";
+      });
+      fallbackPicker.addEventListener("change", () => {
+        const picked = String(fallbackPicker.value || "").trim();
+        if (!picked) return;
+        fallbackName.value = picked;
+        fallbackName.dispatchEvent(new Event("input", { bubbles: true }));
+        fallbackPicker.value = "";
+      });
+      let previousTarget = target.value;
+      target.addEventListener("change", () => {
+        const currentTarget = String(target.value || "").trim();
+        if (currentTarget !== previousTarget) {
+          name.value = "";
+        }
+        previousTarget = currentTarget;
+        syncNameState();
+        syncFallbackState();
+      });
+      let previousFallbackTarget = fallbackTarget.value;
+      fallbackTarget.addEventListener("change", () => {
+        const currentFallback = String(fallbackTarget.value || "").trim();
+        if (previousFallbackTarget !== currentFallback) {
+          fallbackName.value = "";
+        }
+        previousFallbackTarget = currentFallback;
+        syncFallbackState();
+      });
       syncNameState();
       syncFallbackState();
+      row.refreshSuggestionControls = () => {
+        syncNameState();
+        syncFallbackState();
+      };
 
       row.appendChild(knob);
       row.appendChild(target);
@@ -2875,6 +3222,7 @@
           port: effectivePort(),
           baud: parseInt($("baudInput").value, 10) || 115200
         },
+        groups: normalizedCustomGroupsForConfig(state.customGroups),
         debug: $("debugInput").checked,
         mappings: collectMappings()
       };
@@ -2895,6 +3243,7 @@
         $("debugInput").checked = !!cfg.debug;
         $("baudInput").value = String(serial.baud || 115200);
         $("portInput").value = serial.port || "";
+        state.customGroups = sanitizeCustomGroups(cfg.groups);
         state.manualPortDirty = (serial.port || "").trim().length > 0;
         state.userPortOverride = (serial.port || "").trim().length > 0;
         syncDebugConsoleVisibility();
@@ -2947,22 +3296,88 @@
       }
     }
 
-    async function loadTargets() {
-      const body = await fetchJSON("/api/targets");
-      state.discoveredTargets = Array.isArray(body.discovered) ? body.discovered : [];
-      if (Array.isArray(body.known) && body.known.length > 0) {
-        state.knownTargets = body.known;
-        return;
+    function targetsSignature(discovered, known) {
+      const normalizedDiscovered = (Array.isArray(discovered) ? discovered : [])
+        .map((entry) => ({
+          id: String(entry && entry.id || ""),
+          type: String(entry && entry.type || ""),
+          name: String(entry && entry.name || ""),
+          selector: String(entry && entry.selector || ""),
+          aliases: Array.isArray(entry && entry.aliases)
+            ? entry.aliases.map((value) => String(value || "")).filter((value) => value)
+            : []
+        }))
+        .sort((a, b) => {
+          const left = `${a.type}|${a.id}|${a.selector}|${a.name}`;
+          const right = `${b.type}|${b.id}|${b.selector}|${b.name}`;
+          return left.localeCompare(right);
+        });
+      for (const entry of normalizedDiscovered) {
+        entry.aliases.sort((a, b) => a.localeCompare(b));
       }
-      if (Array.isArray(body.discovered) && body.discovered.length > 0) {
-        const discoveredTypes = Array.from(new Set(body.discovered
+      const normalizedKnown = (Array.isArray(known) ? known : [])
+        .map((value) => String(value || "").trim())
+        .filter((value) => value.length > 0)
+        .sort((a, b) => a.localeCompare(b));
+      return JSON.stringify({ discovered: normalizedDiscovered, known: normalizedKnown });
+    }
+
+    function applyTargetsPayload(body, options = {}) {
+      const discovered = Array.isArray(body && body.discovered) ? body.discovered : [];
+      state.discoveredTargets = discovered;
+      if (Array.isArray(body && body.known) && body.known.length > 0) {
+        state.knownTargets = body.known;
+      } else if (discovered.length > 0) {
+        const discoveredTypes = Array.from(new Set(discovered
           .map((entry) => entry && typeof entry === "object" ? entry.type : "")
           .filter((type) => typeof type === "string" && type.trim().length > 0)));
         if (discoveredTypes.length > 0) {
           state.knownTargets = Array.from(new Set([...state.knownTargets, ...discoveredTypes]));
-          return;
         }
       }
+      const nextSignature = targetsSignature(state.discoveredTargets, state.knownTargets);
+      const changed = nextSignature !== state.targetsSignature;
+      state.targetsSignature = nextSignature;
+      if (changed && options.refreshUI !== false) {
+        refreshMappingSuggestionControls();
+      }
+      return changed;
+    }
+
+    async function loadTargets(options = {}) {
+      const body = await fetchJSON("/api/targets");
+      return applyTargetsPayload(body, options);
+    }
+
+    async function refreshTargets(options = {}) {
+      if (state.targetRefreshInFlight && !options.force) {
+        return false;
+      }
+      state.targetRefreshInFlight = true;
+      try {
+        return await loadTargets({ refreshUI: options.refreshUI !== false });
+      } catch (err) {
+        if (!options.silent) {
+          setStatus("saveStatus", err.message, "error");
+        }
+        return false;
+      } finally {
+        state.targetRefreshInFlight = false;
+      }
+    }
+
+    function stopTargetRefreshPolling() {
+      if (state.targetRefreshTimer) {
+        clearInterval(state.targetRefreshTimer);
+        state.targetRefreshTimer = null;
+      }
+    }
+
+    function startTargetRefreshPolling() {
+      stopTargetRefreshPolling();
+      state.targetRefreshTimer = setInterval(() => {
+        refreshTargets({ silent: true, refreshUI: true });
+      }, 2600);
     }
 
     async function loadPorts() {
@@ -3288,6 +3703,7 @@
             port: effectivePort(),
             baud: parseInt($("baudInput").value, 10) || 115200
           },
+          groups: normalizedCustomGroupsForConfig(state.customGroups),
           debug: $("debugInput").checked,
           mappings: entries.map((entry) => entry.mapping)
         };
@@ -3666,6 +4082,10 @@
       $("groupAddChat").addEventListener("click", () => addGroupEditorPreset("chat"));
       $("groupAddCreator").addEventListener("click", () => addGroupEditorPreset("creator"));
       $("groupClearRules").addEventListener("click", clearGroupEditorRules);
+      $("groupSaveDefinition").addEventListener("click", saveGroupDefinitionFromEditor);
+      $("groupEditorName").addEventListener("input", () => {
+        state.groupEditor.name = normalizeGroupName($("groupEditorName").value);
+      });
       $("groupEditorCancel").addEventListener("click", () => closeGroupEditor(false));
       $("groupEditorApply").addEventListener("click", () => closeGroupEditor(true));
       $("groupEditorModal").addEventListener("click", (ev) => {
@@ -3721,6 +4141,7 @@
         stopIdentify(true);
         stopMappingStatusPolling();
         stopRuntimeStatusPolling();
+        stopTargetRefreshPolling();
       });
     }
 
@@ -3749,6 +4170,7 @@
         }
         startRuntimeStatusPolling();
         startMappingStatusPolling();
+        startTargetRefreshPolling();
         scheduleIdentifyStart(150);
         setBootStatus(t("bootReady"));
         hideBootOverlay();
