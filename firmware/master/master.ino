@@ -1,4 +1,5 @@
 #include <Wire.h>
+#include <string.h>
 
 #include "encoder_logic.h"
 
@@ -13,6 +14,9 @@ struct Enc {
 static Enc e1{2, 3, 4, {0, 0, 1, 1, 0, 0}};
 static Enc e2{5, 6, 7, {0, 0, 1, 1, 0, 0}};
 static Enc e3{8, 9, 10, {0, 0, 1, 1, 0, 0}};
+static const char *PROTOCOL_HELLO_LINE = "MAMA:HELLO:1";
+static char hostCmdBuf[40];
+static uint8_t hostCmdLen = 0;
 
 
 static inline uint8_t readAB(const Enc& e) {
@@ -58,12 +62,43 @@ static void emitButtonPress(uint8_t encId) {
   Serial.println(":1"); // pressione = toggle mute lato PC
 }
 
+static void emitProtocolHello() {
+  Serial.println(PROTOCOL_HELLO_LINE);
+}
+
+static void handleHostCommand(const char *line) {
+  if (line == nullptr || line[0] == '\0') return;
+  if (strcmp(line, "MAMA:HELLO?") == 0 || strcmp(line, "MAMA:WHO?") == 0 || strcmp(line, "MAMA:PROBE") == 0) {
+    emitProtocolHello();
+  }
+}
+
+static void pollHostCommands() {
+  while (Serial.available() > 0) {
+    char c = (char)Serial.read();
+    if (c == '\r' || c == '\n' || c == '\0') {
+      if (hostCmdLen > 0) {
+        hostCmdBuf[hostCmdLen] = '\0';
+        handleHostCommand(hostCmdBuf);
+        hostCmdLen = 0;
+      }
+      continue;
+    }
+    if (hostCmdLen + 1 < sizeof(hostCmdBuf)) {
+      hostCmdBuf[hostCmdLen++] = c;
+    } else {
+      // Reset on overflow to avoid processing truncated commands.
+      hostCmdLen = 0;
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Wire.begin(); // Master I2C
 
   // Unique project handshake used by host auto-detection
-  Serial.println("MAMA:HELLO:1");
+  emitProtocolHello();
 
   initEnc(e1);
   initEnc(e2);
@@ -71,6 +106,8 @@ void setup() {
 }
 
 void loop() {
+  pollHostCommands();
+
   // --- aggiorna encoder locali ---
   updateEnc(e1);
   updateEnc(e2);

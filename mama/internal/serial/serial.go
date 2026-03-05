@@ -32,6 +32,9 @@ const (
 	idleReadDelay               = 5 * time.Millisecond
 	defaultProbeProtocolTimeout = 2500 * time.Millisecond
 	probeReadTimeout            = 80 * time.Millisecond
+	probeInitialWindow          = 450 * time.Millisecond
+	probeDTRLowDuration         = 120 * time.Millisecond
+	probeResetWait              = 1400 * time.Millisecond
 )
 
 var (
@@ -68,7 +71,7 @@ func Probe(portName string, baud int) error {
 	return p.Close()
 }
 
-// ProbeProtocolHello opens a serial port and waits for a protocol hello line (MAMA:HELLO:<n> or legacy V:<n>).
+// ProbeProtocolHello opens a serial port and waits for a protocol hello line (MAMA:HELLO:<n>).
 // It returns the firmware protocol version when compatible with this host.
 func ProbeProtocolHello(portName string, baud int, timeout time.Duration) (int, error) {
 	portName = strings.TrimSpace(portName)
@@ -93,7 +96,7 @@ func ProbeProtocolHello(portName string, baud int, timeout time.Duration) (int, 
 		return 0, err
 	}
 
-	version, err := probeProtocolVersion(p, timeout)
+	version, err := probeProtocolHelloWithWake(p, timeout)
 	if err != nil {
 		return 0, err
 	}
@@ -101,6 +104,66 @@ func ProbeProtocolHello(portName string, baud int, timeout time.Duration) (int, 
 		return 0, fmt.Errorf("protocol mismatch: firmware=%d host=%d", version, proto.HostProtocolVersion)
 	}
 	return version, nil
+}
+
+func probeProtocolHelloWithWake(port serial.Port, timeout time.Duration) (int, error) {
+	_ = port.ResetInputBuffer()
+	_ = sendProbeHelloRequest(port)
+
+	initial := minDuration(timeout, probeInitialWindow)
+	if initial > 0 {
+		if version, err := probeProtocolVersion(port, initial); err == nil {
+			return version, nil
+		}
+		timeout -= initial
+	}
+	if timeout <= 0 {
+		return 0, fmt.Errorf("no MAMA protocol hello detected")
+	}
+
+	// Some boards emit protocol hello only after reset; DTR pulse improves probe reliability.
+	if err := pulseProbeDTR(port); err == nil {
+		wait := minDuration(timeout, probeResetWait)
+		if wait > 0 {
+			time.Sleep(wait)
+			timeout -= wait
+		}
+	}
+
+	if timeout <= 0 {
+		timeout = probeReadTimeout
+	}
+	_ = port.ResetInputBuffer()
+	_ = sendProbeHelloRequest(port)
+	return probeProtocolVersion(port, timeout)
+}
+
+func sendProbeHelloRequest(port serial.Port) error {
+	if _, err := port.Write([]byte("MAMA:HELLO?\n")); err != nil {
+		return err
+	}
+	if _, err := port.Write([]byte("MAMA:WHO?\n")); err != nil {
+		return err
+	}
+	return nil
+}
+
+func pulseProbeDTR(port serial.Port) error {
+	if err := port.SetDTR(false); err != nil {
+		return err
+	}
+	time.Sleep(probeDTRLowDuration)
+	if err := port.SetDTR(true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func minDuration(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func probeProtocolVersion(port lineReaderPort, timeout time.Duration) (int, error) {

@@ -82,6 +82,46 @@
       min-height: 100vh;
     }
 
+    .boot-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 4000;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 20% 18%, var(--glow-a), transparent 36%),
+        radial-gradient(circle at 78% 12%, var(--glow-b), transparent 34%),
+        var(--bg);
+      backdrop-filter: blur(4px);
+    }
+
+    .boot-card {
+      width: min(520px, calc(100% - 32px));
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 10px;
+      justify-items: center;
+      text-align: center;
+    }
+
+    .boot-spinner {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      border: 3px solid var(--line);
+      border-top-color: var(--accent);
+      animation: boot-spin 0.9s linear infinite;
+    }
+
+    @keyframes boot-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
     .shell {
       width: min(1560px, 100%);
       margin: 0 auto;
@@ -674,6 +714,13 @@
   </style>
 </head>
 <body>
+  <div class="boot-overlay" id="bootOverlay" role="status" aria-live="polite">
+    <section class="boot-card">
+      <div class="boot-spinner" aria-hidden="true"></div>
+      <h2 id="bootTitle">Starting MAMA</h2>
+      <p id="bootStatus">Detecting MAMA board and serial port...</p>
+    </section>
+  </div>
   <main class="shell">
     <section class="panel" id="dashboardView">
       <div class="main-toolbar">
@@ -702,7 +749,6 @@
 
       <div class="knobs" id="knobGrid"></div>
       <p class="status" id="identifyStatus" role="status" aria-live="polite"></p>
-      <p class="status" id="connectionStatus" role="status" aria-live="polite"></p>
       <div class="debug-console-wrap" id="debugPanel" style="display:none;">
         <h3 id="debugHeading">Debug Console</h3>
         <pre class="debug-console" id="debugConsole"></pre>
@@ -763,6 +809,7 @@
             <button type="button" id="autoDetectPort">Auto-Detect MAMA</button>
             <button type="button" id="testConnection">Test Connection</button>
           </div>
+          <p class="status" id="connectionStatus" role="status" aria-live="polite"></p>
         </div>
         <div>
           <h2 id="advancedHeading">Advanced</h2>
@@ -888,6 +935,7 @@
       observedKnobs: [],
       debugLines: [],
       autoApplyingPort: false,
+      autoDetectPromise: null,
       userPortOverride: false,
       manualPortDirty: false,
       language: "en",
@@ -1030,7 +1078,11 @@
         wizardHeading: "First-Run Wizard",
         wizardIntro: "Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.",
         wizardStart: "Start Wizard", wizardNext: "Next Step", wizardReset: "Reset",
-        connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", autoDetectPort: "Auto-Detect MAMA", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
+        connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", autoDetectPort: "Auto-Detect MAMA", autoDetectBusy: "Detecting...", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
+        bootTitle: "Starting MAMA",
+        bootDetecting: "Detecting MAMA board and serial port...",
+        bootApplying: "Applying detected serial port...",
+        bootReady: "Ready",
         identifyHeading: "Knob Identification", identifyIntro: "Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.", debugHeading: "Debug Console", startIdentify: "Start Identify", stopIdentify: "Stop",
         mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackNone: "No fallback", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", addKnob: "Add Knob", saveConfig: "Save Config", rollbackConfig: "Rollback Last Save", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", exportDiagnostics: "Export Diagnostics", importConfig: "Import Config", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).", nonWindowsTargetWarning: "macOS/Linux note: app/group controls depend on available audio session backend. Device and master controls remain available.",
         appHintActive: "Detected active apps ({count}). Use suggestions with Windows names. If the app is offline, use exe:processname (example: exe:discord).",
@@ -1115,7 +1167,11 @@
         wizardHeading: "Procedura guidata iniziale",
         wizardIntro: "Segui questa procedura per rilevare la scheda, confermare la seriale, mappare le manopole, salvare e verificare gli eventi live.",
         wizardStart: "Avvia procedura", wizardNext: "Passo successivo", wizardReset: "Reimposta",
-        connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", autoDetectPort: "Auto-Rileva MAMA", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
+        connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", autoDetectPort: "Auto-Rileva MAMA", autoDetectBusy: "Rilevamento...", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
+        bootTitle: "Avvio MAMA",
+        bootDetecting: "Rilevamento scheda MAMA e porta seriale...",
+        bootApplying: "Applicazione porta seriale rilevata...",
+        bootReady: "Pronto",
         identifyHeading: "Identificazione manopole", identifyIntro: "L'attivita delle manopole viene rilevata automaticamente una volta configurata la porta seriale. Ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", debugHeading: "Console debug", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
         mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackNone: "Nessun fallback", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", addKnob: "Aggiungi manopola", saveConfig: "Salva config", rollbackConfig: "Ripristina ultimo salvataggio", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", exportDiagnostics: "Esporta diagnostica", importConfig: "Importa config", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).", nonWindowsTargetWarning: "Nota macOS/Linux: i controlli app/group dipendono dal backend sessioni audio disponibile. I controlli dispositivo e master restano disponibili.",
         appHintActive: "App attive rilevate ({count}). Usa i suggerimenti con i nomi visibili in Windows. Se l'app e offline usa exe:nomeprocesso (esempio: exe:discord).",
@@ -1297,6 +1353,7 @@
     function localizeStaticUI() {
       document.title = t("pageTitle");
       const bindings = {
+        bootTitle: "bootTitle",
         titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", themeLabel: "themeLabel", settingsTitle: "settingsTitle", settingsIntro: "settingsIntro", runSetupAgain: "runSetupAgain", closeSettingsBtn: "closeSettingsBtn", unsavedBadge: "unsavedChanges", advancedHeading: "advancedHeading", advancedSummary: "advancedSummary", advancedConfigSummary: "advancedConfigSummary", onboardingTitle: "onboardingTitle", onboardingIntro: "onboardingIntro", onboardingSkip: "onboardingSkip", onboardingPrev: "onboardingPrev", onboardingNext: "onboardingNext", onboardingFinish: "onboardingFinish", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
         wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
         manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", autoDetectPort: "autoDetectPort", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", debugHeading: "debugHeading", mappingsHeading: "mappingsHeading",
@@ -1312,6 +1369,9 @@
       $("themeSelect").options[1].textContent = t("themeLight");
       $("themeSelect").options[2].textContent = t("themeDark");
       $("recoveryRetry").textContent = t("recoveryRetry");
+      if (state.autoDetectPromise) {
+        $("autoDetectPort").textContent = t("autoDetectBusy");
+      }
       $("openSettingsBtn").setAttribute("aria-label", t("openSettings"));
       $("openSettingsBtn").setAttribute("title", t("openSettings"));
     }
@@ -1415,7 +1475,7 @@
       const current = state.onboarding.steps[state.onboarding.index];
       if (current && current.id === "serial" && !state.onboarding.serialAutoDetected) {
         state.onboarding.serialAutoDetected = true;
-        autoDetectPort().catch((err) => {
+        autoDetectPort({ forceApply: true }).catch((err) => {
           setStatus("onboardingStatus", err && err.message ? err.message : currentText.hint || "", "error");
         });
       }
@@ -1470,6 +1530,38 @@
       el.textContent = text || "";
       el.className = "status" + (cls ? " " + cls : "");
       el.setAttribute("aria-live", cls === "error" ? "assertive" : "polite");
+    }
+
+    function setBootStatus(text) {
+      const el = $("bootStatus");
+      if (!el) return;
+      el.textContent = text || "";
+    }
+
+    function showBootOverlay(message) {
+      const overlay = $("bootOverlay");
+      if (!overlay) return;
+      if (message) setBootStatus(message);
+      overlay.classList.remove("hidden");
+    }
+
+    function hideBootOverlay() {
+      const overlay = $("bootOverlay");
+      if (!overlay) return;
+      overlay.classList.add("hidden");
+    }
+
+    function setConnectionActionsBusy(busy) {
+      const detecting = !!busy;
+      const autoBtn = $("autoDetectPort");
+      const refreshBtn = $("refreshPorts");
+      if (autoBtn) {
+        autoBtn.disabled = detecting;
+        autoBtn.textContent = detecting ? t("autoDetectBusy") : t("autoDetectPort");
+      }
+      if (refreshBtn) {
+        refreshBtn.disabled = detecting;
+      }
     }
 
     async function fetchJSON(url, opts = {}) {
@@ -2906,41 +2998,66 @@
       }
     }
 
-    function applyDetectedPort(port) {
+    function applyDetectedPort(port, options = {}) {
       const value = String(port || "").trim();
       if (!value) return false;
       const select = $("portSelect");
-      const hasPort = Array.from(select.options).some((o) => o.value === value);
-      if (!hasPort) return false;
+      const addIfMissing = options && options.addIfMissing !== false;
+      let matched = Array.from(select.options).find((o) => (String(o.value || "").trim().toLowerCase() === value.toLowerCase()));
+      if (!matched && addIfMissing) {
+        matched = document.createElement("option");
+        matched.value = value;
+        matched.textContent = value;
+        select.insertBefore(matched, select.firstChild);
+      }
+      if (!matched) return false;
       state.autoApplyingPort = true;
-      select.value = value;
-      $("portInput").value = value;
+      select.value = matched.value;
+      $("portInput").value = matched.value;
       state.manualPortDirty = false;
       state.userPortOverride = false;
       state.autoApplyingPort = false;
       return true;
     }
 
-    async function autoDetectPort() {
+    async function autoDetectPort(options = {}) {
+      if (state.autoDetectPromise) {
+        setStatus("connectionStatus", t("autoDetectBusy"), "ok");
+        return state.autoDetectPromise;
+      }
+      const forceApply = !!(options && options.forceApply);
+      const silentNoDevice = !!(options && options.silentNoDevice);
       const baud = parseInt($("baudInput").value, 10) || 115200;
-      setStatus("connectionStatus", state.language === "it" ? "Rilevamento automatico porta MAMA..." : "Auto-detecting MAMA serial port...", "ok");
-      const body = await fetchJSON("/api/port-autodetect?baud=" + encodeURIComponent(String(baud)));
-      const detected = typeof body.detected === "string" ? body.detected.trim() : "";
-      const current = effectivePort().trim();
-      const keepUserSelection = state.userPortOverride && current && (!detected || current.toLowerCase() !== detected.toLowerCase());
-      if (detected && !keepUserSelection && applyDetectedPort(detected)) {
-        setStatus("connectionStatus", body.message || ((state.language === "it" ? "Dispositivo MAMA rilevato su " : "MAMA device detected on ") + detected), "ok");
-        return detected;
+      const task = (async () => {
+        setConnectionActionsBusy(true);
+        setStatus("connectionStatus", state.language === "it" ? "Rilevamento automatico porta MAMA..." : "Auto-detecting MAMA serial port...", "ok");
+        const body = await fetchJSON("/api/port-autodetect?baud=" + encodeURIComponent(String(baud)));
+        const detected = typeof body.detected === "string" ? body.detected.trim() : "";
+        const current = effectivePort().trim();
+        const keepUserSelection = !forceApply && state.userPortOverride && current && (!detected || current.toLowerCase() !== detected.toLowerCase());
+        if (detected && !keepUserSelection && applyDetectedPort(detected)) {
+          setStatus("connectionStatus", body.message || ((state.language === "it" ? "Dispositivo MAMA rilevato su " : "MAMA device detected on ") + detected), "ok");
+          return detected;
+        }
+        if (detected && keepUserSelection) {
+          const msg = state.language === "it"
+            ? `MAMA rilevato su ${detected}. Selezione manuale mantenuta (${current}).`
+            : `MAMA detected on ${detected}. Keeping your manual selection (${current}).`;
+          setStatus("connectionStatus", msg, "ok");
+          return detected;
+        }
+        if (!silentNoDevice) {
+          setStatus("connectionStatus", body.message || (state.language === "it" ? "Nessun dispositivo MAMA rilevato sulle porte seriali disponibili." : "No MAMA device detected on available serial ports."));
+        }
+        return "";
+      })();
+      state.autoDetectPromise = task;
+      try {
+        return await task;
+      } finally {
+        state.autoDetectPromise = null;
+        setConnectionActionsBusy(false);
       }
-      if (detected && keepUserSelection) {
-        const msg = state.language === "it"
-          ? `MAMA rilevato su ${detected}. Selezione manuale mantenuta (${current}).`
-          : `MAMA detected on ${detected}. Keeping your manual selection (${current}).`;
-        setStatus("connectionStatus", msg, "ok");
-        return detected;
-      }
-      setStatus("connectionStatus", body.message || (state.language === "it" ? "Nessun dispositivo MAMA rilevato sulle porte seriali disponibili." : "No MAMA device detected on available serial ports."));
-      return "";
     }
 
     function applyRuntimeStatus(status) {
@@ -3059,6 +3176,55 @@
       } catch (err) {
         setStatus("connectionStatus", err.message, "error");
       }
+    }
+
+    async function persistSerialSelectionIfChanged(options = {}) {
+      const silentStatus = !!(options && options.silentStatus);
+      const port = effectivePort().trim();
+      const baud = parseInt($("baudInput").value, 10) || 115200;
+      if (!port) return false;
+
+      const existing = state.config && typeof state.config === "object" ? state.config : {};
+      const existingSerial = existing.serial && typeof existing.serial === "object" ? existing.serial : {};
+      const existingPort = String(existingSerial.port || "").trim();
+      const existingBaud = parseInt(existingSerial.baud, 10) || 115200;
+      if (existingPort.toLowerCase() === port.toLowerCase() && existingBaud === baud) {
+        return false;
+      }
+
+      const payload = buildConfigFromForm();
+      stashRollbackSnapshot(state.config);
+      const saved = await fetchJSON("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      state.config = saved;
+      markFormAsSaved();
+      if (!silentStatus) {
+        setStatus("saveStatus", state.language === "it" ? "Configurazione seriale aggiornata automaticamente." : "Serial configuration auto-updated.", "ok");
+      }
+      return true;
+    }
+
+    async function waitForRuntimeConnected(timeoutMs = 4500) {
+      const deadline = Date.now() + Math.max(0, Number(timeoutMs) || 0);
+      while (Date.now() < deadline) {
+        try {
+          const body = await fetchJSON("/api/runtime");
+          if (body && body.status && body.status.connected) {
+            applyRuntimeStatus(body.status);
+            return true;
+          }
+          if (body && body.status) {
+            applyRuntimeStatus(body.status);
+          }
+        } catch (_err) {
+          // Keep waiting until timeout.
+        }
+        await new Promise((resolve) => setTimeout(resolve, 260));
+      }
+      return false;
     }
 
     async function loadConfig() {
@@ -3452,7 +3618,7 @@
         try {
           stopIdentify(true);
           await loadPorts();
-          await autoDetectPort();
+          await autoDetectPort({ forceApply: true });
           scheduleIdentifyStart(120);
         } catch (err) {
           setStatus("saveStatus", err.message, "error");
@@ -3460,7 +3626,7 @@
       });
       $("autoDetectPort").addEventListener("click", async () => {
         try {
-          await autoDetectPort();
+          await autoDetectPort({ forceApply: true });
           await refreshRuntimeStatus();
           scheduleIdentifyStart(120);
         } catch (err) {
@@ -3566,18 +3732,30 @@
       bindSystemThemeListener();
       bindEvents();
       syncDebugConsoleVisibility();
+      showBootOverlay(t("bootDetecting"));
       try {
         await loadStatus();
         await loadTargets();
         await Promise.all([loadPorts(), loadConfig(), loadStartupStatus()]);
-        await autoDetectPort();
+        setBootStatus(t("bootDetecting"));
+        const detectedPort = await autoDetectPort({ forceApply: true, silentNoDevice: true });
+        if (detectedPort) {
+          setBootStatus(t("bootApplying"));
+          await persistSerialSelectionIfChanged({ silentStatus: true });
+        }
         await refreshRuntimeStatus({ force: true });
+        if (detectedPort) {
+          await waitForRuntimeConnected(4500);
+        }
         startRuntimeStatusPolling();
         startMappingStatusPolling();
         scheduleIdentifyStart(150);
+        setBootStatus(t("bootReady"));
+        hideBootOverlay();
         maybeStartOnboarding();
       } catch (err) {
         setStatus("saveStatus", err.message, "error");
+        hideBootOverlay();
       }
     }
 

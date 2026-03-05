@@ -27,6 +27,7 @@ type Server struct {
 	cfgPath            string
 	backend            audio.Backend
 	mixerService       *mixer.Service
+	runtimeSnapshot    func() (config.SerialCfg, mixer.Status, bool)
 	listPorts          func() ([]string, error)
 	probeProtocolHello func(string, int, time.Duration) (int, error)
 }
@@ -42,6 +43,16 @@ func New(cfgPath string) *Server {
 
 func (s *Server) SetMixerService(service *mixer.Service) {
 	s.mixerService = service
+}
+
+func (s *Server) serialRuntimeSnapshot() (config.SerialCfg, mixer.Status, bool) {
+	if s.runtimeSnapshot != nil {
+		return s.runtimeSnapshot()
+	}
+	if s.mixerService == nil {
+		return config.SerialCfg{}, mixer.Status{}, false
+	}
+	return s.mixerService.ConfigSnapshot().Serial, s.mixerService.Status(), true
 }
 
 func (s *Server) Run(listenAddr string) error {
@@ -381,18 +392,28 @@ func (s *Server) handlePortTest(w http.ResponseWriter, r *http.Request) {
 		in.Baud = config.DefaultBaud
 	}
 
-	if s.mixerService != nil {
-		runtimeCfg := s.mixerService.ConfigSnapshot()
-		status := s.mixerService.Status()
-		samePort := strings.EqualFold(strings.TrimSpace(runtimeCfg.Serial.Port), in.Port)
-		sameBaud := runtimeCfg.Serial.Baud == in.Baud
+	if runtimeSerial, status, ok := s.serialRuntimeSnapshot(); ok {
+		samePort := strings.EqualFold(strings.TrimSpace(runtimeSerial.Port), in.Port)
+		sameBaud := runtimeSerial.Baud == in.Baud
 		if samePort && sameBaud {
 			if status.Connected {
+				if status.ProtocolVersion <= 0 {
+					writeJSON(w, http.StatusBadRequest, map[string]string{
+						"error": "runtime is connected but MAMA protocol handshake is not confirmed yet",
+					})
+					return
+				}
+				if !proto.IsProtocolCompatible(status.ProtocolVersion) {
+					writeJSON(w, http.StatusBadRequest, map[string]string{
+						"error": fmt.Sprintf("protocol mismatch: firmware=%d host=%d", status.ProtocolVersion, proto.HostProtocolVersion),
+					})
+					return
+				}
 				writeJSON(w, http.StatusOK, map[string]any{
 					"ok":              true,
 					"port":            in.Port,
 					"baud":            in.Baud,
-					"protocolVersion": proto.HostProtocolVersion,
+					"protocolVersion": status.ProtocolVersion,
 					"message":         fmt.Sprintf("MAMA runtime already connected on %s @ %d", in.Port, in.Baud),
 				})
 				return
@@ -451,6 +472,38 @@ func (s *Server) handlePortAutoDetect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	attempts := make([]map[string]any, 0, len(ports))
+	if runtimeSerial, status, ok := s.serialRuntimeSnapshot(); ok && status.Connected && status.ProtocolVersion > 0 && proto.IsProtocolCompatible(status.ProtocolVersion) {
+		runtimePort := strings.TrimSpace(runtimeSerial.Port)
+		if runtimePort != "" {
+			containsRuntimePort := false
+			for _, port := range ports {
+				if strings.EqualFold(strings.TrimSpace(port), runtimePort) {
+					containsRuntimePort = true
+					break
+				}
+			}
+			if !containsRuntimePort {
+				ports = append([]string{runtimePort}, ports...)
+			}
+			attempts = append(attempts, map[string]any{
+				"port":            runtimePort,
+				"ok":              true,
+				"source":          "runtime",
+				"protocolVersion": status.ProtocolVersion,
+			})
+			writeJSON(w, http.StatusOK, map[string]any{
+				"ok":              true,
+				"ports":           ports,
+				"attempts":        attempts,
+				"detected":        runtimePort,
+				"baud":            runtimeSerial.Baud,
+				"protocolVersion": status.ProtocolVersion,
+				"message":         fmt.Sprintf("MAMA runtime already connected on %s @ %d", runtimePort, runtimeSerial.Baud),
+			})
+			return
+		}
+	}
+
 	for _, port := range ports {
 		attempt := map[string]any{
 			"port": port,

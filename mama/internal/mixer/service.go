@@ -45,14 +45,15 @@ type Event struct {
 }
 
 type Status struct {
-	State     string    `json:"state"`
-	Port      string    `json:"port,omitempty"`
-	Baud      int       `json:"baud,omitempty"`
-	Connected bool      `json:"connected"`
-	Message   string    `json:"message,omitempty"`
-	Error     string    `json:"error,omitempty"`
-	RetryIn   string    `json:"retryIn,omitempty"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	State           string    `json:"state"`
+	Port            string    `json:"port,omitempty"`
+	Baud            int       `json:"baud,omitempty"`
+	Connected       bool      `json:"connected"`
+	ProtocolVersion int       `json:"protocolVersion,omitempty"`
+	Message         string    `json:"message,omitempty"`
+	Error           string    `json:"error,omitempty"`
+	RetryIn         string    `json:"retryIn,omitempty"`
+	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
 type Service struct {
@@ -330,6 +331,7 @@ func (s *Service) runSession(parent context.Context, reader *serialx.Reader, por
 
 			switch ev.Kind {
 			case proto.EventProtocolHello:
+				s.setProtocolVersion(ev.ProtocolVersion)
 				if proto.IsProtocolCompatible(ev.ProtocolVersion) {
 					runtime.Log("protocol_negotiated", runtime.Fields{"firmware": ev.ProtocolVersion, "host": proto.HostProtocolVersion})
 				} else {
@@ -595,17 +597,31 @@ func (s *Service) setStatus(next Status) {
 	s.publish(statusEvent(next))
 }
 
+func (s *Service) setProtocolVersion(version int) {
+	if version <= 0 {
+		return
+	}
+	s.statusMu.Lock()
+	next := s.status
+	next.ProtocolVersion = version
+	next.UpdatedAt = time.Now().UTC()
+	s.status = next
+	s.statusMu.Unlock()
+	s.publish(statusEvent(next))
+}
+
 func statusEvent(status Status) Event {
 	return Event{
-		Type:      EventTypeState,
-		Time:      status.UpdatedAt,
-		State:     status.State,
-		Port:      status.Port,
-		Baud:      status.Baud,
-		Connected: status.Connected,
-		Message:   status.Message,
-		Error:     status.Error,
-		RetryIn:   status.RetryIn,
+		Type:            EventTypeState,
+		Time:            status.UpdatedAt,
+		State:           status.State,
+		Port:            status.Port,
+		Baud:            status.Baud,
+		Connected:       status.Connected,
+		ProtocolVersion: status.ProtocolVersion,
+		Message:         status.Message,
+		Error:           status.Error,
+		RetryIn:         status.RetryIn,
 	}
 }
 

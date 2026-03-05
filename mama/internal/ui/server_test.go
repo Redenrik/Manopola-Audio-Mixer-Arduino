@@ -132,6 +132,108 @@ func TestHandlePortAutoDetect_NoMatch(t *testing.T) {
 	}
 }
 
+func TestHandlePortAutoDetect_UsesConnectedRuntimePort(t *testing.T) {
+	s := New("config.yaml")
+	s.listPorts = func() ([]string, error) {
+		return []string{"COM1", "COM7"}, nil
+	}
+	probeCalls := 0
+	s.probeProtocolHello = func(_ string, _ int, _ time.Duration) (int, error) {
+		probeCalls++
+		return 0, errors.New("probe should not run when runtime is already connected")
+	}
+	s.runtimeSnapshot = func() (config.SerialCfg, mixer.Status, bool) {
+		return config.SerialCfg{Port: "COM9", Baud: 115200}, mixer.Status{
+			State:           "connected",
+			Connected:       true,
+			ProtocolVersion: 1,
+		}, true
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/port-autodetect?baud=9600", nil)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rr.Code)
+	}
+
+	var body struct {
+		Detected        string `json:"detected"`
+		Baud            int    `json:"baud"`
+		ProtocolVersion int    `json:"protocolVersion"`
+		Attempts        []struct {
+			Port   string `json:"port"`
+			Ok     bool   `json:"ok"`
+			Source string `json:"source"`
+		} `json:"attempts"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode json: %v", err)
+	}
+	if body.Detected != "COM9" {
+		t.Fatalf("detected = %q, want COM9", body.Detected)
+	}
+	if body.Baud != 115200 {
+		t.Fatalf("baud = %d, want 115200", body.Baud)
+	}
+	if body.ProtocolVersion != 1 {
+		t.Fatalf("protocolVersion = %d, want 1", body.ProtocolVersion)
+	}
+	if probeCalls != 0 {
+		t.Fatalf("probe calls = %d, want 0", probeCalls)
+	}
+	if len(body.Attempts) == 0 || body.Attempts[0].Source != "runtime" || !body.Attempts[0].Ok {
+		t.Fatalf("expected runtime-backed successful attempt, got %+v", body.Attempts)
+	}
+}
+
+func TestHandlePortAutoDetect_RuntimeConnectedWithoutProtocolFallsBackToProbe(t *testing.T) {
+	s := New("config.yaml")
+	s.listPorts = func() ([]string, error) {
+		return []string{"COM1", "COM3"}, nil
+	}
+	probeCalls := 0
+	s.probeProtocolHello = func(port string, baud int, _ time.Duration) (int, error) {
+		probeCalls++
+		if baud != 115200 {
+			t.Fatalf("unexpected baud: %d", baud)
+		}
+		if port == "COM3" {
+			return 1, nil
+		}
+		return 0, errors.New("no MAMA protocol hello detected")
+	}
+	s.runtimeSnapshot = func() (config.SerialCfg, mixer.Status, bool) {
+		return config.SerialCfg{Port: "COM9", Baud: 115200}, mixer.Status{
+			State:           "connected",
+			Connected:       true,
+			ProtocolVersion: 0,
+		}, true
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/port-autodetect?baud=115200", nil)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rr.Code)
+	}
+
+	var body struct {
+		Detected string `json:"detected"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode json: %v", err)
+	}
+	if body.Detected != "COM3" {
+		t.Fatalf("detected = %q, want COM3", body.Detected)
+	}
+	if probeCalls != 2 {
+		t.Fatalf("probe calls = %d, want 2", probeCalls)
+	}
+}
+
 func TestHandleIndex_HasCoreSetupControls(t *testing.T) {
 	s := New("config.yaml")
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
