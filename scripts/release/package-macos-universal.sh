@@ -39,6 +39,8 @@ mkdir -p "${OUT_DIR}"
 
 lipo -create -output "${OUT_DIR}/mama" "${TMP_DIR}/mama-amd64" "${TMP_DIR}/mama-arm64"
 cp "${MAMA_DIR}/internal/config/default.yaml" "${OUT_DIR}/config.yaml"
+cp "${MAMA_DIR}/assets/icons/mama-app.png" "${OUT_DIR}/mama-app.png"
+cp "${MAMA_DIR}/assets/icons/mama-tray.png" "${OUT_DIR}/mama-tray.png"
 
 cat > "${OUT_DIR}/Open Setup UI.command" <<'LAUNCH_UI'
 #!/usr/bin/env bash

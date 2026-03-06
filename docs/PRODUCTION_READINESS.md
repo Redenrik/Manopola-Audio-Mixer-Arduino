@@ -65,6 +65,7 @@ Maintainers should still verify:
 
 Before publishing, run a quick UX sanity pass:
 - fresh install on Windows 64-bit and 32-bit
+- installer smoke test on macOS (`.pkg`) and Linux (`.deb`)
 - first-launch mapping save flow works
 - tray behavior works (Windows/macOS/Linux: reopen, quit)
 - serial auto-detection and manual selection both work

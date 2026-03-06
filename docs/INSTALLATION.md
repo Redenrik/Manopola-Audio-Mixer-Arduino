@@ -6,8 +6,10 @@ Download from the latest release:
 
 - Windows 64-bit: `MAMA-Setup-Windows.exe`
 - Windows 32-bit: `MAMA-Setup-Windows-32bit.exe`
-- macOS universal2: `MAMA-macOS.tar.gz`
-- Linux amd64: `MAMA-Linux.tar.gz`
+- macOS universal2 installer: `MAMA-macOS.pkg`
+- Linux amd64 installer: `MAMA-Linux.deb`
+- macOS portable distributable: `MAMA-macOS.tar.gz`
+- Linux portable distributable: `MAMA-Linux.tar.gz`
 
 ### Windows (Recommended Installer)
 
@@ -19,6 +21,20 @@ Download from the latest release:
    - configure mappings
 4. Click **Save Config**.
 5. Keep MAMA running in tray (close hides window; tray menu has Show/Quit).
+
+### macOS (Recommended Installer)
+
+1. Open `MAMA-macOS.pkg` and complete installation.
+2. Launch setup from `/Applications/MAMA/Open Setup UI.command`.
+3. Configure serial + mappings and save.
+
+### Linux (Recommended Installer)
+
+1. Install package: `sudo apt install ./MAMA-Linux.deb`.
+2. Run setup:
+   - app menu entry: **MAMA Audio Mixer**
+   - or terminal: `mama-setup`
+3. Configure serial + mappings and save.
 
 ### macOS / Linux (Portable Package)
 
@@ -59,6 +75,7 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\package-installer.ps1 -
 ```bash
 bash scripts/release/package-portable.sh linux amd64 dist/MAMA-Linux
 tar -C dist -czf dist/MAMA-Linux.tar.gz MAMA-Linux
+bash scripts/release/package-linux-deb.sh dist/MAMA-Linux v1.0.0 dist/MAMA-Linux.deb
 ```
 
 Optional advanced Linux arm64:
@@ -73,6 +90,7 @@ tar -C dist -czf dist/mama-linux-arm64-portable.tar.gz mama-linux-arm64-portable
 ```bash
 bash scripts/release/package-macos-universal.sh dist/MAMA-macOS
 tar -C dist -czf dist/MAMA-macOS.tar.gz MAMA-macOS
+bash scripts/release/package-macos-pkg.sh dist/MAMA-macOS v1.0.0 dist/MAMA-macOS.pkg
 ```
 
 Optional advanced macOS portable builds:

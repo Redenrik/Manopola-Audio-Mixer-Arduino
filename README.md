@@ -16,14 +16,15 @@ Recommended release assets:
 
 - Windows 64-bit: `MAMA-Setup-Windows.exe`
 - Windows 32-bit: `MAMA-Setup-Windows-32bit.exe`
-- macOS universal2: `MAMA-macOS.tar.gz`
-- Linux amd64: `MAMA-Linux.tar.gz`
+- macOS universal2 installer: `MAMA-macOS.pkg`
+- Linux amd64 installer: `MAMA-Linux.deb`
 
 Advanced/power-user assets:
 
 - Windows portable zip bundles (`amd64`, `386`)
 - macOS portable (`amd64`, `arm64`)
 - Linux arm64 portable
+- Recommended portable bundles are also published: `MAMA-macOS.tar.gz`, `MAMA-Linux.tar.gz`
 
 ## Quick Start (No Coding)
 
@@ -37,15 +38,16 @@ Advanced/power-user assets:
 
 ### macOS / Linux
 
-1. Extract package to a writable folder.
-2. Start setup UI launcher:
+1. Preferred: install with `MAMA-macOS.pkg` (macOS) or `MAMA-Linux.deb` (Linux).
+2. Alternative: extract `MAMA-macOS.tar.gz` or `MAMA-Linux.tar.gz` to a writable folder.
+3. Start setup UI launcher:
    - macOS: `Open Setup UI.command`
    - Linux: `open-setup-ui.sh`
-3. Configure serial + mappings, then save.
-4. Optional runtime launcher:
+4. Configure serial + mappings, then save.
+5. Optional runtime launcher:
    - macOS: `Start Mixer.command`
    - Linux: `start-mixer.sh`
-5. Stop background runtime when needed:
+6. Stop background runtime when needed:
    - macOS: `Stop Mixer.command`
    - Linux: `stop-mixer.sh`
 

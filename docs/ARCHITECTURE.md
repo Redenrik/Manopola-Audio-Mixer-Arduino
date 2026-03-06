@@ -79,8 +79,8 @@ Compatibility:
 Recommended release assets:
 
 - Windows installers (`amd64`, `386`)
-- macOS universal2 package
-- Linux amd64 package
+- macOS installer (`.pkg`) plus universal2 portable package (`.tar.gz`)
+- Linux amd64 installer (`.deb`) plus portable package (`.tar.gz`)
 
 Advanced portable assets are also published for architecture-specific workflows.
 

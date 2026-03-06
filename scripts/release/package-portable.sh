@@ -40,6 +40,10 @@ fi
 )
 
 cp "${MAMA_DIR}/internal/config/default.yaml" "${OUT_DIR}/config.yaml"
+if [[ "${GOOS_TARGET}" == "linux" || "${GOOS_TARGET}" == "darwin" ]]; then
+  cp "${MAMA_DIR}/assets/icons/mama-app.png" "${OUT_DIR}/mama-app.png"
+  cp "${MAMA_DIR}/assets/icons/mama-tray.png" "${OUT_DIR}/mama-tray.png"
+fi
 
 if [[ "${GOOS_TARGET}" == "linux" ]]; then
   cat > "${OUT_DIR}/open-setup-ui.sh" <<'LAUNCH_UI'
