@@ -180,6 +180,7 @@
     .settings-view {
       display: grid;
       gap: 16px;
+      padding-bottom: 110px;
     }
 
     .settings-top-grid {
@@ -277,7 +278,7 @@
     .row {
       display: grid;
       gap: 8px;
-      grid-template-columns: 92px minmax(150px, 1fr) minmax(220px, 1.4fr) 118px 182px 42px;
+      grid-template-columns: 92px minmax(150px, 1fr) minmax(220px, 1.4fr) 118px 182px 84px;
       align-items: center;
       margin-bottom: 8px;
     }
@@ -313,7 +314,7 @@
       }
 
       .row {
-        grid-template-columns: 108px minmax(190px, 1fr) minmax(320px, 1.6fr) 148px 208px 48px;
+        grid-template-columns: 108px minmax(190px, 1fr) minmax(320px, 1.6fr) 148px 208px 84px;
       }
     }
 
@@ -397,6 +398,49 @@
       fill: none;
       stroke-linecap: round;
       stroke-linejoin: round;
+    }
+
+    .icon-copy {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .map-row-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .map-row-actions .icon-btn {
+      width: 38px;
+      height: 38px;
+    }
+
+    .mapping-validation-status {
+      margin-top: 6px;
+      min-height: 1.1em;
+    }
+
+    .mapping-validation-list {
+      margin-top: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .mapping-validation-link {
+      font-size: 0.82rem;
+      padding: 6px 8px;
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .knobs {
@@ -707,6 +751,55 @@
       background: var(--danger-bg);
     }
 
+    .map-row-health {
+      margin: 0;
+      min-width: 56px;
+      text-align: center;
+    }
+
+    .sticky-savebar {
+      position: fixed;
+      left: 50%;
+      bottom: 12px;
+      transform: translateX(-50%);
+      z-index: 1200;
+      width: min(1560px, calc(100% - 26px));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+    }
+
+    .sticky-save-meta {
+      display: grid;
+      gap: 6px;
+    }
+
+    .sticky-savebar .status {
+      margin: 0;
+      min-height: 1.1em;
+    }
+
+    @media (max-width: 900px) {
+      .settings-view {
+        padding-bottom: 150px;
+      }
+
+      .sticky-savebar {
+        width: calc(100% - 16px);
+        left: 8px;
+        right: 8px;
+        transform: none;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .map-row-actions {
+        justify-content: flex-start;
+      }
+    }
+
     .btn-lite {
       background: var(--lite-bg);
       border-color: var(--lite-border);
@@ -943,15 +1036,16 @@
           <div id="headerName">Name / Selector</div>
           <div id="headerStep">Step (%)</div>
           <div id="headerFallback">Fallback</div>
-          <div></div>
+          <div id="headerActions">Actions</div>
         </div>
         <div id="mappings"></div>
+        <p class="status mapping-validation-status" id="mappingValidationStatus" role="status" aria-live="polite"></p>
+        <div class="mapping-validation-list hidden" id="mappingValidationList" role="list"></div>
         <div class="actions">
           <button id="addMapping" type="button">Add Mapping</button>
           <button class="btn-primary" id="saveConfig" type="button">Save Config</button>
           <button id="rollbackConfig" type="button">Rollback Last Save</button>
         </div>
-        <p class="status" id="saveStatus" role="status" aria-live="polite"></p>
       </section>
 
       <section class="panel" id="settingsAdvancedPanel">
@@ -987,6 +1081,17 @@
           </details>
         </div>
         <p class="hint" style="margin-top: 10px;"><span id="configPathLabel">Config path:</span> <span class="mono" id="configPath">loading...</span></p>
+      </section>
+
+      <section class="panel sticky-savebar" id="stickySaveBar">
+        <div class="sticky-save-meta">
+          <span id="saveBarDirty" class="dirty-badge hidden">Unsaved changes</span>
+          <p class="status" id="saveStatus" role="status" aria-live="polite"></p>
+        </div>
+        <div class="actions" style="margin:0;">
+          <button class="btn-primary" id="saveConfigSticky" type="button">Save Config</button>
+          <button id="rollbackConfigSticky" type="button">Rollback Last Save</button>
+        </div>
       </section>
     </section>
   </main>
@@ -1057,7 +1162,7 @@
   <div class="modal-overlay hidden" id="onboardingModal" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
     <section class="modal-card" style="width:min(760px,100%);">
       <h2 id="onboardingTitle">Welcome to MAMA</h2>
-      <p id="onboardingIntro">Let’s quickly configure the essentials so your knobs are ready.</p>
+      <p id="onboardingIntro">Let's quickly configure the essentials so your knobs are ready.</p>
       <div class="onboard-steps" id="onboardingSteps"></div>
       <p class="status" id="onboardingStatus" role="status" aria-live="polite"></p>
       <div class="actions">
@@ -1098,7 +1203,8 @@
         settingsOpen: false,
         dirty: false,
         lastSavedSignature: "",
-        suspendDirtyTracking: false
+        suspendDirtyTracking: false,
+        modalFocusReturn: {}
       },
       onboarding: {
         open: false,
@@ -1239,7 +1345,7 @@
         advancedSummary: "Advanced settings",
         advancedConfigSummary: "Advanced config tools",
         onboardingTitle: "Welcome to MAMA",
-        onboardingIntro: "Let’s quickly configure the essentials so your knobs are ready.",
+        onboardingIntro: "Let's quickly configure the essentials so your knobs are ready.",
         onboardingSkip: "Skip",
         onboardingPrev: "Back",
         onboardingNext: "Next",
@@ -1262,6 +1368,12 @@
         bootReady: "Ready",
         identifyHeading: "Knob Identification", identifyIntro: "Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.", debugHeading: "Debug Console", startIdentify: "Start Identify", stopIdentify: "Stop",
         mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", manageTemplates: "Manage Templates", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackNone: "No fallback", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", addKnob: "Add Knob", saveConfig: "Save Config", rollbackConfig: "Rollback Last Save", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", exportDiagnostics: "Export Diagnostics", importConfig: "Import Config", selectorPick: "Pick detected item", fallbackPick: "Pick fallback item", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).", nonWindowsTargetWarning: "macOS/Linux note: app/group controls depend on available audio session backend. Device and master controls remain available.",
+        headerActions: "Actions",
+        duplicateMapping: "Duplicate mapping",
+        removeMapping: "Remove mapping",
+        mappingValidationOK: "Mapping check: all rows are valid.",
+        mappingIssueRow: "Row {row}",
+        mappingIssueJump: "Jump to mapping row",
         appHintActive: "Detected active apps ({count}). Use suggestions with Windows names. If the app is offline, use exe:processname (example: exe:discord).",
         appHintOffline: "No active app sessions detected now. Use exe:processname and it will attach when the app starts.",
         groupHint: "Group accepts one or more group names or selector rules separated by ';' (example: browser; exe:discord).",
@@ -1385,6 +1497,12 @@
         bootReady: "Pronto",
         identifyHeading: "Identificazione manopole", identifyIntro: "L'attivita delle manopole viene rilevata automaticamente una volta configurata la porta seriale. Ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", debugHeading: "Console debug", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
         mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", manageTemplates: "Gestisci template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackNone: "Nessun fallback", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", addKnob: "Aggiungi manopola", saveConfig: "Salva config", rollbackConfig: "Ripristina ultimo salvataggio", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", exportDiagnostics: "Esporta diagnostica", importConfig: "Importa config", selectorPick: "Scegli elemento rilevato", fallbackPick: "Scegli fallback", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).", nonWindowsTargetWarning: "Nota macOS/Linux: i controlli app/group dipendono dal backend sessioni audio disponibile. I controlli dispositivo e master restano disponibili.",
+        headerActions: "Azioni",
+        duplicateMapping: "Duplica mappatura",
+        removeMapping: "Rimuovi mappatura",
+        mappingValidationOK: "Controllo mappature: tutte le righe sono valide.",
+        mappingIssueRow: "Riga {row}",
+        mappingIssueJump: "Vai alla riga mappatura",
         appHintActive: "App attive rilevate ({count}). Usa i suggerimenti con i nomi visibili in Windows. Se l'app e offline usa exe:nomeprocesso (esempio: exe:discord).",
         appHintOffline: "Nessuna sessione app attiva rilevata ora. Usa exe:nomeprocesso e si colleghera quando l'app parte.",
         groupHint: "Il gruppo accetta uno o piu nomi gruppo o regole selettore separati da ';' (esempio: browser; exe:discord).",
@@ -1411,7 +1529,7 @@
         conflictMissingFallbackSelector: "Il fallback app/gruppo richiede un selettore.",
         groupEditButton: "Modifica",
         groupEditorTitle: "Editor Gruppo",
-        groupEditorIntro: "Aggiungi regole di matching per questo gruppo. Qualsiasi app che corrisponde ad almeno una regola verrà controllata.",
+        groupEditorIntro: "Aggiungi regole di matching per questo gruppo. Qualsiasi app che corrisponde ad almeno una regola verra controllata.",
         groupAddRule: "Aggiungi regola",
         groupAddBrowser: "Preset browser",
         groupAddGame: "Preset giochi",
@@ -1549,9 +1667,15 @@
     function setDirtyState(isDirty) {
       state.ui.dirty = !!isDirty;
       const badge = $("unsavedBadge");
-      if (!badge) return;
-      badge.textContent = t("unsavedChanges");
-      badge.classList.toggle("hidden", !state.ui.dirty);
+      if (badge) {
+        badge.textContent = t("unsavedChanges");
+        badge.classList.toggle("hidden", !state.ui.dirty);
+      }
+      const saveBarBadge = $("saveBarDirty");
+      if (saveBarBadge) {
+        saveBarBadge.textContent = t("unsavedChanges");
+        saveBarBadge.classList.toggle("hidden", !state.ui.dirty);
+      }
     }
 
     function currentFormSignature() {
@@ -1601,11 +1725,11 @@
       document.title = t("pageTitle");
       const bindings = {
         bootTitle: "bootTitle",
-        titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", themeLabel: "themeLabel", settingsTitle: "settingsTitle", settingsIntro: "settingsIntro", connectionIntro: "connectionIntro", mappingsIntro: "mappingsIntro", closeSettingsBtn: "closeSettingsBtn", unsavedBadge: "unsavedChanges", advancedHeading: "advancedHeading", advancedSummary: "advancedSummary", advancedConfigSummary: "advancedConfigSummary", onboardingTitle: "onboardingTitle", onboardingIntro: "onboardingIntro", onboardingSkip: "onboardingSkip", onboardingPrev: "onboardingPrev", onboardingNext: "onboardingNext", onboardingFinish: "onboardingFinish", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
+        titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", themeLabel: "themeLabel", settingsTitle: "settingsTitle", settingsIntro: "settingsIntro", connectionIntro: "connectionIntro", mappingsIntro: "mappingsIntro", closeSettingsBtn: "closeSettingsBtn", unsavedBadge: "unsavedChanges", saveBarDirty: "unsavedChanges", advancedHeading: "advancedHeading", advancedSummary: "advancedSummary", advancedConfigSummary: "advancedConfigSummary", onboardingTitle: "onboardingTitle", onboardingIntro: "onboardingIntro", onboardingSkip: "onboardingSkip", onboardingPrev: "onboardingPrev", onboardingNext: "onboardingNext", onboardingFinish: "onboardingFinish", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
         wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
         manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", autoDetectPort: "autoDetectPort", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", debugHeading: "debugHeading", mappingsHeading: "mappingsHeading",
-        mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", manageTemplates: "manageTemplates", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep", headerFallback: "headerFallback",
-        addMapping: "addMapping", saveConfig: "saveConfig", rollbackConfig: "rollbackConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", exportDiagnostics: "exportDiagnostics", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
+        mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", manageTemplates: "manageTemplates", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep", headerFallback: "headerFallback", headerActions: "headerActions",
+        addMapping: "addMapping", saveConfig: "saveConfig", saveConfigSticky: "saveConfig", rollbackConfig: "rollbackConfig", rollbackConfigSticky: "rollbackConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", exportDiagnostics: "exportDiagnostics", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
         templateManagerTitle: "templateManagerTitle", templateManagerIntro: "templateManagerIntro", templateManagerListLabel: "templateManagerListLabel", templateManagerNameLabel: "templateManagerNameLabel", templateCreateFromCurrent: "templateCreateFromCurrent", templateDuplicate: "templateDuplicate", templateUpdateFromCurrent: "templateUpdateFromCurrent", templateRename: "templateRename", templateDelete: "templateDelete", templateSetDefault: "templateSetDefault", templateApplySelected: "templateApplySelected", templateManagerClose: "templateManagerClose",
         groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupAddMusic: "groupAddMusic", groupAddStreaming: "groupAddStreaming", groupAddChat: "groupAddChat", groupAddCreator: "groupAddCreator", groupClearRules: "groupClearRules", groupNameLabel: "groupNameLabel", groupSaveDefinition: "groupSaveDefinition", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
       };
@@ -1736,12 +1860,15 @@
     }
 
     function openOnboarding() {
+      rememberModalFocus("onboardingModal");
       state.onboarding.open = true;
       state.onboarding.index = 0;
       state.onboarding.serialAutoDetected = false;
       openSettingsView();
       $("onboardingModal").classList.remove("hidden");
       renderOnboarding();
+      const skip = $("onboardingSkip");
+      if (skip) skip.focus();
     }
 
     function closeOnboarding(markDone) {
@@ -1751,6 +1878,7 @@
       if (markDone) {
         localStorage.setItem(onboardingStorageKey, "1");
       }
+      restoreModalFocus("onboardingModal");
     }
 
     function maybeStartOnboarding() {
@@ -1784,6 +1912,23 @@
       el.textContent = text || "";
       el.className = "status" + (cls ? " " + cls : "");
       el.setAttribute("aria-live", cls === "error" ? "assertive" : "polite");
+    }
+
+    function rememberModalFocus(modalID) {
+      if (!modalID) return;
+      const active = document.activeElement;
+      if (active && typeof active.focus === "function") {
+        state.ui.modalFocusReturn[modalID] = active;
+      }
+    }
+
+    function restoreModalFocus(modalID) {
+      if (!modalID) return;
+      const previous = state.ui.modalFocusReturn[modalID];
+      delete state.ui.modalFocusReturn[modalID];
+      if (previous && document.contains(previous) && typeof previous.focus === "function") {
+        previous.focus();
+      }
     }
 
     function setBootStatus(text) {
@@ -1939,6 +2084,9 @@
           const dial = indicator.querySelector(".dial");
           if (dial) dial.style.transform = "rotate(0deg)";
         }
+        if (row && typeof row.refreshHealthState === "function") {
+          row.refreshHealthState();
+        }
       }
     }
 
@@ -2058,6 +2206,27 @@
         if (stateEl) {
           stateEl.textContent = t("waiting");
           stateEl.removeAttribute("title");
+        }
+      }
+      refreshMappingRowHealthBadges();
+    }
+
+    function mappingStatusForKnob(knobID) {
+      const id = parseInt(knobID, 10);
+      if (!Number.isInteger(id) || id <= 0) return null;
+      for (const item of state.lastMappingStatus || []) {
+        if (parseInt(item && item.knob, 10) === id) {
+          return item;
+        }
+      }
+      return null;
+    }
+
+    function refreshMappingRowHealthBadges() {
+      const rows = Array.from($("mappings").querySelectorAll(".row"));
+      for (const row of rows) {
+        if (typeof row.refreshHealthState === "function") {
+          row.refreshHealthState();
         }
       }
     }
@@ -2425,17 +2594,21 @@
     }
 
     function openTemplateManager() {
+      rememberModalFocus("templateManagerModal");
       state.templateManager.open = true;
       state.templateManager.selectedID = resolveTemplateID($("templateSelect").value) || resolveDefaultTemplateID("");
       renderTemplateManagerList();
       setTemplateManagerStatus("");
       $("templateManagerModal").classList.remove("hidden");
+      const select = $("templateManagerSelect");
+      if (select) select.focus();
     }
 
     function closeTemplateManager() {
       state.templateManager.open = false;
       setTemplateManagerStatus("");
       $("templateManagerModal").classList.add("hidden");
+      restoreModalFocus("templateManagerModal");
     }
 
     function createTemplateFromCurrent() {
@@ -3256,6 +3429,7 @@
       if (!Array.isArray(state.groupEditor.selectors) || state.groupEditor.selectors.length === 0) {
         state.groupEditor.selectors = [{ kind: "exact", value: "" }];
       }
+      rememberModalFocus("groupEditorModal");
       $("groupEditorModal").classList.remove("hidden");
       $("groupEditorName").value = state.groupEditor.name || "";
       setGroupEditorStatus("");
@@ -3284,6 +3458,7 @@
       $("groupEditorName").value = "";
       setGroupEditorStatus("");
       $("groupEditorModal").classList.add("hidden");
+      restoreModalFocus("groupEditorModal");
     }
 
     function saveGroupDefinitionFromEditor() {
@@ -3363,6 +3538,14 @@
       if (targetType === "mic_in") return endpointSuggestions("mic_in");
       if (targetType === "line_in") return endpointSuggestions("line_in");
       return [];
+    }
+
+    function filterSuggestionValues(values, query) {
+      const q = String(query || "").trim().toLowerCase();
+      if (!q) return Array.isArray(values) ? values : [];
+      return (Array.isArray(values) ? values : []).filter((value) => {
+        return String(value || "").toLowerCase().includes(q);
+      });
     }
 
     function setPickerOptions(select, values, placeholder) {
@@ -3466,6 +3649,8 @@
         growKnobCount(nextKnob, "manual add mapping");
       }
       $("mappings").appendChild(mappingRow({ knob: nextKnob, target: "master_out", step: 0.02, name: "" }));
+      refreshAllKnobSelectOptions();
+      runMappingValidationPreview();
       refreshDirtyState();
     }
 
@@ -3488,7 +3673,11 @@
       const knobIndicator = document.createElement("div");
       knobIndicator.className = "map-knob-indicator";
       knobIndicator.innerHTML = `<div class="dial"></div><div class="map-knob-label"></div>`;
+      const rowHealth = document.createElement("span");
+      rowHealth.className = "health-badge map-row-health";
+      rowHealth.textContent = t("waiting");
       knobCell.appendChild(knobIndicator);
+      knobCell.appendChild(rowHealth);
       knobCell.appendChild(knob);
 
       const target = document.createElement("select");
@@ -3592,16 +3781,47 @@
       fallbackWrap.appendChild(fallbackName);
       fallbackWrap.appendChild(fallbackPicker);
 
+      const duplicate = document.createElement("button");
+      duplicate.type = "button";
+      duplicate.className = "btn-lite icon-btn";
+      duplicate.innerHTML = '<svg class="icon-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><rect x="4" y="4" width="11" height="11" rx="2"/></svg>';
+      duplicate.setAttribute("aria-label", t("duplicateMapping"));
+      duplicate.setAttribute("title", t("duplicateMapping"));
+      duplicate.addEventListener("click", () => {
+        const snapshot = normalizeTemplateMapping(parseMappingFromRow(row)) || {};
+        let nextKnob = nextAvailableKnobID();
+        if (nextKnob > knobCount && nextKnob <= maxKnobCount) {
+          growKnobCount(nextKnob, "mapping duplicate");
+        }
+        if (!(nextKnob >= 1 && nextKnob <= maxKnobCount)) {
+          nextKnob = parseInt(knob.value, 10) || 1;
+        }
+        snapshot.knob = nextKnob;
+        const copy = mappingRow(snapshot);
+        row.insertAdjacentElement("afterend", copy);
+        refreshAllKnobSelectOptions();
+        runMappingValidationPreview();
+        refreshDirtyState();
+      });
+
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "btn-danger icon-btn";
       remove.innerHTML = '<svg class="icon-trash" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
       remove.setAttribute("aria-label", "Remove mapping row");
-      remove.setAttribute("title", state.language === "it" ? "Rimuovi mappatura" : "Remove mapping");
+      if (t("removeMapping") !== "Remove mapping row") {
+        remove.setAttribute("aria-label", t("removeMapping"));
+      }
+      remove.setAttribute("title", t("removeMapping"));
       remove.addEventListener("click", () => {
         row.remove();
+        runMappingValidationPreview();
         refreshDirtyState();
       });
+      const actionWrap = document.createElement("div");
+      actionWrap.className = "map-row-actions";
+      actionWrap.appendChild(duplicate);
+      actionWrap.appendChild(remove);
 
       function syncKnobIndicator() {
         const knobID = parseInt(knob.value, 10);
@@ -3616,6 +3836,37 @@
           dial.style.transform = "rotate(0deg)";
         }
         knobIndicator.dataset.angle = "0";
+      }
+
+      let nameSuggestionValues = [];
+      let fallbackSuggestionValues = [];
+      function refreshNamePickerFromInput() {
+        setPickerOptions(namePicker, filterSuggestionValues(nameSuggestionValues, name.value), t("selectorPick"));
+      }
+      function refreshFallbackPickerFromInput() {
+        setPickerOptions(fallbackPicker, filterSuggestionValues(fallbackSuggestionValues, fallbackName.value), t("fallbackPick"));
+      }
+      function syncRowHealthState() {
+        const item = mappingStatusForKnob(knob.value);
+        if (!item) {
+          rowHealth.className = "health-badge map-row-health";
+          rowHealth.textContent = t("waiting");
+          rowHealth.removeAttribute("title");
+          return;
+        }
+        let key = String(item.health || "").trim().toLowerCase();
+        if (!key) {
+          key = item.available ? "ok" : "unavailable";
+        }
+        if (item.fallbackEnabled && key === "ok") {
+          key = "fallback";
+        }
+        const label = healthLabel(key) || t("waiting");
+        rowHealth.className = "health-badge map-row-health" + (key ? (" health-" + key) : "");
+        rowHealth.textContent = label;
+        const detail = String(item.healthMessage || item.error || "").trim();
+        if (detail) rowHealth.title = detail;
+        else rowHealth.removeAttribute("title");
       }
 
       function syncNameState() {
@@ -3633,8 +3884,8 @@
         }
         groupEdit.hidden = target.value !== "group";
         groupEdit.disabled = target.value !== "group" || name.disabled;
-        const options = suggestionsForTarget(target.value);
-        setPickerOptions(namePicker, options, t("selectorPick"));
+        nameSuggestionValues = suggestionsForTarget(target.value);
+        refreshNamePickerFromInput();
       }
       function syncFallbackState() {
         const supportsFallback = target.value === "app" || target.value === "group";
@@ -3643,14 +3894,18 @@
           fallbackTarget.value = "";
           fallbackName.value = "";
           fallbackName.disabled = true;
+          fallbackSuggestionValues = [];
+          refreshFallbackPickerFromInput();
           return;
         }
         const selectedFallback = String(fallbackTarget.value || "").trim();
-        const fallbackOptions = suggestionsForTarget(selectedFallback);
-        setPickerOptions(fallbackPicker, fallbackOptions, t("fallbackPick"));
+        fallbackSuggestionValues = suggestionsForTarget(selectedFallback);
+        refreshFallbackPickerFromInput();
         if (!selectedFallback) {
           fallbackName.disabled = true;
           fallbackName.value = "";
+          fallbackSuggestionValues = [];
+          refreshFallbackPickerFromInput();
           return;
         }
         fallbackName.disabled = false;
@@ -3678,6 +3933,8 @@
         fallbackName.dispatchEvent(new Event("input", { bubbles: true }));
         fallbackPicker.value = "";
       });
+      name.addEventListener("input", refreshNamePickerFromInput);
+      fallbackName.addEventListener("input", refreshFallbackPickerFromInput);
       let previousTarget = target.value;
       target.addEventListener("change", () => {
         const currentTarget = String(target.value || "").trim();
@@ -3697,13 +3954,20 @@
         previousFallbackTarget = currentFallback;
         syncFallbackState();
       });
-      knob.addEventListener("change", syncKnobIndicator);
+      knob.addEventListener("change", () => {
+        syncKnobIndicator();
+        syncRowHealthState();
+      });
       syncKnobIndicator();
+      syncRowHealthState();
       syncNameState();
       syncFallbackState();
       row.refreshSuggestionControls = () => {
         syncNameState();
         syncFallbackState();
+      };
+      row.refreshHealthState = () => {
+        syncRowHealthState();
       };
 
       row.appendChild(knobCell);
@@ -3711,7 +3975,7 @@
       row.appendChild(nameWrap);
       row.appendChild(step);
       row.appendChild(fallbackWrap);
-      row.appendChild(remove);
+      row.appendChild(actionWrap);
       return row;
     }
 
@@ -3720,6 +3984,8 @@
       host.innerHTML = "";
       if (!Array.isArray(list) || list.length === 0) {
         host.appendChild(mappingRow());
+        refreshMappingRowHealthBadges();
+        runMappingValidationPreview();
         refreshDirtyState();
         return;
       }
@@ -3732,6 +3998,8 @@
         growKnobCount(maxSeen, "config mappings");
       }
       for (const m of list) host.appendChild(mappingRow(m));
+      refreshMappingRowHealthBadges();
+      runMappingValidationPreview();
       refreshDirtyState();
     }
 
@@ -3810,6 +4078,10 @@
       for (const row of rows) {
         row.classList.remove("error-row");
         row.removeAttribute("title");
+        const controls = row.querySelectorAll("input, select");
+        for (const control of controls) {
+          control.removeAttribute("aria-invalid");
+        }
       }
     }
 
@@ -3817,6 +4089,93 @@
       if (!row) return;
       row.classList.add("error-row");
       if (message) row.setAttribute("title", message);
+      const controls = row.querySelectorAll("input, select");
+      for (const control of controls) {
+        control.setAttribute("aria-invalid", "true");
+      }
+    }
+
+    function mappingRowNumber(row) {
+      if (!row) return 0;
+      const rows = Array.from($("mappings").querySelectorAll(".row"));
+      const index = rows.indexOf(row);
+      return index >= 0 ? index + 1 : 0;
+    }
+
+    function focusMappingIssueRow(issue) {
+      const row = issue && issue.row;
+      if (!row) return;
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      const control = row.querySelector('input[aria-invalid="true"], select[aria-invalid="true"], input, select, button');
+      if (control && typeof control.focus === "function") {
+        control.focus();
+      }
+    }
+
+    function renderMappingValidationList(validation) {
+      const host = $("mappingValidationList");
+      if (!host) return;
+      host.innerHTML = "";
+      if (!validation || validation.ok || !Array.isArray(validation.rowIssues) || validation.rowIssues.length === 0) {
+        host.classList.add("hidden");
+        return;
+      }
+      const seen = new Set();
+      for (const issue of validation.rowIssues) {
+        const row = issue && issue.row;
+        const text = String(issue && issue.text || "").trim();
+        if (!row || !text) continue;
+        const number = mappingRowNumber(row);
+        const key = String(number) + "|" + text.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn-lite mapping-validation-link";
+        const rowLabel = formatText(t("mappingIssueRow"), { row: number || "?" });
+        button.textContent = `${rowLabel}: ${text}`;
+        button.setAttribute("role", "listitem");
+        button.setAttribute("aria-label", `${t("mappingIssueJump")}: ${rowLabel}`);
+        button.title = `${t("mappingIssueJump")}: ${rowLabel}`;
+        button.addEventListener("click", () => focusMappingIssueRow({ row }));
+        host.appendChild(button);
+      }
+      host.classList.toggle("hidden", host.children.length === 0);
+    }
+
+    function mappingValidationSummary(validation) {
+      if (!validation || validation.ok) {
+        return t("mappingValidationOK");
+      }
+      const first = String((validation.issues && validation.issues[0]) || "").trim() || t("saveBlockedConflicts");
+      const moreCount = Math.max(0, (validation.issues && validation.issues.length || 0) - 1);
+      const more = moreCount > 0 ? ` (+${moreCount})` : "";
+      return first + more;
+    }
+
+    function applyMappingValidationPreview(validation, options = {}) {
+      clearMappingValidationErrors();
+      const statusText = mappingValidationSummary(validation);
+      renderMappingValidationList(validation);
+      if (!validation || validation.ok) {
+        setStatus("mappingValidationStatus", statusText, "ok");
+        return;
+      }
+      for (const issue of validation.rowIssues || []) {
+        markMappingValidationError(issue.row, issue.text);
+      }
+      if (options.scrollToFirst && validation.rowIssues && validation.rowIssues.length > 0) {
+        focusMappingIssueRow(validation.rowIssues[0]);
+      }
+      setStatus("mappingValidationStatus", statusText, "error");
+    }
+
+    function runMappingValidationPreview(options = {}) {
+      const entries = Array.isArray(options.entries) ? options.entries : collectMappingEntries();
+      const validation = validateConfigEntries(entries);
+      applyMappingValidationPreview(validation, options);
+      return { entries, validation };
     }
 
     function knownTargetTypesSet() {
@@ -4380,19 +4739,9 @@
 
     async function saveConfig() {
       try {
-        clearMappingValidationErrors();
-        const entries = collectMappingEntries();
-        const validation = validateConfigEntries(entries);
+        const { entries, validation } = runMappingValidationPreview({ scrollToFirst: true });
         if (!validation.ok) {
-          for (const issue of validation.rowIssues) {
-            markMappingValidationError(issue.row, issue.text);
-          }
-          if (validation.rowIssues.length > 0) {
-            validation.rowIssues[0].row.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
-          const preview = validation.issues.slice(0, 2).join(" | ");
-          const more = validation.issues.length > 2 ? ` (+${validation.issues.length - 2})` : "";
-          setStatus("saveStatus", `${t("saveBlockedConflicts")}: ${preview}${more}`, "error");
+          setStatus("saveStatus", `${t("saveBlockedConflicts")}: ${mappingValidationSummary(validation)}`, "error");
           return;
         }
 
@@ -4413,7 +4762,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-        clearMappingValidationErrors();
+        applyMappingValidationPreview(validation);
         state.config = saved;
         markFormAsSaved();
         setStatus("saveStatus", state.language === "it" ? "Configurazione salvata" : "Config saved", "ok");
@@ -4779,7 +5128,9 @@
         if (ev.target === $("templateManagerModal")) closeTemplateManager();
       });
       $("saveConfig").addEventListener("click", saveConfig);
+      $("saveConfigSticky").addEventListener("click", saveConfig);
       $("rollbackConfig").addEventListener("click", rollbackLastSave);
+      $("rollbackConfigSticky").addEventListener("click", rollbackLastSave);
       $("backupConfig").addEventListener("click", backupConfig);
       $("restoreConfig").addEventListener("click", restoreConfig);
       $("exportConfig").addEventListener("click", exportConfig);
@@ -4793,7 +5144,7 @@
       $("languageSelect").addEventListener("change", (ev) => setLanguage(ev.target.value));
       const onSettingsMutation = (ev) => {
         if (ev && ev.target && ev.target.closest && ev.target.closest("#mappings")) {
-          clearMappingValidationErrors();
+          runMappingValidationPreview();
         }
         refreshDirtyState();
       };
@@ -4845,6 +5196,12 @@
         }
       });
       window.addEventListener("keydown", (ev) => {
+        const saveShortcut = (ev.ctrlKey || ev.metaKey) && !ev.shiftKey && String(ev.key || "").toLowerCase() === "s";
+        if (saveShortcut && state.ui.settingsOpen && !state.onboarding.open && !state.groupEditor.open && !state.templateManager.open) {
+          ev.preventDefault();
+          saveConfig();
+          return;
+        }
         if (ev.key !== "Escape") {
           return;
         }
@@ -4914,3 +5271,4 @@
   </script>
 </body>
 </html>
+
