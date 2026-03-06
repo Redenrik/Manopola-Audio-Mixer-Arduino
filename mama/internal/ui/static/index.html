@@ -1820,6 +1820,7 @@
       }
       $("themeSelect").value = normalized;
       document.documentElement.setAttribute("data-theme", resolvedThemeFromPreference(normalized));
+      syncDesktopWindowTheme();
     }
 
     function localizeStaticUI() {
@@ -2125,6 +2126,17 @@
       }
     }
 
+    async function syncDesktopWindowTheme() {
+      if (!state.desktopWindow.enabled) return;
+      if (typeof window === "undefined" || typeof window.mamaWindowSetTheme !== "function") return;
+      const theme = resolvedThemeFromPreference(state.themePreference);
+      try {
+        await window.mamaWindowSetTheme(theme);
+      } catch (err) {
+        appendDebugLine("ERR desktop window theme: " + (err && err.message ? err.message : String(err)));
+      }
+    }
+
     async function initDesktopWindowControls() {
       if (!desktopWindowBridgeEnabled()) {
         applyDesktopWindowState({ desktop: false, maximized: false });
@@ -2132,6 +2144,7 @@
       }
       applyDesktopWindowState({ desktop: true, maximized: false });
       await refreshDesktopWindowState();
+      await syncDesktopWindowTheme();
     }
 
     function effectivePort() {

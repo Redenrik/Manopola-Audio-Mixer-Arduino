@@ -23,6 +23,10 @@ const (
 	trayMenuQuitID      = 1002
 	dwmAttrCornerPref   = 33
 	dwmCornerRoundSmall = 3
+	dwmAttrBorderColor  = 34
+	dwmAttrCaptionColor = 35
+	dwmThemeLight       = "light"
+	dwmThemeDark        = "dark"
 )
 
 var (
@@ -102,6 +106,12 @@ func (s *desktopShell) bindWindowBridge() error {
 	}); err != nil {
 		return fmt.Errorf("bind mamaWindowState failed: %w", err)
 	}
+	if err := s.web.Bind("mamaWindowSetTheme", func(theme string) error {
+		s.applyWindowTheme(strings.TrimSpace(strings.ToLower(theme)))
+		return nil
+	}); err != nil {
+		return fmt.Errorf("bind mamaWindowSetTheme failed: %w", err)
+	}
 	s.web.Init(`window.__MAMA_DESKTOP_EMBEDDED__ = true;`)
 	return nil
 }
@@ -172,6 +182,7 @@ func (s *desktopShell) enableCustomTitleBar() {
 	}
 	win.SetWindowPos(s.hwnd, 0, 0, 0, 0, 0, win.SWP_NOMOVE|win.SWP_NOSIZE|win.SWP_NOZORDER|win.SWP_NOACTIVATE|win.SWP_FRAMECHANGED)
 	applyRoundedCorners(s.hwnd)
+	s.applyWindowTheme(dwmThemeLight)
 }
 
 func applyRoundedCorners(hwnd win.HWND) {
@@ -185,6 +196,38 @@ func applyRoundedCorners(hwnd win.HWND) {
 		uintptr(unsafe.Pointer(&preference)),
 		uintptr(unsafe.Sizeof(preference)),
 	)
+}
+
+func colorRef(r, g, b uint8) uint32 {
+	return uint32(r) | uint32(g)<<8 | uint32(b)<<16
+}
+
+func applyDwmColor(hwnd win.HWND, attr uint32, color uint32) {
+	if err := dwmSetWindowAttr.Find(); err != nil {
+		return
+	}
+	value := color
+	_, _, _ = dwmSetWindowAttr.Call(
+		uintptr(hwnd),
+		uintptr(attr),
+		uintptr(unsafe.Pointer(&value)),
+		uintptr(unsafe.Sizeof(value)),
+	)
+}
+
+func (s *desktopShell) applyWindowTheme(theme string) {
+	switch theme {
+	case dwmThemeDark:
+		// Match :root[data-theme="dark"] --bg: #101816.
+		darkBg := colorRef(0x10, 0x18, 0x16)
+		applyDwmColor(s.hwnd, dwmAttrCaptionColor, darkBg)
+		applyDwmColor(s.hwnd, dwmAttrBorderColor, darkBg)
+	default:
+		// Match :root --bg: #f2f7f5.
+		lightBg := colorRef(0xF2, 0xF7, 0xF5)
+		applyDwmColor(s.hwnd, dwmAttrCaptionColor, lightBg)
+		applyDwmColor(s.hwnd, dwmAttrBorderColor, lightBg)
+	}
 }
 
 func (s *desktopShell) windowState() desktopWindowState {
