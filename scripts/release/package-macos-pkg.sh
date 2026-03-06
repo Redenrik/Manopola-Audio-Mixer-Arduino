@@ -70,7 +70,7 @@ set -euo pipefail
 # Cleanup legacy folder install layout to avoid duplicate launch entries.
 legacy_dir="/Applications/MAMA"
 if [[ -d "${legacy_dir}" ]]; then
-  if [[ -f "${legacy_dir}/mama" && -f "${legacy_dir}/Open Setup UI.command" ]]; then
+  if [[ -f "${legacy_dir}/mama" || -f "${legacy_dir}/Open Setup UI.command" || -d "${legacy_dir}/MAMA.app" ]]; then
     rm -rf "${legacy_dir}"
   fi
 fi

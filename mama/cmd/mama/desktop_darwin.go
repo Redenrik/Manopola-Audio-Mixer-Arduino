@@ -46,7 +46,7 @@ static void mamaTrayCreate(const char *title, void *window) {
 		}
 	}
 
-	mamaStatusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
+	mamaStatusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSSquareStatusItemLength];
 	if (mamaStatusItem == nil) {
 		return;
 	}
@@ -88,9 +88,15 @@ static void mamaTraySetIcon(const void *bytes, int length, int isTemplate) {
 	if (image == nil) {
 		return;
 	}
+	[image setSize:NSMakeSize(18, 18)];
 	[image setTemplate:(isTemplate ? YES : NO)];
-	[[mamaStatusItem button] setImage:image];
-	[[mamaStatusItem button] setTitle:@""];
+	NSStatusBarButton *button = [mamaStatusItem button];
+	if (button != nil) {
+		[button setImageScaling:NSImageScaleProportionallyDown];
+		[button setImagePosition:NSImageOnly];
+		[button setImage:image];
+		[button setTitle:@""];
+	}
 }
 
 static void mamaTrayDestroy(void) {
@@ -190,54 +196,8 @@ func runDesktopShell(ctx context.Context, cancel context.CancelFunc, url string,
 			w.Terminate()
 		}
 	}
-	windowState := func() desktopWindowState {
-		maximized := false
-		if window != nil {
-			maximized = C.mamaWindowIsZoomed(window) == 1
-		}
-		return desktopWindowState{Desktop: true, Maximized: maximized}
-	}
-	dispatchNative := func(fn func(unsafe.Pointer), state desktopWindowState) desktopWindowState {
-		if window == nil {
-			return state
-		}
-		done := make(chan struct{})
-		w.Dispatch(func() {
-			fn(window)
-			close(done)
-		})
-		<-done
-		return windowState()
-	}
-
-	if err := w.Bind("mamaWindowAction", func(action string) (desktopWindowState, error) {
-		switch action {
-		case "close":
-			return dispatchNative(func(ptr unsafe.Pointer) { C.mamaWindowHide(ptr) }, windowState()), nil
-		case "minimize", "toggle_maximize", "drag":
-			switch action {
-			case "minimize":
-				return dispatchNative(func(ptr unsafe.Pointer) { C.mamaWindowMiniaturize(ptr) }, windowState()), nil
-			case "toggle_maximize":
-				return dispatchNative(func(ptr unsafe.Pointer) { C.mamaWindowToggleZoom(ptr) }, windowState()), nil
-			case "drag":
-				return dispatchNative(func(ptr unsafe.Pointer) { C.mamaWindowDrag(ptr) }, windowState()), nil
-			}
-		}
-		return windowState(), nil
-	}); err != nil {
-		return fmt.Errorf("bind mamaWindowAction failed: %w", err)
-	}
-	if err := w.Bind("mamaWindowState", func() (desktopWindowState, error) {
-		return windowState(), nil
-	}); err != nil {
-		return fmt.Errorf("bind mamaWindowState failed: %w", err)
-	}
-	if err := w.Bind("mamaWindowSetTheme", func(_ string) error { return nil }); err != nil {
-		return fmt.Errorf("bind mamaWindowSetTheme failed: %w", err)
-	}
-
-	w.Init(`window.__MAMA_DESKTOP_EMBEDDED__ = true;`)
+	// macOS keeps native window chrome; do not enable custom in-page titlebar controls.
+	w.Init(`window.__MAMA_DESKTOP_EMBEDDED__ = false;`)
 	w.Navigate(url)
 
 	if startHidden {
@@ -270,7 +230,7 @@ func setDarwinTrayIconIfAvailable() {
 		if err != nil || len(icon) == 0 {
 			continue
 		}
-		C.mamaTraySetIcon(unsafe.Pointer(&icon[0]), C.int(len(icon)), 1)
+		C.mamaTraySetIcon(unsafe.Pointer(&icon[0]), C.int(len(icon)), 0)
 		return
 	}
 }

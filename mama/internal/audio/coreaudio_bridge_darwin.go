@@ -371,6 +371,38 @@ static void mama_free_object_id_list(mama_object_id_list* list) {
 	list->count = 0;
 }
 
+static int mama_object_id_in_list(const AudioObjectID* items, uint32_t count, AudioObjectID value) {
+	if (items == NULL || value == 0) {
+		return 0;
+	}
+	for (uint32_t i = 0; i < count; i++) {
+		if (items[i] == value) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int mama_append_object_id(AudioObjectID** items, uint32_t* count, uint32_t* capacity, AudioObjectID value) {
+	if (items == NULL || count == NULL || capacity == NULL) {
+		return 0;
+	}
+	if (value == 0) {
+		return 1;
+	}
+	if (*count >= *capacity) {
+		uint32_t nextCapacity = (*capacity == 0) ? 16 : (*capacity * 2);
+		AudioObjectID* resized = (AudioObjectID*)realloc(*items, nextCapacity * sizeof(AudioObjectID));
+		if (resized == NULL) {
+			return 0;
+		}
+		*items = resized;
+		*capacity = nextCapacity;
+	}
+	(*items)[(*count)++] = value;
+	return 1;
+}
+
 static int mama_collect_process_controls(AudioObjectID processObjectID, AudioClassID targetClass, mama_object_id_list* outControls) {
 	if (outControls == NULL) {
 		return 0;
@@ -378,43 +410,112 @@ static int mama_collect_process_controls(AudioObjectID processObjectID, AudioCla
 	outControls->items = NULL;
 	outControls->count = 0;
 
-	mama_object_id_list owned;
-	if (!mama_get_owned_objects(processObjectID, &owned)) {
+	mama_object_id_list roots;
+	if (!mama_get_owned_objects(processObjectID, &roots)) {
 		return 0;
 	}
 
-	AudioObjectID* matches = (AudioObjectID*)calloc(owned.count, sizeof(AudioObjectID));
-	if (matches == NULL) {
-		mama_free_object_id_list(&owned);
+	AudioObjectID* queue = NULL;
+	uint32_t queueCount = 0;
+	uint32_t queueCapacity = 0;
+	for (uint32_t i = 0; i < roots.count; i++) {
+		if (!mama_append_object_id(&queue, &queueCount, &queueCapacity, roots.items[i])) {
+			mama_free_object_id_list(&roots);
+			free(queue);
+			return 0;
+		}
+	}
+	mama_free_object_id_list(&roots);
+	if (queueCount == 0) {
+		free(queue);
 		return 0;
 	}
 
-	uint32_t n = 0;
-	for (uint32_t i = 0; i < owned.count; i++) {
-		AudioObjectID candidate = owned.items[i];
+	AudioObjectID* visited = NULL;
+	uint32_t visitedCount = 0;
+	uint32_t visitedCapacity = 0;
+	AudioObjectID* matches = NULL;
+	uint32_t matchCount = 0;
+	uint32_t matchCapacity = 0;
+
+	uint32_t iterations = 0;
+	for (uint32_t i = 0; i < queueCount; i++) {
+		if (++iterations > 4096) {
+			break;
+		}
+
+		AudioObjectID candidate = queue[i];
 		if (candidate == 0) {
 			continue;
 		}
-		if (!mama_class_is_or_inherits(candidate, targetClass)) {
+		if (mama_object_id_in_list(visited, visitedCount, candidate)) {
 			continue;
 		}
-		AudioObjectPropertyScope scope = kAudioObjectPropertyScopeGlobal;
-		if (mama_get_control_scope(candidate, &scope)) {
-			if (scope != kAudioObjectPropertyScopeGlobal && scope != kAudioObjectPropertyScopeOutput) {
-				continue;
+		if (!mama_append_object_id(&visited, &visitedCount, &visitedCapacity, candidate)) {
+			free(queue);
+			free(visited);
+			free(matches);
+			return 0;
+		}
+
+		if (!mama_class_is_or_inherits(candidate, targetClass)) {
+			// Not the class we need, but still walk children.
+		} else {
+			AudioObjectPropertyScope scope = kAudioObjectPropertyScopeGlobal;
+			if (mama_get_control_scope(candidate, &scope)) {
+				if (scope != kAudioObjectPropertyScopeGlobal && scope != kAudioObjectPropertyScopeOutput) {
+					// Skip this control for output session control.
+				} else if (!mama_object_id_in_list(matches, matchCount, candidate)) {
+					if (!mama_append_object_id(&matches, &matchCount, &matchCapacity, candidate)) {
+						free(queue);
+						free(visited);
+						free(matches);
+						return 0;
+					}
+				}
+			} else if (!mama_object_id_in_list(matches, matchCount, candidate)) {
+				// Some controls don't expose scope; keep them as candidates.
+				if (!mama_append_object_id(&matches, &matchCount, &matchCapacity, candidate)) {
+					free(queue);
+					free(visited);
+					free(matches);
+					return 0;
+				}
 			}
 		}
-		matches[n++] = candidate;
+
+		mama_object_id_list children;
+		if (mama_get_owned_objects(candidate, &children)) {
+			for (uint32_t ci = 0; ci < children.count; ci++) {
+				AudioObjectID child = children.items[ci];
+				if (child == 0) {
+					continue;
+				}
+				if (mama_object_id_in_list(visited, visitedCount, child) || mama_object_id_in_list(queue, queueCount, child)) {
+					continue;
+				}
+				if (!mama_append_object_id(&queue, &queueCount, &queueCapacity, child)) {
+					mama_free_object_id_list(&children);
+					free(queue);
+					free(visited);
+					free(matches);
+					return 0;
+				}
+			}
+			mama_free_object_id_list(&children);
+		}
 	}
 
-	mama_free_object_id_list(&owned);
-	if (n == 0) {
+	free(queue);
+	free(visited);
+
+	if (matchCount == 0) {
 		free(matches);
 		return 0;
 	}
 
 	outControls->items = matches;
-	outControls->count = n;
+	outControls->count = matchCount;
 	return 1;
 }
 
@@ -436,15 +537,25 @@ static int mama_get_first_scalar_property(AudioObjectID objectID, AudioObjectPro
 	return 0;
 }
 
-static int mama_set_any_scalar_property(AudioObjectID objectID, AudioObjectPropertySelector selector, Float32 value) {
+static int mama_set_any_scalar_property(AudioObjectID objectID, AudioObjectPropertySelector selector, Float32 value, OSStatus* outLastErr) {
+	if (outLastErr != NULL) {
+		*outLastErr = noErr;
+	}
 	mama_property_address_list addresses;
 	mama_collect_property_addresses(objectID, selector, &addresses);
 	UInt32 size = (UInt32)sizeof(value);
 	int wroteAny = 0;
 	for (uint32_t i = 0; i < addresses.count; i++) {
+		Boolean isSettable = false;
+		OSStatus settableStatus = AudioObjectIsPropertySettable(objectID, &addresses.items[i], &isSettable);
+		if (settableStatus != noErr || !isSettable) {
+			continue;
+		}
 		OSStatus st = AudioObjectSetPropertyData(objectID, &addresses.items[i], 0, NULL, size, &value);
 		if (st == noErr) {
 			wroteAny = 1;
+		} else if (outLastErr != NULL) {
+			*outLastErr = st;
 		}
 	}
 	return wroteAny;
@@ -468,18 +579,139 @@ static int mama_get_first_u32_property(AudioObjectID objectID, AudioObjectProper
 	return 0;
 }
 
-static int mama_set_any_u32_property(AudioObjectID objectID, AudioObjectPropertySelector selector, UInt32 value) {
+static int mama_set_any_u32_property(AudioObjectID objectID, AudioObjectPropertySelector selector, UInt32 value, OSStatus* outLastErr) {
+	if (outLastErr != NULL) {
+		*outLastErr = noErr;
+	}
 	mama_property_address_list addresses;
 	mama_collect_property_addresses(objectID, selector, &addresses);
 	UInt32 size = (UInt32)sizeof(value);
 	int wroteAny = 0;
 	for (uint32_t i = 0; i < addresses.count; i++) {
+		Boolean isSettable = false;
+		OSStatus settableStatus = AudioObjectIsPropertySettable(objectID, &addresses.items[i], &isSettable);
+		if (settableStatus != noErr || !isSettable) {
+			continue;
+		}
 		OSStatus st = AudioObjectSetPropertyData(objectID, &addresses.items[i], 0, NULL, size, &value);
 		if (st == noErr) {
 			wroteAny = 1;
+		} else if (outLastErr != NULL) {
+			*outLastErr = st;
 		}
 	}
 	return wroteAny;
+}
+
+static Float32 mama_clamp_scalar(Float32 value) {
+	if (value < 0.0f) {
+		return 0.0f;
+	}
+	if (value > 1.0f) {
+		return 1.0f;
+	}
+	return value;
+}
+
+static void mama_accumulate_scalar(Float32 value, double* ioSum, int* ioCount, Float32* ioMax) {
+	if (ioSum == NULL || ioCount == NULL || ioMax == NULL) {
+		return;
+	}
+	Float32 clamped = mama_clamp_scalar(value);
+	*ioSum += clamped;
+	(*ioCount)++;
+	if (clamped > *ioMax) {
+		*ioMax = clamped;
+	}
+}
+
+static int mama_get_slider_scalar(AudioObjectID objectID, Float32* outValue) {
+	if (outValue == NULL) {
+		return 0;
+	}
+	UInt32 rangeValues[2] = {0, 0};
+	int hasRange = 0;
+	mama_property_address_list rangeAddresses;
+	mama_collect_property_addresses(objectID, kAudioSliderControlPropertyRange, &rangeAddresses);
+	for (uint32_t i = 0; i < rangeAddresses.count; i++) {
+		UInt32 values[2] = {0, 0};
+		UInt32 size = (UInt32)sizeof(values);
+		OSStatus st = AudioObjectGetPropertyData(objectID, &rangeAddresses.items[i], 0, NULL, &size, values);
+		if (st != noErr || size < (UInt32)sizeof(values)) {
+			continue;
+		}
+		rangeValues[0] = values[0];
+		rangeValues[1] = values[1];
+		hasRange = 1;
+		break;
+	}
+	if (!hasRange || rangeValues[1] <= rangeValues[0]) {
+		return 0;
+	}
+
+	UInt32 sliderValue = 0;
+	if (!mama_get_first_u32_property(objectID, kAudioSliderControlPropertyValue, &sliderValue)) {
+		return 0;
+	}
+
+	UInt32 minValue = rangeValues[0];
+	UInt32 maxValue = rangeValues[1];
+	if (sliderValue < minValue) {
+		sliderValue = minValue;
+	}
+	if (sliderValue > maxValue) {
+		sliderValue = maxValue;
+	}
+
+	double span = (double)(maxValue - minValue);
+	if (span <= 0.0) {
+		return 0;
+	}
+	Float32 scalar = (Float32)(((double)(sliderValue - minValue)) / span);
+	*outValue = mama_clamp_scalar(scalar);
+	return 1;
+}
+
+static int mama_set_slider_scalar(AudioObjectID objectID, Float32 scalar, OSStatus* outLastErr) {
+	if (outLastErr != NULL) {
+		*outLastErr = noErr;
+	}
+	UInt32 rangeValues[2] = {0, 0};
+	int hasRange = 0;
+	mama_property_address_list rangeAddresses;
+	mama_collect_property_addresses(objectID, kAudioSliderControlPropertyRange, &rangeAddresses);
+	for (uint32_t i = 0; i < rangeAddresses.count; i++) {
+		UInt32 values[2] = {0, 0};
+		UInt32 size = (UInt32)sizeof(values);
+		OSStatus st = AudioObjectGetPropertyData(objectID, &rangeAddresses.items[i], 0, NULL, &size, values);
+		if (st != noErr || size < (UInt32)sizeof(values)) {
+			if (outLastErr != NULL) {
+				*outLastErr = st;
+			}
+			continue;
+		}
+		rangeValues[0] = values[0];
+		rangeValues[1] = values[1];
+		hasRange = 1;
+		break;
+	}
+	if (!hasRange || rangeValues[1] <= rangeValues[0]) {
+		return 0;
+	}
+
+	double clamped = (double)mama_clamp_scalar(scalar);
+	double minValue = (double)rangeValues[0];
+	double maxValue = (double)rangeValues[1];
+	double mapped = minValue + ((maxValue - minValue) * clamped);
+	UInt32 sliderValue = (UInt32)(mapped + 0.5);
+	if (sliderValue < rangeValues[0]) {
+		sliderValue = rangeValues[0];
+	}
+	if (sliderValue > rangeValues[1]) {
+		sliderValue = rangeValues[1];
+	}
+
+	return mama_set_any_u32_property(objectID, kAudioSliderControlPropertyValue, sliderValue, outLastErr);
 }
 
 int mama_coreaudio_get_process_volume(uint32_t processObjectID, float* outVolume, int* outSupported, int* outStatus) {
@@ -502,6 +734,7 @@ int mama_coreaudio_get_process_volume(uint32_t processObjectID, float* outVolume
 
 	double sum = 0.0;
 	int successCount = 0;
+	Float32 maxValue = 0.0f;
 	OSStatus lastErr = noErr;
 	if (addresses.count > 0) {
 		if (outSupported != NULL) {
@@ -515,14 +748,7 @@ int mama_coreaudio_get_process_volume(uint32_t processObjectID, float* outVolume
 				lastErr = st;
 				continue;
 			}
-			if (value < 0.0f) {
-				value = 0.0f;
-			}
-			if (value > 1.0f) {
-				value = 1.0f;
-			}
-			sum += value;
-			successCount++;
+			mama_accumulate_scalar(value, &sum, &successCount, &maxValue);
 		}
 	}
 
@@ -540,14 +766,24 @@ int mama_coreaudio_get_process_volume(uint32_t processObjectID, float* outVolume
 				if (!mama_get_first_scalar_property(controls.items[i], kAudioLevelControlPropertyScalarValue, &value)) {
 					continue;
 				}
-				if (value < 0.0f) {
-					value = 0.0f;
+				mama_accumulate_scalar(value, &sum, &successCount, &maxValue);
+			}
+			mama_free_object_id_list(&controls);
+		}
+	}
+
+	if (successCount == 0) {
+		mama_object_id_list controls;
+		if (mama_collect_process_controls(objectID, kAudioSliderControlClassID, &controls)) {
+			if (outSupported != NULL) {
+				*outSupported = 1;
+			}
+			for (uint32_t i = 0; i < controls.count; i++) {
+				Float32 value = 0.0f;
+				if (!mama_get_slider_scalar(controls.items[i], &value)) {
+					continue;
 				}
-				if (value > 1.0f) {
-					value = 1.0f;
-				}
-				sum += value;
-				successCount++;
+				mama_accumulate_scalar(value, &sum, &successCount, &maxValue);
 			}
 			mama_free_object_id_list(&controls);
 		}
@@ -563,14 +799,13 @@ int mama_coreaudio_get_process_volume(uint32_t processObjectID, float* outVolume
 		return 0;
 	}
 
-	Float32 avg = (Float32)(sum / (double)successCount);
-	if (avg < 0.0f) {
-		avg = 0.0f;
+	// Many controls can report dormant zero values. Prefer an audible control when present.
+	Float32 avg = mama_clamp_scalar((Float32)(sum / (double)successCount));
+	if (maxValue > 0.001f) {
+		*outVolume = mama_clamp_scalar(maxValue);
+	} else {
+		*outVolume = avg;
 	}
-	if (avg > 1.0f) {
-		avg = 1.0f;
-	}
-	*outVolume = avg;
 	return 0;
 }
 
@@ -589,29 +824,79 @@ int mama_coreaudio_set_process_volume(uint32_t processObjectID, float volume, in
 	}
 
 	AudioObjectID objectID = (AudioObjectID)processObjectID;
-	mama_property_address_list addresses;
-	mama_collect_property_addresses(objectID, kAudioDevicePropertyVolumeScalar, &addresses);
-	if (addresses.count == 0) {
-		mama_collect_property_addresses(objectID, kMAMAAudioPropertyVirtualMainVolume, &addresses);
-	}
-	if (addresses.count == 0) {
-		return 0;
-	}
-	if (outSupported != NULL) {
-		*outSupported = 1;
+	Float32 value = volume;
+	OSStatus lastErr = noErr;
+	int wroteAny = 0;
+	int supported = 0;
+
+	mama_property_address_list directAddresses;
+	mama_collect_property_addresses(objectID, kAudioDevicePropertyVolumeScalar, &directAddresses);
+	if (directAddresses.count > 0) {
+		supported = 1;
+		OSStatus st = noErr;
+		if (mama_set_any_scalar_property(objectID, kAudioDevicePropertyVolumeScalar, value, &st)) {
+			wroteAny = 1;
+		} else if (st != noErr) {
+			lastErr = st;
+		}
 	}
 
-	Float32 value = volume;
-	UInt32 size = (UInt32)sizeof(value);
-	int wroteAny = 0;
-	OSStatus lastErr = noErr;
-	for (uint32_t i = 0; i < addresses.count; i++) {
-		OSStatus st = AudioObjectSetPropertyData(objectID, &addresses.items[i], 0, NULL, size, &value);
-		if (st == noErr) {
+	mama_property_address_list virtualAddresses;
+	mama_collect_property_addresses(objectID, kMAMAAudioPropertyVirtualMainVolume, &virtualAddresses);
+	if (virtualAddresses.count > 0) {
+		supported = 1;
+		OSStatus st = noErr;
+		if (mama_set_any_scalar_property(objectID, kMAMAAudioPropertyVirtualMainVolume, value, &st)) {
 			wroteAny = 1;
-			continue;
+		} else if (st != noErr) {
+			lastErr = st;
 		}
-		lastErr = st;
+	}
+
+	if (!wroteAny) {
+		mama_object_id_list controls;
+		if (!mama_collect_process_controls(objectID, kAudioVolumeControlClassID, &controls)) {
+			mama_collect_process_controls(objectID, kAudioLevelControlClassID, &controls);
+		}
+		if (controls.count > 0) {
+			supported = 1;
+			for (uint32_t i = 0; i < controls.count; i++) {
+				OSStatus st = noErr;
+				if (mama_set_any_scalar_property(controls.items[i], kAudioLevelControlPropertyScalarValue, value, &st)) {
+					wroteAny = 1;
+					continue;
+				}
+				if (st != noErr) {
+					lastErr = st;
+				}
+			}
+			mama_free_object_id_list(&controls);
+		}
+	}
+
+	if (!wroteAny) {
+		mama_object_id_list controls;
+		if (mama_collect_process_controls(objectID, kAudioSliderControlClassID, &controls)) {
+			supported = 1;
+			for (uint32_t i = 0; i < controls.count; i++) {
+				OSStatus st = noErr;
+				if (mama_set_slider_scalar(controls.items[i], value, &st)) {
+					wroteAny = 1;
+					continue;
+				}
+				if (st != noErr) {
+					lastErr = st;
+				}
+			}
+			mama_free_object_id_list(&controls);
+		}
+	}
+
+	if (outSupported != NULL) {
+		*outSupported = supported ? 1 : 0;
+	}
+	if (!supported) {
+		return 0;
 	}
 	if (!wroteAny) {
 		if (outStatus != NULL) {
@@ -634,45 +919,91 @@ int mama_coreaudio_get_process_mute(uint32_t processObjectID, uint32_t* outMuted
 	}
 
 	AudioObjectID objectID = (AudioObjectID)processObjectID;
+	OSStatus lastErr = noErr;
+	int supported = 0;
 	mama_property_address_list addresses;
+
 	mama_collect_property_addresses(objectID, kAudioDevicePropertyMute, &addresses);
 	if (addresses.count > 0) {
-		if (outSupported != NULL) {
-			*outSupported = 1;
-		}
-
-		UInt32 value = 0;
-		UInt32 size = (UInt32)sizeof(value);
-		OSStatus st = AudioObjectGetPropertyData(objectID, &addresses.items[0], 0, NULL, &size, &value);
-		if (st != noErr) {
-			if (outStatus != NULL) {
-				*outStatus = (int)st;
+		supported = 1;
+		uint32_t readCount = 0;
+		int allMuted = 1;
+		for (uint32_t i = 0; i < addresses.count; i++) {
+			UInt32 value = 0;
+			UInt32 size = (UInt32)sizeof(value);
+			OSStatus st = AudioObjectGetPropertyData(objectID, &addresses.items[i], 0, NULL, &size, &value);
+			if (st != noErr) {
+				lastErr = st;
+				continue;
 			}
-			return 1;
+			readCount++;
+			if (value == 0) {
+				allMuted = 0;
+			}
 		}
-		*outMuted = value ? 1 : 0;
-		return 0;
+		if (readCount > 0) {
+			*outMuted = allMuted ? 1 : 0;
+			if (outSupported != NULL) {
+				*outSupported = 1;
+			}
+			return 0;
+		}
 	}
 
 	mama_collect_property_addresses(objectID, kMAMAAudioPropertyProcessIsAudible, &addresses);
-	if (addresses.count == 0) {
-		return 0;
-	}
-	if (outSupported != NULL) {
-		*outSupported = 1;
+	if (addresses.count > 0) {
+		supported = 1;
+		UInt32 audible = 1;
+		UInt32 size = (UInt32)sizeof(audible);
+		OSStatus st = AudioObjectGetPropertyData(objectID, &addresses.items[0], 0, NULL, &size, &audible);
+		if (st == noErr) {
+			*outMuted = audible ? 0 : 1;
+			if (outSupported != NULL) {
+				*outSupported = 1;
+			}
+			return 0;
+		}
+		lastErr = st;
 	}
 
-	UInt32 audible = 1;
-	UInt32 size = (UInt32)sizeof(audible);
-	OSStatus st = AudioObjectGetPropertyData(objectID, &addresses.items[0], 0, NULL, &size, &audible);
-	if (st != noErr) {
-		if (outStatus != NULL) {
-			*outStatus = (int)st;
-		}
-		return 1;
+	mama_object_id_list controls;
+	if (!mama_collect_process_controls(objectID, kAudioMuteControlClassID, &controls)) {
+		mama_collect_process_controls(objectID, kAudioBooleanControlClassID, &controls);
 	}
-	*outMuted = audible ? 0 : 1;
-	return 0;
+	if (controls.count > 0) {
+		supported = 1;
+		uint32_t readCount = 0;
+		int allMuted = 1;
+		for (uint32_t i = 0; i < controls.count; i++) {
+			UInt32 value = 0;
+			if (!mama_get_first_u32_property(controls.items[i], kAudioBooleanControlPropertyValue, &value)) {
+				continue;
+			}
+			readCount++;
+			if (value == 0) {
+				allMuted = 0;
+			}
+		}
+		mama_free_object_id_list(&controls);
+		if (readCount > 0) {
+			*outMuted = allMuted ? 1 : 0;
+			if (outSupported != NULL) {
+				*outSupported = 1;
+			}
+			return 0;
+		}
+	}
+
+	if (outSupported != NULL) {
+		*outSupported = supported ? 1 : 0;
+	}
+	if (!supported) {
+		return 0;
+	}
+	if (outStatus != NULL) {
+		*outStatus = (int)lastErr;
+	}
+	return 1;
 }
 
 int mama_coreaudio_set_process_mute(uint32_t processObjectID, uint32_t muted, int* outSupported, int* outStatus) {
@@ -684,48 +1015,65 @@ int mama_coreaudio_set_process_mute(uint32_t processObjectID, uint32_t muted, in
 	}
 
 	AudioObjectID objectID = (AudioObjectID)processObjectID;
+	UInt32 value = muted ? 1 : 0;
+	OSStatus lastErr = noErr;
+	int wroteAny = 0;
+	int supported = 0;
+
 	mama_property_address_list addresses;
 	mama_collect_property_addresses(objectID, kAudioDevicePropertyMute, &addresses);
 	if (addresses.count > 0) {
-		if (outSupported != NULL) {
-			*outSupported = 1;
-		}
-
-		UInt32 value = muted ? 1 : 0;
-		UInt32 size = (UInt32)sizeof(value);
-		int wroteAny = 0;
-		OSStatus lastErr = noErr;
-		for (uint32_t i = 0; i < addresses.count; i++) {
-			OSStatus st = AudioObjectSetPropertyData(objectID, &addresses.items[i], 0, NULL, size, &value);
-			if (st == noErr) {
-				wroteAny = 1;
-				continue;
-			}
+		supported = 1;
+		OSStatus st = noErr;
+		if (mama_set_any_u32_property(objectID, kAudioDevicePropertyMute, value, &st)) {
+			wroteAny = 1;
+		} else if (st != noErr) {
 			lastErr = st;
 		}
-		if (!wroteAny) {
-			if (outStatus != NULL) {
-				*outStatus = (int)lastErr;
-			}
-			return 1;
-		}
-		return 0;
 	}
 
 	mama_collect_property_addresses(objectID, kMAMAAudioPropertyProcessIsAudible, &addresses);
-	if (addresses.count == 0) {
-		return 0;
-	}
-	if (outSupported != NULL) {
-		*outSupported = 1;
+	if (addresses.count > 0) {
+		supported = 1;
+		UInt32 audible = muted ? 0 : 1;
+		OSStatus st = noErr;
+		if (mama_set_any_u32_property(objectID, kMAMAAudioPropertyProcessIsAudible, audible, &st)) {
+			wroteAny = 1;
+		} else if (st != noErr) {
+			lastErr = st;
+		}
 	}
 
-	UInt32 audible = muted ? 0 : 1;
-	UInt32 size = (UInt32)sizeof(audible);
-	OSStatus st = AudioObjectSetPropertyData(objectID, &addresses.items[0], 0, NULL, size, &audible);
-	if (st != noErr) {
+	if (!wroteAny) {
+		mama_object_id_list controls;
+		if (!mama_collect_process_controls(objectID, kAudioMuteControlClassID, &controls)) {
+			mama_collect_process_controls(objectID, kAudioBooleanControlClassID, &controls);
+		}
+		if (controls.count > 0) {
+			supported = 1;
+			for (uint32_t i = 0; i < controls.count; i++) {
+				OSStatus st = noErr;
+				if (mama_set_any_u32_property(controls.items[i], kAudioBooleanControlPropertyValue, value, &st)) {
+					wroteAny = 1;
+					continue;
+				}
+				if (st != noErr) {
+					lastErr = st;
+				}
+			}
+			mama_free_object_id_list(&controls);
+		}
+	}
+
+	if (outSupported != NULL) {
+		*outSupported = supported ? 1 : 0;
+	}
+	if (!supported) {
+		return 0;
+	}
+	if (!wroteAny) {
 		if (outStatus != NULL) {
-			*outStatus = (int)st;
+			*outStatus = (int)lastErr;
 		}
 		return 1;
 	}

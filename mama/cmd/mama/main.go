@@ -57,6 +57,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	ignoreTerminalHangupSignal()
 	sigC := make(chan os.Signal, 1)
 	signal.Notify(sigC, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigC)

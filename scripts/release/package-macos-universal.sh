@@ -88,16 +88,18 @@ cat > "${OUT_DIR}/Open Setup UI.command" <<'LAUNCH_UI'
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
-if [[ -d "./MAMA.app" ]]; then
-  exec open -a "./MAMA.app" --args "$@"
-fi
-exec ./mama "$@"
+exec open -a "./MAMA.app" --args "$@"
 LAUNCH_UI
 
 cat > "${OUT_DIR}/Start Mixer.command" <<'LAUNCH_MIXER'
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
+app_bin="./MAMA.app/Contents/MacOS/MAMA"
+if [[ ! -x "$app_bin" ]]; then
+  echo "Missing app executable: $app_bin"
+  exit 1
+fi
 pid_file=".mama.pid"
 if [[ -f "$pid_file" ]]; then
   pid="$(cat "$pid_file" 2>/dev/null || true)"
@@ -106,7 +108,7 @@ if [[ -f "$pid_file" ]]; then
     exit 0
   fi
 fi
-nohup ./mama -open=false -start-hidden=true "$@" >/dev/null 2>&1 &
+nohup "$app_bin" -open=false -start-hidden=true "$@" >/dev/null 2>&1 &
 echo $! > "$pid_file"
 echo "MAMA started in background (PID $(cat "$pid_file"))."
 LAUNCH_MIXER
@@ -146,3 +148,7 @@ STOP_MIXER
 
 chmod +x "${OUT_DIR}/mama" "${OUT_DIR}/Open Setup UI.command" "${OUT_DIR}/Start Mixer.command" "${OUT_DIR}/Stop Mixer.command"
 chmod +x "${APP_MACOS}/MAMA"
+
+mkdir -p "${OUT_DIR}/bin"
+mv "${OUT_DIR}/mama" "${OUT_DIR}/bin/mama-cli"
+chmod +x "${OUT_DIR}/bin/mama-cli"

@@ -58,7 +58,7 @@ func (d *darwinAppSessionController) Adjust(selectorToken string, step float64, 
 	if err != nil {
 		return err
 	}
-	if !target.volumeCapable {
+	if !target.volumeCapable && !d.refreshVolumeState(&target) {
 		return Unsupported(config.TargetApp)
 	}
 
@@ -78,11 +78,13 @@ func (d *darwinAppSessionController) Adjust(selectorToken string, step float64, 
 		return Unsupported(config.TargetApp)
 	}
 
+	updatedMuted := target.isMuted
 	if deltaSteps > 0 && target.isMuted && target.muteCapable {
 		_, _ = d.bridge.SetProcessMute(target.processObject, false)
+		updatedMuted = false
 	}
 
-	d.invalidateCache()
+	d.rememberWriteState(target.processObject, &next, &updatedMuted)
 	return nil
 }
 
@@ -91,7 +93,7 @@ func (d *darwinAppSessionController) ToggleMute(selectorToken string) error {
 	if err != nil {
 		return err
 	}
-	if !target.muteCapable {
+	if !target.muteCapable && !d.refreshMuteState(&target) {
 		return Unsupported(config.TargetApp)
 	}
 
@@ -104,7 +106,7 @@ func (d *darwinAppSessionController) ToggleMute(selectorToken string) error {
 		return Unsupported(config.TargetApp)
 	}
 
-	d.invalidateCache()
+	d.rememberWriteState(target.processObject, nil, &next)
 	return nil
 }
 
@@ -114,7 +116,7 @@ func (d *darwinAppSessionController) AdjustGroup(selectors []config.Selector, st
 		return err
 	}
 	for _, target := range targets {
-		if !target.volumeCapable {
+		if !target.volumeCapable && !d.refreshVolumeState(&target) {
 			return Unsupported(config.TargetGroup)
 		}
 		next := target.volume + int(step*100*float64(deltaSteps))
@@ -131,11 +133,13 @@ func (d *darwinAppSessionController) AdjustGroup(selectors []config.Selector, st
 		if !supported {
 			return Unsupported(config.TargetGroup)
 		}
+		updatedMuted := target.isMuted
 		if deltaSteps > 0 && target.isMuted && target.muteCapable {
 			_, _ = d.bridge.SetProcessMute(target.processObject, false)
+			updatedMuted = false
 		}
+		d.rememberWriteState(target.processObject, &next, &updatedMuted)
 	}
-	d.invalidateCache()
 	return nil
 }
 
@@ -145,7 +149,7 @@ func (d *darwinAppSessionController) ToggleMuteGroup(selectors []config.Selector
 		return err
 	}
 	for _, target := range targets {
-		if !target.muteCapable {
+		if !target.muteCapable && !d.refreshMuteState(&target) {
 			return Unsupported(config.TargetGroup)
 		}
 		next := !target.isMuted
@@ -156,8 +160,8 @@ func (d *darwinAppSessionController) ToggleMuteGroup(selectors []config.Selector
 		if !supported {
 			return Unsupported(config.TargetGroup)
 		}
+		d.rememberWriteState(target.processObject, nil, &next)
 	}
-	d.invalidateCache()
 	return nil
 }
 
@@ -324,6 +328,13 @@ func (d *darwinAppSessionController) fetchSessions() ([]darwinAppSession, error)
 		return nil, err
 	}
 
+	previousByProcess := map[uint32]darwinAppSession{}
+	d.mu.Lock()
+	for _, cached := range d.cached {
+		previousByProcess[cached.processObject] = cached
+	}
+	d.mu.Unlock()
+
 	sessions := make([]darwinAppSession, 0, len(processes))
 	for _, process := range processes {
 		if process.ObjectID == 0 || process.PID <= 0 {
@@ -343,15 +354,28 @@ func (d *darwinAppSessionController) fetchSessions() ([]darwinAppSession, error)
 			aliases = append(aliases, exeAliases...)
 		}
 
+		prev, hasPrev := previousByProcess[process.ObjectID]
 		volume, volumeCapable, volumeErr := d.bridge.GetProcessVolume(process.ObjectID)
 		if volumeErr != nil {
-			volumeCapable = false
-			volume = 0
+			if hasPrev {
+				volume = prev.volume
+				if prev.volumeCapable {
+					volumeCapable = true
+				}
+			} else if !volumeCapable {
+				volume = 0
+			}
 		}
 		muted, muteCapable, muteErr := d.bridge.GetProcessMute(process.ObjectID)
 		if muteErr != nil {
-			muteCapable = false
-			muted = false
+			if hasPrev {
+				muted = prev.isMuted
+				if prev.muteCapable {
+					muteCapable = true
+				}
+			} else if !muteCapable {
+				muted = false
+			}
 		}
 
 		sessions = append(sessions, darwinAppSession{
@@ -392,6 +416,69 @@ func (d *darwinAppSessionController) mapWriteError(sessionID string, err error) 
 		}
 	}
 	return fmt.Errorf("%w: app session %q no longer available", ErrTargetUnavailable, sessionID)
+}
+
+func (d *darwinAppSessionController) rememberWriteState(processObject uint32, volume *int, muted *bool) {
+	if processObject == 0 {
+		return
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	updated := false
+	for i := range d.cached {
+		if d.cached[i].processObject != processObject {
+			continue
+		}
+		if volume != nil {
+			v := *volume
+			if v < 0 {
+				v = 0
+			}
+			if v > 100 {
+				v = 100
+			}
+			d.cached[i].volume = v
+			d.cached[i].volumeCapable = true
+		}
+		if muted != nil {
+			d.cached[i].isMuted = *muted
+			d.cached[i].muteCapable = true
+		}
+		updated = true
+	}
+	if updated {
+		d.cachedAt = time.Now()
+	}
+}
+
+func (d *darwinAppSessionController) refreshVolumeState(target *darwinAppSession) bool {
+	if target == nil {
+		return false
+	}
+	volume, supported, err := d.bridge.GetProcessVolume(target.processObject)
+	if !supported {
+		return false
+	}
+	target.volumeCapable = true
+	if err == nil {
+		target.volume = volume
+	}
+	return true
+}
+
+func (d *darwinAppSessionController) refreshMuteState(target *darwinAppSession) bool {
+	if target == nil {
+		return false
+	}
+	muted, supported, err := d.bridge.GetProcessMute(target.processObject)
+	if !supported {
+		return false
+	}
+	target.muteCapable = true
+	if err == nil {
+		target.isMuted = muted
+	}
+	return true
 }
 
 func deriveDarwinProcessName(exeNoExt, exe, bundleID string) string {
