@@ -182,6 +182,14 @@
       gap: 16px;
     }
 
+    .settings-top-grid {
+      align-items: start;
+    }
+
+    .settings-top-grid > .panel {
+      height: 100%;
+    }
+
     .settings-header {
       display: flex;
       align-items: center;
@@ -604,14 +612,92 @@
 
     .map-name-wrap {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 6px;
       align-items: center;
     }
 
-    .map-name-picker,
+    .map-name-picker {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
+    }
+
     .map-fallback-picker {
-      min-width: 132px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .mapping-row {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: var(--panel-soft);
+      margin-bottom: 10px;
+    }
+
+    .map-knob-cell {
+      display: grid;
+      gap: 6px;
+      justify-items: center;
+    }
+
+    .map-knob-cell .map-knob {
+      width: 100%;
+    }
+
+    .map-knob-indicator {
+      width: 54px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 6px 4px 4px;
+      background: linear-gradient(180deg, var(--knob-grad-top), var(--knob-grad-bottom));
+      text-align: center;
+      transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+    }
+
+    .map-knob-indicator .dial {
+      width: 28px;
+      height: 28px;
+      margin: 0 auto 4px;
+      border-radius: 50%;
+      border: 3px solid var(--dial-ring);
+      position: relative;
+      background: var(--control-bg);
+      transform: rotate(0deg);
+      transition: transform 120ms ease;
+      transform-origin: 50% 50%;
+      border-width: 3px;
+    }
+
+    .map-knob-indicator .dial::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 5px;
+      width: 3px;
+      height: 9px;
+      margin-left: -1.5px;
+      border-radius: 4px;
+      background: var(--dial-mark);
+    }
+
+    .map-knob-label {
+      font-size: 0.72rem;
+      color: var(--ink-dim);
+      line-height: 1.1;
+    }
+
+    .map-knob-indicator.active-rotate {
+      transform: translateY(-2px);
+      border-color: #f4a261;
+      box-shadow: 0 8px 18px rgba(244, 162, 97, 0.28);
+    }
+
+    .map-knob-indicator.active-press {
+      transform: translateY(-2px);
+      border-color: #2a9d8f;
+      box-shadow: 0 8px 18px rgba(42, 157, 143, 0.28);
     }
 
     .row.error-row {
@@ -692,6 +778,33 @@
       gap: 8px;
     }
 
+    .template-manager-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .template-manager-grid select {
+      width: 100%;
+      min-height: 280px;
+    }
+
+    .template-manager-details {
+      display: grid;
+      gap: 8px;
+    }
+
+    .template-manager-details .preview-box {
+      margin: 0;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel-soft);
+      min-height: 130px;
+      white-space: pre-line;
+    }
+
     .group-row {
       display: grid;
       grid-template-columns: 150px 1fr auto;
@@ -706,6 +819,10 @@
     }
 
     @media (max-width: 900px) {
+      .template-manager-grid {
+        grid-template-columns: 1fr;
+      }
+
       .group-row {
         grid-template-columns: 1fr;
       }
@@ -725,8 +842,7 @@
       <div class="main-toolbar">
         <div>
           <h1 id="titleMain">Manopola Audio Mixer Setup</h1>
-          <p id="subtitleMain">Configure serial connection, assign each knob target, and visually identify knob numbers in real time.</p>
-          <p class="hint"><span id="configPathLabel">Config path:</span> <span class="mono" id="configPath">loading...</span></p>
+          <p id="subtitleMain">Turn every app into a tactile mix in seconds.</p>
         </div>
         <div class="toolbar-actions">
           <button id="openSettingsBtn" class="icon-plain" type="button" aria-label="Open settings" title="Settings">
@@ -737,9 +853,6 @@
           </button>
         </div>
       </div>
-
-      <h2 id="identifyHeading">Knob Identification</h2>
-      <p id="identifyIntro">Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.</p>
 
       <section class="recovery-banner hidden" id="recoveryBanner" role="status" aria-live="polite">
         <span id="recoveryMessage"></span>
@@ -755,40 +868,40 @@
     </section>
 
     <section class="settings-view hidden" id="settingsView">
-      <section class="panel" id="settingsAppearancePanel">
-        <div class="settings-header">
-          <div class="settings-meta">
-            <h2 id="settingsTitle">Settings</h2>
-            <span id="unsavedBadge" class="dirty-badge hidden">Unsaved changes</span>
+      <div class="split settings-top-grid">
+        <section class="panel" id="settingsAppearancePanel">
+          <div class="settings-header">
+            <div class="settings-meta">
+              <h2 id="settingsTitle">Settings</h2>
+              <span id="unsavedBadge" class="dirty-badge hidden">Unsaved changes</span>
+            </div>
+            <div class="toolbar-actions">
+              <button id="closeSettingsBtn" class="btn-lite" type="button">Back</button>
+            </div>
           </div>
-          <div class="toolbar-actions">
-            <button id="runSetupAgain" class="btn-lite" type="button">Run Setup Again</button>
-            <button id="closeSettingsBtn" class="btn-lite" type="button">Back</button>
+          <p class="hint" id="settingsIntro">Choose language and visual style.</p>
+          <div class="actions" style="margin-top:12px;">
+            <label style="min-width: 220px; margin: 0;">
+              <span id="languageLabel">Language</span>
+              <select id="languageSelect" aria-label="Language">
+                <option value="en">English</option>
+                <option value="it">Italiano</option>
+              </select>
+            </label>
+            <label style="min-width: 220px; margin: 0;">
+              <span id="themeLabel">Theme</span>
+              <select id="themeSelect" aria-label="Theme">
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </label>
           </div>
-        </div>
-        <p class="hint" id="settingsIntro">Use this page for setup and advanced options.</p>
-        <div class="actions" style="margin-top:12px;">
-          <label style="min-width: 220px; margin: 0;">
-            <span id="languageLabel">Language</span>
-            <select id="languageSelect" aria-label="Language">
-              <option value="en">English</option>
-              <option value="it">Italiano</option>
-            </select>
-          </label>
-          <label style="min-width: 220px; margin: 0;">
-            <span id="themeLabel">Theme</span>
-            <select id="themeSelect" aria-label="Theme">
-              <option value="system">System</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-          </label>
-        </div>
-      </section>
+        </section>
 
-      <section class="panel split" id="settingsConnectionPanel">
-        <div>
+        <section class="panel" id="settingsConnectionPanel">
           <h2 id="connectionHeading">Connection</h2>
+          <p class="hint" id="connectionIntro">Configure serial connection.</p>
           <label>
             <span id="serialPortLabel">Serial Port</span>
             <div class="split" style="grid-template-columns: 1fr auto;">
@@ -809,33 +922,12 @@
             <button type="button" id="testConnection">Test Connection</button>
           </div>
           <p class="status" id="connectionStatus" role="status" aria-live="polite"></p>
-        </div>
-        <div>
-          <h2 id="advancedHeading">Advanced</h2>
-          <div class="advanced-wrap">
-            <details>
-              <summary id="advancedSummary">Advanced settings</summary>
-              <div class="content">
-                <label style="display:flex; gap:8px; align-items:center; margin-top:4px;">
-                  <input id="debugInput" type="checkbox" aria-label="Enable debug logs">
-                  <span id="debugLabel">Debug logs enabled</span>
-                </label>
-                <div class="actions" style="align-items:center;">
-                  <label style="display:flex; gap:8px; align-items:center; margin:0;">
-                    <input id="startupEnabled" type="checkbox" aria-label="Launch mixer at OS startup">
-                    <span id="startupLabel">Launch mixer at OS startup</span>
-                  </label>
-                  <button type="button" id="applyStartup">Apply Startup Setting</button>
-                </div>
-                <p class="status" id="startupStatus" role="status" aria-live="polite"></p>
-              </div>
-            </details>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <section class="panel" id="settingsMappingsPanel">
         <h2 id="mappingsHeading">Mappings</h2>
+        <p class="hint" id="mappingsIntro">Assign each knob target and identify knob numbers in real time.</p>
         <p class="hint" id="windowsTargetWarning"></p>
         <div class="actions templates">
           <label style="min-width: 250px; margin: 0;">
@@ -843,6 +935,7 @@
             <select id="templateSelect" aria-label="Mapping templates"></select>
           </label>
           <button id="applyTemplate" type="button">Apply Template</button>
+          <button id="manageTemplates" type="button" class="btn-lite">Manage Templates</button>
         </div>
         <div class="row header">
           <div id="headerKnob">Knob</div>
@@ -858,6 +951,26 @@
           <button class="btn-primary" id="saveConfig" type="button">Save Config</button>
           <button id="rollbackConfig" type="button">Rollback Last Save</button>
         </div>
+        <p class="status" id="saveStatus" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel" id="settingsAdvancedPanel">
+        <h2 id="advancedHeading">Advanced</h2>
+        <p class="hint" id="advancedSummary">Advanced settings</p>
+        <div class="actions" style="align-items:center;">
+          <label style="display:flex; gap:8px; align-items:center; margin:0;">
+            <input id="debugInput" type="checkbox" aria-label="Enable debug logs">
+            <span id="debugLabel">Debug logs enabled</span>
+          </label>
+        </div>
+        <div class="actions" style="align-items:center;">
+          <label style="display:flex; gap:8px; align-items:center; margin:0;">
+            <input id="startupEnabled" type="checkbox" checked aria-label="Launch mixer at OS startup">
+            <span id="startupLabel">Launch mixer at OS startup</span>
+          </label>
+          <button type="button" id="applyStartup">Apply Startup Setting</button>
+        </div>
+        <p class="status" id="startupStatus" role="status" aria-live="polite"></p>
         <div class="advanced-wrap">
           <details>
             <summary id="advancedConfigSummary">Advanced config tools</summary>
@@ -873,10 +986,42 @@
             </div>
           </details>
         </div>
-        <p class="status" id="saveStatus" role="status" aria-live="polite"></p>
+        <p class="hint" style="margin-top: 10px;"><span id="configPathLabel">Config path:</span> <span class="mono" id="configPath">loading...</span></p>
       </section>
     </section>
   </main>
+
+  <div class="modal-overlay hidden" id="templateManagerModal" role="dialog" aria-modal="true" aria-labelledby="templateManagerTitle">
+    <section class="modal-card">
+      <h2 id="templateManagerTitle">Template Manager</h2>
+      <p id="templateManagerIntro">Create and customize templates while keeping built-in presets read-only.</p>
+      <div class="template-manager-grid">
+        <label style="margin:0;">
+          <span id="templateManagerListLabel">Templates</span>
+          <select id="templateManagerSelect" aria-label="Template list" size="10"></select>
+        </label>
+        <div class="template-manager-details">
+          <label style="margin:0;">
+            <span id="templateManagerNameLabel">Template name</span>
+            <input id="templateManagerName" type="text" aria-label="Template name" placeholder="My template">
+          </label>
+          <p class="hint" id="templateManagerType"></p>
+          <p class="preview-box" id="templateManagerPreview" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+      <p class="status" id="templateManagerStatus" role="status" aria-live="polite"></p>
+      <div class="actions">
+        <button type="button" class="btn-lite" id="templateCreateFromCurrent">New from current</button>
+        <button type="button" class="btn-lite" id="templateDuplicate">Duplicate</button>
+        <button type="button" class="btn-lite" id="templateUpdateFromCurrent">Update from current</button>
+        <button type="button" class="btn-lite" id="templateRename">Rename</button>
+        <button type="button" class="btn-danger" id="templateDelete">Delete</button>
+        <button type="button" class="btn-secondary" id="templateSetDefault">Set as default</button>
+        <button type="button" class="btn-primary" id="templateApplySelected">Apply selected</button>
+        <button type="button" id="templateManagerClose">Close</button>
+      </div>
+    </section>
+  </div>
 
   <div class="modal-overlay hidden" id="groupEditorModal" role="dialog" aria-modal="true" aria-labelledby="groupEditorTitle">
     <section class="modal-card">
@@ -985,6 +1130,12 @@
         name: ""
       },
       customGroups: [],
+      customTemplates: [],
+      defaultTemplateID: "",
+      templateManager: {
+        open: false,
+        selectedID: ""
+      },
       templates: {
         streaming: {
           label: "Streaming",
@@ -1037,6 +1188,19 @@
             { knob: 4, target: "group", step: 0.02, name: "media" },
             { knob: 5, target: "mic_in", step: 0.02, name: "" }
           ]
+        },
+        universal: {
+          label: "Universal Daily Mix",
+          description: "Master, mic, music, games, browser",
+          labels: { en: "Universal Daily Mix", it: "Mix quotidiano universale" },
+          descriptions: { en: "Master, mic, music, games, browser", it: "Master, microfono, musica, giochi, browser" },
+          mappings: [
+            { knob: 1, target: "master_out", step: 0.02, name: "" },
+            { knob: 2, target: "mic_in", step: 0.02, name: "" },
+            { knob: 3, target: "group", step: 0.02, name: "music" },
+            { knob: 4, target: "group", step: 0.02, name: "game" },
+            { knob: 5, target: "group", step: 0.02, name: "browser" }
+          ]
         }
       }
     };
@@ -1048,6 +1212,7 @@
     const backupStorageKey = "mama.setup.config.backup.v1";
     const rollbackStorageKey = "mama.setup.config.rollback.v1";
     const onboardingStorageKey = "mama.setup.onboarding.done.v1";
+    const startupDefaultAppliedKey = "mama.setup.startup.default.applied.v1";
 
     const languageStorageKey = "mama.setup.language.v1";
     const themeStorageKey = "mama.setup.theme.v1";
@@ -1055,7 +1220,7 @@
       en: {
         pageTitle: "MAMA Setup",
         titleMain: "Manopola Audio Mixer Setup",
-        subtitleMain: "Configure serial connection, assign each knob target, and visually identify knob numbers in real time.",
+        subtitleMain: "Turn every app into a tactile mix in seconds.",
         configPathLabel: "Config path:",
         languageLabel: "Language",
         themeLabel: "Theme",
@@ -1064,8 +1229,9 @@
         themeDark: "Dark",
         openSettings: "Open settings",
         settingsTitle: "Settings",
-        settingsIntro: "Use this page for setup and advanced options.",
-        runSetupAgain: "Run Setup Again",
+        settingsIntro: "Choose language and visual style.",
+        connectionIntro: "Configure serial connection.",
+        mappingsIntro: "Assign each knob target and identify knob numbers in real time.",
         closeSettingsBtn: "Back",
         unsavedChanges: "Unsaved changes",
         discardChangesConfirm: "You have unsaved changes. Discard them and go back?",
@@ -1095,7 +1261,7 @@
         bootApplying: "Applying detected serial port...",
         bootReady: "Ready",
         identifyHeading: "Knob Identification", identifyIntro: "Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.", debugHeading: "Debug Console", startIdentify: "Start Identify", stopIdentify: "Stop",
-        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackNone: "No fallback", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", addKnob: "Add Knob", saveConfig: "Save Config", rollbackConfig: "Rollback Last Save", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", exportDiagnostics: "Export Diagnostics", importConfig: "Import Config", selectorPick: "Pick detected item", fallbackPick: "Pick fallback item", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).", nonWindowsTargetWarning: "macOS/Linux note: app/group controls depend on available audio session backend. Device and master controls remain available.",
+        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", manageTemplates: "Manage Templates", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackNone: "No fallback", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", addKnob: "Add Knob", saveConfig: "Save Config", rollbackConfig: "Rollback Last Save", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", exportDiagnostics: "Export Diagnostics", importConfig: "Import Config", selectorPick: "Pick detected item", fallbackPick: "Pick fallback item", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).", nonWindowsTargetWarning: "macOS/Linux note: app/group controls depend on available audio session backend. Device and master controls remain available.",
         appHintActive: "Detected active apps ({count}). Use suggestions with Windows names. If the app is offline, use exe:processname (example: exe:discord).",
         appHintOffline: "No active app sessions detected now. Use exe:processname and it will attach when the app starts.",
         groupHint: "Group accepts one or more group names or selector rules separated by ';' (example: browser; exe:discord).",
@@ -1143,13 +1309,41 @@
         groupPreviewNone: "Live preview: no active apps match these rules right now.",
         groupPreviewSome: "Live preview matched apps:",
         groupPreviewMore: "and more",
+        templateBuiltInGroup: "Built-in Templates",
+        templateCustomGroup: "My Templates",
+        templateDefaultTag: "default",
+        templateManagerTitle: "Template Manager",
+        templateManagerIntro: "Create and customize templates while keeping built-in presets read-only.",
+        templateManagerListLabel: "Templates",
+        templateManagerNameLabel: "Template name",
+        templateManagerTypeBuiltin: "Built-in preset (read-only).",
+        templateManagerTypeCustom: "Custom template.",
+        templateManagerTypeDefault: "This template is the default selection.",
+        templateManagerPreviewNone: "No mappings in this template.",
+        templateManagerClose: "Close",
+        templateCreateFromCurrent: "New from current",
+        templateDuplicate: "Duplicate",
+        templateUpdateFromCurrent: "Update from current",
+        templateRename: "Rename",
+        templateDelete: "Delete",
+        templateSetDefault: "Set as default",
+        templateApplySelected: "Apply selected",
+        templateNoSelection: "Select a template first.",
+        templateInvalidName: "Type a valid template name.",
+        templateCreateDone: "Template {name} created.",
+        templateDuplicateDone: "Template duplicated as {name}.",
+        templateUpdateDone: "Template {name} updated from current mappings.",
+        templateRenameDone: "Template renamed to {name}.",
+        templateDeleteConfirm: "Delete template {name}?",
+        templateDeleteDone: "Template {name} deleted.",
+        templateDefaultDone: "Default template set to {name}.",
         noPorts: "No ports detected", waiting: "waiting...", buttonPress: "button press", delta: "delta", knobNoMapping: "No mapping", knobUnavailable: "Unavailable", knobMuted: "Muted", knobLive: "Live", knobApps: "apps", healthOK: "OK", healthUnavailable: "Unavailable", healthFallback: "Fallback", healthMissing: "Missing", healthPermission: "Permission", healthUnsupported: "Unsupported", healthError: "Error", recoveryRetry: "Retry Now", recoveryConnecting: "Connecting to serial device...", recoveryReconnecting: "Serial disconnected, auto-retry in progress.", recoveryInactive: "Runtime not active.",
         wizardSteps: { detect: { title: "Detect board", hint: "Refresh detected serial ports and select your board." }, test: { title: "Test port", hint: "Run Test Connection to ensure the board is reachable." }, map: { title: "Map knobs", hint: "Use Start Identify and rotate/press knobs to confirm IDs before editing mappings." }, save: { title: "Save config", hint: "Persist serial + mapping configuration." }, verify: { title: "Verify", hint: "Run identify again to confirm knob events after save." } }
       },
       it: {
         pageTitle: "Configurazione MAMA",
         titleMain: "Configurazione Manopola Audio Mixer",
-        subtitleMain: "Configura la connessione seriale, assegna i target alle manopole e identifica visivamente i numeri in tempo reale.",
+        subtitleMain: "Controlla l'audio delle tue app con feeling analogico, in pochi secondi.",
         configPathLabel: "Percorso config:",
         languageLabel: "Lingua",
         themeLabel: "Tema",
@@ -1158,8 +1352,9 @@
         themeDark: "Scuro",
         openSettings: "Apri impostazioni",
         settingsTitle: "Impostazioni",
-        settingsIntro: "Questa pagina contiene configurazione e opzioni avanzate.",
-        runSetupAgain: "Riapri procedura",
+        settingsIntro: "Scegli lingua e stile visivo.",
+        connectionIntro: "Configura la connessione seriale.",
+        mappingsIntro: "Assegna un target a ogni manopola e identifica i knob in tempo reale.",
         closeSettingsBtn: "Indietro",
         unsavedChanges: "Modifiche non salvate",
         discardChangesConfirm: "Ci sono modifiche non salvate. Vuoi scartarle e tornare indietro?",
@@ -1189,7 +1384,7 @@
         bootApplying: "Applicazione porta seriale rilevata...",
         bootReady: "Pronto",
         identifyHeading: "Identificazione manopole", identifyIntro: "L'attivita delle manopole viene rilevata automaticamente una volta configurata la porta seriale. Ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", debugHeading: "Console debug", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
-        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackNone: "Nessun fallback", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", addKnob: "Aggiungi manopola", saveConfig: "Salva config", rollbackConfig: "Ripristina ultimo salvataggio", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", exportDiagnostics: "Esporta diagnostica", importConfig: "Importa config", selectorPick: "Scegli elemento rilevato", fallbackPick: "Scegli fallback", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).", nonWindowsTargetWarning: "Nota macOS/Linux: i controlli app/group dipendono dal backend sessioni audio disponibile. I controlli dispositivo e master restano disponibili.",
+        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", manageTemplates: "Gestisci template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackNone: "Nessun fallback", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", addKnob: "Aggiungi manopola", saveConfig: "Salva config", rollbackConfig: "Ripristina ultimo salvataggio", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", exportDiagnostics: "Esporta diagnostica", importConfig: "Importa config", selectorPick: "Scegli elemento rilevato", fallbackPick: "Scegli fallback", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).", nonWindowsTargetWarning: "Nota macOS/Linux: i controlli app/group dipendono dal backend sessioni audio disponibile. I controlli dispositivo e master restano disponibili.",
         appHintActive: "App attive rilevate ({count}). Usa i suggerimenti con i nomi visibili in Windows. Se l'app e offline usa exe:nomeprocesso (esempio: exe:discord).",
         appHintOffline: "Nessuna sessione app attiva rilevata ora. Usa exe:nomeprocesso e si colleghera quando l'app parte.",
         groupHint: "Il gruppo accetta uno o piu nomi gruppo o regole selettore separati da ';' (esempio: browser; exe:discord).",
@@ -1237,6 +1432,34 @@
         groupPreviewNone: "Anteprima live: nessuna app attiva corrisponde alle regole al momento.",
         groupPreviewSome: "Anteprima live app corrispondenti:",
         groupPreviewMore: "e altre",
+        templateBuiltInGroup: "Template inclusi",
+        templateCustomGroup: "I miei template",
+        templateDefaultTag: "predefinito",
+        templateManagerTitle: "Gestione template",
+        templateManagerIntro: "Crea e personalizza template mantenendo i preset inclusi in sola lettura.",
+        templateManagerListLabel: "Template",
+        templateManagerNameLabel: "Nome template",
+        templateManagerTypeBuiltin: "Preset incluso (sola lettura).",
+        templateManagerTypeCustom: "Template personalizzato.",
+        templateManagerTypeDefault: "Questo template e la selezione predefinita.",
+        templateManagerPreviewNone: "Nessuna mappatura in questo template.",
+        templateManagerClose: "Chiudi",
+        templateCreateFromCurrent: "Nuovo da corrente",
+        templateDuplicate: "Duplica",
+        templateUpdateFromCurrent: "Aggiorna da corrente",
+        templateRename: "Rinomina",
+        templateDelete: "Elimina",
+        templateSetDefault: "Imposta predefinito",
+        templateApplySelected: "Applica selezionato",
+        templateNoSelection: "Seleziona prima un template.",
+        templateInvalidName: "Inserisci un nome template valido.",
+        templateCreateDone: "Template {name} creato.",
+        templateDuplicateDone: "Template duplicato come {name}.",
+        templateUpdateDone: "Template {name} aggiornato dalle mappature correnti.",
+        templateRenameDone: "Template rinominato in {name}.",
+        templateDeleteConfirm: "Eliminare il template {name}?",
+        templateDeleteDone: "Template {name} eliminato.",
+        templateDefaultDone: "Template predefinito impostato su {name}.",
         noPorts: "Nessuna porta rilevata", waiting: "in attesa...", buttonPress: "pressione tasto", delta: "delta", knobNoMapping: "Nessuna mappatura", knobUnavailable: "Non disponibile", knobMuted: "Muto", knobLive: "Attivo", knobApps: "app", healthOK: "OK", healthUnavailable: "Non disponibile", healthFallback: "Fallback", healthMissing: "Mancante", healthPermission: "Permessi", healthUnsupported: "Non supportato", healthError: "Errore", recoveryRetry: "Riprova ora", recoveryConnecting: "Connessione dispositivo seriale...", recoveryReconnecting: "Seriale disconnessa, riconnessione automatica in corso.", recoveryInactive: "Runtime non attivo.",
         wizardSteps: { detect: { title: "Rileva scheda", hint: "Aggiorna le porte seriali rilevate e seleziona la tua scheda." }, test: { title: "Test porta", hint: "Esegui Test connessione per verificare che la scheda sia raggiungibile." }, map: { title: "Mappa manopole", hint: "Usa Avvia identificazione e ruota/premi le manopole per confermare gli ID prima di modificare le mappature." }, save: { title: "Salva config", hint: "Salva la configurazione seriale e delle mappature." }, verify: { title: "Verifica", hint: "Avvia di nuovo l'identificazione per confermare gli eventi dopo il salvataggio." } }
       }
@@ -1282,6 +1505,8 @@
           baud: parseInt(serial.baud, 10) || 115200
         },
         groups: normalizedCustomGroupsForConfig(cfg.groups),
+        templates: normalizedCustomTemplatesForConfig(cfg.templates),
+        default_template: resolveTemplateID(cfg.default_template || "") || "",
         debug: !!cfg.debug,
         mappings: Array.isArray(cfg.mappings) ? cfg.mappings.map((mapping) => {
           const out = {
@@ -1376,11 +1601,12 @@
       document.title = t("pageTitle");
       const bindings = {
         bootTitle: "bootTitle",
-        titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", themeLabel: "themeLabel", settingsTitle: "settingsTitle", settingsIntro: "settingsIntro", runSetupAgain: "runSetupAgain", closeSettingsBtn: "closeSettingsBtn", unsavedBadge: "unsavedChanges", advancedHeading: "advancedHeading", advancedSummary: "advancedSummary", advancedConfigSummary: "advancedConfigSummary", onboardingTitle: "onboardingTitle", onboardingIntro: "onboardingIntro", onboardingSkip: "onboardingSkip", onboardingPrev: "onboardingPrev", onboardingNext: "onboardingNext", onboardingFinish: "onboardingFinish", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
+        titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", themeLabel: "themeLabel", settingsTitle: "settingsTitle", settingsIntro: "settingsIntro", connectionIntro: "connectionIntro", mappingsIntro: "mappingsIntro", closeSettingsBtn: "closeSettingsBtn", unsavedBadge: "unsavedChanges", advancedHeading: "advancedHeading", advancedSummary: "advancedSummary", advancedConfigSummary: "advancedConfigSummary", onboardingTitle: "onboardingTitle", onboardingIntro: "onboardingIntro", onboardingSkip: "onboardingSkip", onboardingPrev: "onboardingPrev", onboardingNext: "onboardingNext", onboardingFinish: "onboardingFinish", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
         wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
         manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", autoDetectPort: "autoDetectPort", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", debugHeading: "debugHeading", mappingsHeading: "mappingsHeading",
-        mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep", headerFallback: "headerFallback",
+        mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", manageTemplates: "manageTemplates", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep", headerFallback: "headerFallback",
         addMapping: "addMapping", saveConfig: "saveConfig", rollbackConfig: "rollbackConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", exportDiagnostics: "exportDiagnostics", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
+        templateManagerTitle: "templateManagerTitle", templateManagerIntro: "templateManagerIntro", templateManagerListLabel: "templateManagerListLabel", templateManagerNameLabel: "templateManagerNameLabel", templateCreateFromCurrent: "templateCreateFromCurrent", templateDuplicate: "templateDuplicate", templateUpdateFromCurrent: "templateUpdateFromCurrent", templateRename: "templateRename", templateDelete: "templateDelete", templateSetDefault: "templateSetDefault", templateApplySelected: "templateApplySelected", templateManagerClose: "templateManagerClose",
         groupEditorTitle: "groupEditorTitle", groupEditorIntro: "groupEditorIntro", groupAddRule: "groupAddRule", groupAddBrowser: "groupAddBrowser", groupAddGame: "groupAddGame", groupAddMusic: "groupAddMusic", groupAddStreaming: "groupAddStreaming", groupAddChat: "groupAddChat", groupAddCreator: "groupAddCreator", groupClearRules: "groupClearRules", groupNameLabel: "groupNameLabel", groupSaveDefinition: "groupSaveDefinition", groupEditorCancel: "groupEditorCancel", groupEditorApply: "groupEditorApply"
       };
       for (const [id, key] of Object.entries(bindings)) {
@@ -1396,6 +1622,9 @@
       }
       if ($("groupEditorName")) {
         $("groupEditorName").placeholder = state.language === "it" ? "es. browser" : "e.g. browser";
+      }
+      if ($("templateManagerName")) {
+        $("templateManagerName").placeholder = state.language === "it" ? "Il mio template" : "My template";
       }
       $("openSettingsBtn").setAttribute("aria-label", t("openSettings"));
       $("openSettingsBtn").setAttribute("title", t("openSettings"));
@@ -1698,6 +1927,18 @@
             select.value = current;
           }
         }
+        const row = select.closest(".row");
+        const indicator = row ? row.querySelector(".map-knob-indicator") : null;
+        if (indicator) {
+          const knobID = parseInt(select.value, 10);
+          const safeKnobID = Number.isInteger(knobID) && knobID > 0 ? knobID : 1;
+          indicator.dataset.knob = String(safeKnobID);
+          indicator.dataset.angle = "0";
+          const label = indicator.querySelector(".map-knob-label");
+          if (label) label.textContent = "K" + safeKnobID;
+          const dial = indicator.querySelector(".dial");
+          if (dial) dial.style.transform = "rotate(0deg)";
+        }
       }
     }
 
@@ -1847,48 +2088,528 @@
       state.mappingStatusTimer = setInterval(loadMappingStatus, 900);
     }
 
+    function slugifyTemplateID(raw) {
+      let text = String(raw || "").trim().toLowerCase();
+      text = text.replace(/[^a-z0-9]+/g, "-");
+      text = text.replace(/^-+|-+$/g, "");
+      if (!text) text = "template";
+      return text;
+    }
+
+    function cloneSelector(selector) {
+      const kind = String(selector && selector.kind || "").trim();
+      const value = String(selector && selector.value || "").trim();
+      if (!kind || !value) return null;
+      return { kind, value };
+    }
+
+    function normalizeTemplateMapping(mapping) {
+      if (!mapping || typeof mapping !== "object") return null;
+      const knobRaw = parseInt(mapping.knob, 10);
+      const knob = Number.isInteger(knobRaw) ? Math.max(1, Math.min(maxKnobCount, knobRaw)) : 1;
+      const target = String(mapping.target || "master_out").trim() || "master_out";
+      const step = percentStepToConfig(configStepToPercent(mapping.step));
+      const normalized = {
+        knob,
+        target,
+        step
+      };
+      const name = String(mapping.name || "").trim();
+      if (name) normalized.name = name;
+      const selector = cloneSelector(mapping.selector);
+      if (selector) normalized.selector = selector;
+      if (Array.isArray(mapping.selectors)) {
+        const selectors = mapping.selectors
+          .map(cloneSelector)
+          .filter((item) => !!item);
+        if (selectors.length > 0) normalized.selectors = selectors;
+      }
+      const sensitivity = String(mapping.sensitivity || "").trim().toLowerCase();
+      if (sensitivity === "slow" || sensitivity === "fast" || sensitivity === "normal") {
+        normalized.sensitivity = sensitivity;
+      }
+      const fallbackTarget = String(mapping.fallback_target || "").trim();
+      const fallbackName = String(mapping.fallback_name || "").trim();
+      if (fallbackTarget) normalized.fallback_target = fallbackTarget;
+      if (fallbackName) normalized.fallback_name = fallbackName;
+      if (mapping.fallback_to_master) normalized.fallback_to_master = true;
+      return normalized;
+    }
+
+    function cloneTemplateMappings(list) {
+      if (!Array.isArray(list)) return [];
+      return list
+        .map(normalizeTemplateMapping)
+        .filter((item) => !!item);
+    }
+
+    function builtInTemplateIDs() {
+      return Object.keys(state.templates || {});
+    }
+
+    function templateIDExists(id, ignoreID = "") {
+      const needle = String(id || "").trim().toLowerCase();
+      if (!needle) return false;
+      if (needle !== String(ignoreID || "").trim().toLowerCase()) {
+        for (const builtinID of builtInTemplateIDs()) {
+          if (String(builtinID).toLowerCase() === needle) {
+            return true;
+          }
+        }
+      }
+      for (const tpl of state.customTemplates || []) {
+        const current = String(tpl && tpl.id || "").trim().toLowerCase();
+        if (!current) continue;
+        if (needle === current && current !== String(ignoreID || "").trim().toLowerCase()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function uniqueTemplateID(base, ignoreID = "") {
+      const core = slugifyTemplateID(base);
+      let next = core;
+      let index = 2;
+      while (templateIDExists(next, ignoreID)) {
+        next = `${core}-${index}`;
+        index += 1;
+      }
+      return next;
+    }
+
+    function sanitizeCustomTemplates(raw) {
+      if (!Array.isArray(raw)) return [];
+      const seen = new Set(builtInTemplateIDs().map((id) => String(id).toLowerCase()));
+      const out = [];
+      for (const entry of raw) {
+        if (!entry || typeof entry !== "object") continue;
+        const name = String(entry.name || "").trim();
+        const sourceID = String(entry.id || "").trim();
+        const base = slugifyTemplateID(sourceID || name || "template");
+        let id = base;
+        let suffix = 2;
+        while (seen.has(String(id).toLowerCase())) {
+          id = `${base}-${suffix}`;
+          suffix += 1;
+        }
+        const mappings = cloneTemplateMappings(entry.mappings);
+        if (!name || mappings.length === 0) continue;
+        seen.add(String(id).toLowerCase());
+        out.push({
+          id,
+          name,
+          mappings
+        });
+      }
+      out.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+      return out;
+    }
+
+    function normalizedCustomTemplatesForConfig(raw) {
+      return sanitizeCustomTemplates(raw).map((tpl) => ({
+        id: tpl.id,
+        name: tpl.name,
+        mappings: cloneTemplateMappings(tpl.mappings)
+      }));
+    }
+
+    function customTemplateByID(id) {
+      const needle = String(id || "").trim().toLowerCase();
+      if (!needle) return null;
+      for (const tpl of state.customTemplates || []) {
+        if (String(tpl && tpl.id || "").trim().toLowerCase() === needle) {
+          return tpl;
+        }
+      }
+      return null;
+    }
+
+    function templateMetaByID(id) {
+      const key = String(id || "").trim();
+      if (!key) return null;
+      const builtin = state.templates[key];
+      if (builtin) {
+        return {
+          id: key,
+          builtin: true,
+          name: (builtin.labels && builtin.labels[state.language]) || builtin.label || key,
+          description: (builtin.descriptions && builtin.descriptions[state.language]) || builtin.description || "",
+          mappings: cloneTemplateMappings(builtin.mappings)
+        };
+      }
+      const custom = customTemplateByID(key);
+      if (!custom) return null;
+      return {
+        id: custom.id,
+        builtin: false,
+        name: String(custom.name || custom.id),
+        description: "",
+        mappings: cloneTemplateMappings(custom.mappings)
+      };
+    }
+
+    function allTemplateIDs() {
+      const out = [];
+      for (const id of builtInTemplateIDs()) out.push(id);
+      for (const tpl of state.customTemplates || []) {
+        const id = String(tpl && tpl.id || "").trim();
+        if (id) out.push(id);
+      }
+      return out;
+    }
+
+    function resolveTemplateID(raw) {
+      const needle = String(raw || "").trim().toLowerCase();
+      if (!needle) return "";
+      for (const id of allTemplateIDs()) {
+        if (String(id).toLowerCase() === needle) return id;
+      }
+      return "";
+    }
+
+    function resolveDefaultTemplateID(raw) {
+      const direct = resolveTemplateID(raw);
+      if (direct) return direct;
+      const all = allTemplateIDs();
+      return all.length > 0 ? all[0] : "";
+    }
+
+    function templateDisplayName(templateMeta) {
+      if (!templateMeta) return "";
+      return String(templateMeta.name || templateMeta.id || "").trim();
+    }
+
+    function templatePreviewLine(mapping) {
+      const knob = parseInt(mapping && mapping.knob, 10) || 1;
+      const target = targetLabel(String(mapping && mapping.target || "master_out").trim());
+      const selector = selectorTokenFromMapping(mapping);
+      const step = configStepToPercent(mapping && mapping.step);
+      const main = selector ? `${target} -> ${selector}` : target;
+      return `Knob ${knob}: ${main} (${step}%)`;
+    }
+
+    function setTemplateManagerStatus(text, cls = "") {
+      setStatus("templateManagerStatus", text, cls);
+    }
+
     function renderTemplateOptions() {
       const select = $("templateSelect");
+      if (!select) return;
+      const previous = resolveTemplateID(select.value) || resolveTemplateID(state.templateManager.selectedID);
+      state.defaultTemplateID = resolveDefaultTemplateID(state.defaultTemplateID);
       select.innerHTML = "";
-      for (const [id, tpl] of Object.entries(state.templates)) {
+
+      const addOption = (optgroup, templateMeta) => {
         const option = document.createElement("option");
-        option.value = id;
-        const label = (tpl.labels && tpl.labels[state.language]) || tpl.label;
-        const description = (tpl.descriptions && tpl.descriptions[state.language]) || tpl.description;
-        option.textContent = `${label} - ${description}`;
-        select.appendChild(option);
+        option.value = templateMeta.id;
+        const defaultTag = state.defaultTemplateID === templateMeta.id ? ` (${t("templateDefaultTag")})` : "";
+        const desc = templateMeta.description ? ` - ${templateMeta.description}` : "";
+        option.textContent = `${templateMeta.name}${desc}${defaultTag}`;
+        optgroup.appendChild(option);
+      };
+
+      const builtInGroup = document.createElement("optgroup");
+      builtInGroup.label = t("templateBuiltInGroup");
+      for (const id of builtInTemplateIDs()) {
+        const meta = templateMetaByID(id);
+        if (meta) addOption(builtInGroup, meta);
+      }
+      if (builtInGroup.children.length > 0) {
+        select.appendChild(builtInGroup);
+      }
+
+      if ((state.customTemplates || []).length > 0) {
+        const customGroup = document.createElement("optgroup");
+        customGroup.label = t("templateCustomGroup");
+        for (const custom of state.customTemplates) {
+          const meta = templateMetaByID(custom.id);
+          if (meta) addOption(customGroup, meta);
+        }
+        if (customGroup.children.length > 0) {
+          select.appendChild(customGroup);
+        }
+      }
+
+      const fallback = state.defaultTemplateID || resolveDefaultTemplateID("");
+      const next = previous || fallback;
+      select.value = resolveTemplateID(next);
+      if (!select.value) {
+        const first = select.querySelector("option");
+        select.value = first ? first.value : "";
+      }
+
+      if (state.templateManager.open) {
+        renderTemplateManagerList();
       }
     }
 
-    function flashKnob(knobId, kind, delta) {
-      const card = $("knob-" + knobId);
-      if (!card) return;
-      card.classList.remove("active-rotate", "active-press");
-      const dial = card.querySelector(".dial");
-      if (kind === "button_press") {
-        card.classList.add("active-press");
-        if (dial) {
-          const angle = Number(card.dataset.angle || "0");
-          dial.style.transform = "rotate(" + angle + "deg) scale(0.84)";
-          if (knobPressTimers.has(knobId)) clearTimeout(knobPressTimers.get(knobId));
-          knobPressTimers.set(knobId, setTimeout(() => {
-            if (knobPressTimers.has(knobId)) knobPressTimers.delete(knobId);
-            const stableAngle = Number(card.dataset.angle || "0");
-            dial.style.transform = "rotate(" + stableAngle + "deg)";
-          }, 130));
+    function renderTemplateManagerList() {
+      const list = $("templateManagerSelect");
+      if (!list) return;
+      const previous = resolveTemplateID(state.templateManager.selectedID) || resolveTemplateID($("templateSelect").value);
+      list.innerHTML = "";
+
+      const addOption = (optgroup, templateMeta) => {
+        const option = document.createElement("option");
+        option.value = templateMeta.id;
+        const defaultTag = state.defaultTemplateID === templateMeta.id ? ` (${t("templateDefaultTag")})` : "";
+        option.textContent = `${templateMeta.name}${defaultTag}`;
+        optgroup.appendChild(option);
+      };
+
+      const builtInGroup = document.createElement("optgroup");
+      builtInGroup.label = t("templateBuiltInGroup");
+      for (const id of builtInTemplateIDs()) {
+        const meta = templateMetaByID(id);
+        if (meta) addOption(builtInGroup, meta);
+      }
+      if (builtInGroup.children.length > 0) {
+        list.appendChild(builtInGroup);
+      }
+
+      if ((state.customTemplates || []).length > 0) {
+        const customGroup = document.createElement("optgroup");
+        customGroup.label = t("templateCustomGroup");
+        for (const custom of state.customTemplates) {
+          const meta = templateMetaByID(custom.id);
+          if (meta) addOption(customGroup, meta);
         }
+        if (customGroup.children.length > 0) {
+          list.appendChild(customGroup);
+        }
+      }
+
+      state.templateManager.selectedID = resolveTemplateID(previous) || resolveDefaultTemplateID("");
+      list.value = state.templateManager.selectedID;
+      syncTemplateManagerDetails();
+    }
+
+    function syncTemplateManagerDetails() {
+      const selected = resolveTemplateID(($("templateManagerSelect") && $("templateManagerSelect").value) || state.templateManager.selectedID);
+      state.templateManager.selectedID = selected;
+      const meta = templateMetaByID(selected);
+      const nameInput = $("templateManagerName");
+      const typeEl = $("templateManagerType");
+      const preview = $("templateManagerPreview");
+      const hasSelection = !!meta;
+      if (nameInput) {
+        nameInput.value = hasSelection ? templateDisplayName(meta) : "";
+      }
+      const isCustom = hasSelection && !meta.builtin;
+      $("templateDuplicate").disabled = !hasSelection;
+      $("templateUpdateFromCurrent").disabled = !isCustom;
+      $("templateRename").disabled = !isCustom;
+      $("templateDelete").disabled = !isCustom;
+      $("templateSetDefault").disabled = !hasSelection;
+      $("templateApplySelected").disabled = !hasSelection;
+
+      if (!hasSelection) {
+        if (typeEl) typeEl.textContent = t("templateNoSelection");
+        if (preview) preview.textContent = t("templateManagerPreviewNone");
+        return;
+      }
+
+      if (typeEl) {
+        let text = meta.builtin ? t("templateManagerTypeBuiltin") : t("templateManagerTypeCustom");
+        if (state.defaultTemplateID === meta.id) {
+          text += " " + t("templateManagerTypeDefault");
+        }
+        typeEl.textContent = text;
+      }
+
+      if (preview) {
+        const lines = meta.mappings.map(templatePreviewLine);
+        preview.textContent = lines.length > 0 ? lines.join("\n") : t("templateManagerPreviewNone");
+      }
+    }
+
+    function openTemplateManager() {
+      state.templateManager.open = true;
+      state.templateManager.selectedID = resolveTemplateID($("templateSelect").value) || resolveDefaultTemplateID("");
+      renderTemplateManagerList();
+      setTemplateManagerStatus("");
+      $("templateManagerModal").classList.remove("hidden");
+    }
+
+    function closeTemplateManager() {
+      state.templateManager.open = false;
+      setTemplateManagerStatus("");
+      $("templateManagerModal").classList.add("hidden");
+    }
+
+    function createTemplateFromCurrent() {
+      const rawName = String(($("templateManagerName") && $("templateManagerName").value) || "").trim();
+      if (!rawName) {
+        setTemplateManagerStatus(t("templateInvalidName"), "error");
+        return;
+      }
+      const mappings = cloneTemplateMappings(collectMappings());
+      if (mappings.length === 0) {
+        setTemplateManagerStatus(t("conflictNoMappings"), "error");
+        return;
+      }
+      const id = uniqueTemplateID(rawName);
+      state.customTemplates = sanitizeCustomTemplates([].concat(state.customTemplates || [], [{ id, name: rawName, mappings }]));
+      state.templateManager.selectedID = id;
+      renderTemplateOptions();
+      renderTemplateManagerList();
+      setTemplateManagerStatus(formatText(t("templateCreateDone"), { name: rawName }), "ok");
+      refreshDirtyState();
+    }
+
+    function duplicateSelectedTemplate() {
+      const selected = resolveTemplateID(($("templateManagerSelect") && $("templateManagerSelect").value) || state.templateManager.selectedID);
+      const meta = templateMetaByID(selected);
+      if (!meta) {
+        setTemplateManagerStatus(t("templateNoSelection"), "error");
+        return;
+      }
+      const typed = String(($("templateManagerName") && $("templateManagerName").value) || "").trim();
+      const nextName = typed || `${templateDisplayName(meta)} Copy`;
+      const id = uniqueTemplateID(nextName);
+      const mappings = cloneTemplateMappings(meta.mappings);
+      state.customTemplates = sanitizeCustomTemplates([].concat(state.customTemplates || [], [{ id, name: nextName, mappings }]));
+      state.templateManager.selectedID = id;
+      renderTemplateOptions();
+      renderTemplateManagerList();
+      setTemplateManagerStatus(formatText(t("templateDuplicateDone"), { name: nextName }), "ok");
+      refreshDirtyState();
+    }
+
+    function updateTemplateFromCurrent() {
+      const selected = resolveTemplateID(($("templateManagerSelect") && $("templateManagerSelect").value) || state.templateManager.selectedID);
+      const target = customTemplateByID(selected);
+      if (!target) {
+        setTemplateManagerStatus(t("templateNoSelection"), "error");
+        return;
+      }
+      const mappings = cloneTemplateMappings(collectMappings());
+      if (mappings.length === 0) {
+        setTemplateManagerStatus(t("conflictNoMappings"), "error");
+        return;
+      }
+      target.mappings = mappings;
+      state.customTemplates = sanitizeCustomTemplates(state.customTemplates);
+      renderTemplateOptions();
+      renderTemplateManagerList();
+      setTemplateManagerStatus(formatText(t("templateUpdateDone"), { name: target.name }), "ok");
+      refreshDirtyState();
+    }
+
+    function renameSelectedTemplate() {
+      const selected = resolveTemplateID(($("templateManagerSelect") && $("templateManagerSelect").value) || state.templateManager.selectedID);
+      const target = customTemplateByID(selected);
+      if (!target) {
+        setTemplateManagerStatus(t("templateNoSelection"), "error");
+        return;
+      }
+      const name = String(($("templateManagerName") && $("templateManagerName").value) || "").trim();
+      if (!name) {
+        setTemplateManagerStatus(t("templateInvalidName"), "error");
+        return;
+      }
+      target.name = name;
+      state.customTemplates = sanitizeCustomTemplates(state.customTemplates);
+      renderTemplateOptions();
+      renderTemplateManagerList();
+      setTemplateManagerStatus(formatText(t("templateRenameDone"), { name }), "ok");
+      refreshDirtyState();
+    }
+
+    function deleteSelectedTemplate() {
+      const selected = resolveTemplateID(($("templateManagerSelect") && $("templateManagerSelect").value) || state.templateManager.selectedID);
+      const target = customTemplateByID(selected);
+      if (!target) {
+        setTemplateManagerStatus(t("templateNoSelection"), "error");
+        return;
+      }
+      if (!window.confirm(formatText(t("templateDeleteConfirm"), { name: target.name }))) {
+        return;
+      }
+      state.customTemplates = (state.customTemplates || []).filter((tpl) => String(tpl && tpl.id || "").toLowerCase() !== String(target.id).toLowerCase());
+      if (String(state.defaultTemplateID || "").toLowerCase() === String(target.id).toLowerCase()) {
+        state.defaultTemplateID = resolveDefaultTemplateID("");
+      }
+      state.templateManager.selectedID = resolveDefaultTemplateID("");
+      renderTemplateOptions();
+      renderTemplateManagerList();
+      setTemplateManagerStatus(formatText(t("templateDeleteDone"), { name: target.name }), "ok");
+      refreshDirtyState();
+    }
+
+    function setSelectedTemplateAsDefault() {
+      const selected = resolveTemplateID(($("templateManagerSelect") && $("templateManagerSelect").value) || state.templateManager.selectedID);
+      const meta = templateMetaByID(selected);
+      if (!meta) {
+        setTemplateManagerStatus(t("templateNoSelection"), "error");
+        return;
+      }
+      state.defaultTemplateID = meta.id;
+      renderTemplateOptions();
+      renderTemplateManagerList();
+      setTemplateManagerStatus(formatText(t("templateDefaultDone"), { name: templateDisplayName(meta) }), "ok");
+      refreshDirtyState();
+    }
+
+    function applySelectedTemplateFromManager() {
+      const selected = resolveTemplateID(($("templateManagerSelect") && $("templateManagerSelect").value) || state.templateManager.selectedID);
+      if (!selected) {
+        setTemplateManagerStatus(t("templateNoSelection"), "error");
+        return;
+      }
+      $("templateSelect").value = selected;
+      applyTemplate();
+      closeTemplateManager();
+    }
+
+    function flashKnob(knobId, kind, delta) {
+      const nodes = [];
+      const dashboardCard = $("knob-" + knobId);
+      if (dashboardCard) nodes.push(dashboardCard);
+      const mappingCards = document.querySelectorAll(`.map-knob-indicator[data-knob="${knobId}"]`);
+      for (const card of mappingCards) {
+        nodes.push(card);
+      }
+      if (nodes.length === 0) return;
+      for (const node of nodes) {
+        node.classList.remove("active-rotate", "active-press");
+      }
+
+      if (kind === "button_press") {
+        for (const node of nodes) {
+          node.classList.add("active-press");
+          const dial = node.querySelector(".dial");
+          if (!dial) continue;
+          const angle = Number(node.dataset.angle || "0");
+          dial.style.transform = "rotate(" + angle + "deg) scale(0.84)";
+        }
+        if (knobPressTimers.has(knobId)) clearTimeout(knobPressTimers.get(knobId));
+        knobPressTimers.set(knobId, setTimeout(() => {
+          if (knobPressTimers.has(knobId)) knobPressTimers.delete(knobId);
+          for (const node of nodes) {
+            const dial = node.querySelector(".dial");
+            if (!dial) continue;
+            const stableAngle = Number(node.dataset.angle || "0");
+            dial.style.transform = "rotate(" + stableAngle + "deg)";
+          }
+        }, 130));
       } else {
         if (knobPressTimers.has(knobId)) {
           clearTimeout(knobPressTimers.get(knobId));
           knobPressTimers.delete(knobId);
         }
-        card.classList.add("active-rotate");
         const stepDelta = Number(delta) || 0;
-        const currentAngle = Number(card.dataset.angle || "0");
-        const nextAngle = currentAngle + (stepDelta * 14);
-        card.dataset.angle = String(nextAngle);
-        if (dial) dial.style.transform = "rotate(" + nextAngle + "deg)";
+        for (const node of nodes) {
+          node.classList.add("active-rotate");
+          const currentAngle = Number(node.dataset.angle || "0");
+          const nextAngle = currentAngle + (stepDelta * 14);
+          node.dataset.angle = String(nextAngle);
+          const dial = node.querySelector(".dial");
+          if (dial) dial.style.transform = "rotate(" + nextAngle + "deg)";
+        }
       }
+
       const meta = $("knob-" + knobId + "-meta");
       if (meta) {
         if (kind === "button_press") meta.textContent = t("buttonPress");
@@ -1897,7 +2618,9 @@
 
       if (knobTimers.has(knobId)) clearTimeout(knobTimers.get(knobId));
       knobTimers.set(knobId, setTimeout(() => {
-        card.classList.remove("active-rotate", "active-press");
+        for (const node of nodes) {
+          node.classList.remove("active-rotate", "active-press");
+        }
       }, 420));
     }
 
@@ -2642,16 +3365,6 @@
       return [];
     }
 
-    function setDatalistOptions(list, values) {
-      if (!list) return;
-      list.innerHTML = "";
-      for (const value of values || []) {
-        const option = document.createElement("option");
-        option.value = value;
-        list.appendChild(option);
-      }
-    }
-
     function setPickerOptions(select, values, placeholder) {
       if (!select) return;
       const previous = String(select.value || "");
@@ -2687,16 +3400,12 @@
           continue;
         }
         const target = row.querySelector(".map-target");
-        const suggestions = row.querySelector(".map-suggestions");
         const picker = row.querySelector(".map-name-picker");
         const fallbackTarget = row.querySelector(".map-fallback-target");
-        const fallbackSuggestions = row.querySelector(".map-fallback-suggestions");
         const fallbackPicker = row.querySelector(".map-fallback-picker");
         const targetValues = suggestionsForTarget(String(target && target.value || "").trim());
-        setDatalistOptions(suggestions, targetValues);
         setPickerOptions(picker, targetValues, t("selectorPick"));
         const fallbackValues = suggestionsForTarget(String(fallbackTarget && fallbackTarget.value || "").trim());
-        setDatalistOptions(fallbackSuggestions, fallbackValues);
         setPickerOptions(fallbackPicker, fallbackValues, t("fallbackPick"));
       }
       if (state.groupEditor.open) {
@@ -2762,7 +3471,7 @@
 
     function mappingRow(mapping = { knob: 1, target: "master_out", step: 0.02, fallback_target: "", fallback_name: "", name: "" }) {
       const row = document.createElement("div");
-      row.className = "row";
+      row.className = "row mapping-row";
 
       const knob = document.createElement("select");
       knob.className = "map-knob";
@@ -2774,6 +3483,13 @@
         knob.appendChild(o);
       }
       knob.value = String(mapping.knob || 1);
+      const knobCell = document.createElement("div");
+      knobCell.className = "map-knob-cell";
+      const knobIndicator = document.createElement("div");
+      knobIndicator.className = "map-knob-indicator";
+      knobIndicator.innerHTML = `<div class="dial"></div><div class="map-knob-label"></div>`;
+      knobCell.appendChild(knobIndicator);
+      knobCell.appendChild(knob);
 
       const target = document.createElement("select");
       target.className = "map-target";
@@ -2805,6 +3521,7 @@
       const name = document.createElement("input");
       name.className = "map-name";
       name.setAttribute("aria-label", "Application or group name");
+      name.setAttribute("autocomplete", "off");
       name.placeholder = state.language === "it" ? "App, gruppo o dispositivo" : "App, group, or device";
       name.value = selectorTokenFromMapping(mapping);
 
@@ -2818,12 +3535,6 @@
       nameWrap.className = "map-name-wrap";
       nameWrap.appendChild(name);
       nameWrap.appendChild(groupEdit);
-
-      const suggestions = document.createElement("datalist");
-      suggestions.id = "map-suggestions-" + Math.random().toString(36).slice(2);
-      suggestions.className = "map-suggestions";
-      name.setAttribute("list", suggestions.id);
-      nameWrap.appendChild(suggestions);
       const namePicker = document.createElement("select");
       namePicker.className = "map-name-picker";
       namePicker.setAttribute("aria-label", "Select detected target");
@@ -2860,16 +3571,11 @@
       const fallbackName = document.createElement("input");
       fallbackName.className = "map-fallback-name";
       fallbackName.setAttribute("aria-label", "Fallback selector");
+      fallbackName.setAttribute("autocomplete", "off");
       fallbackName.placeholder = state.language === "it" ? "Selettore fallback" : "Fallback selector";
-      const fallbackSuggestions = document.createElement("datalist");
-      fallbackSuggestions.id = "map-fallback-suggestions-" + Math.random().toString(36).slice(2);
-      fallbackSuggestions.className = "map-fallback-suggestions";
-      fallbackName.setAttribute("list", fallbackSuggestions.id);
       const fallbackPicker = document.createElement("select");
       fallbackPicker.className = "map-fallback-picker";
       fallbackPicker.setAttribute("aria-label", "Select detected fallback");
-      const fallbackHint = document.createElement("span");
-      fallbackHint.className = "hint";
 
       const initialFallbackTarget = String((mapping && mapping.fallback_target) || "").trim()
         || ((mapping && mapping.fallback_to_master) ? "master_out" : "");
@@ -2884,9 +3590,7 @@
       fallbackName.value = fallbackTokenFromMapping(mapping);
       fallbackWrap.appendChild(fallbackTarget);
       fallbackWrap.appendChild(fallbackName);
-      fallbackWrap.appendChild(fallbackSuggestions);
       fallbackWrap.appendChild(fallbackPicker);
-      fallbackWrap.appendChild(fallbackHint);
 
       const remove = document.createElement("button");
       remove.type = "button";
@@ -2898,6 +3602,21 @@
         row.remove();
         refreshDirtyState();
       });
+
+      function syncKnobIndicator() {
+        const knobID = parseInt(knob.value, 10);
+        const safeKnobID = Number.isInteger(knobID) && knobID > 0 ? knobID : 1;
+        knobIndicator.dataset.knob = String(safeKnobID);
+        const label = knobIndicator.querySelector(".map-knob-label");
+        if (label) {
+          label.textContent = "K" + safeKnobID;
+        }
+        const dial = knobIndicator.querySelector(".dial");
+        if (dial) {
+          dial.style.transform = "rotate(0deg)";
+        }
+        knobIndicator.dataset.angle = "0";
+      }
 
       function syncNameState() {
         const supportsName = ["master_out", "mic_in", "line_in", "app", "group"].includes(target.value);
@@ -2915,7 +3634,6 @@
         groupEdit.hidden = target.value !== "group";
         groupEdit.disabled = target.value !== "group" || name.disabled;
         const options = suggestionsForTarget(target.value);
-        setDatalistOptions(suggestions, options);
         setPickerOptions(namePicker, options, t("selectorPick"));
       }
       function syncFallbackState() {
@@ -2925,17 +3643,14 @@
           fallbackTarget.value = "";
           fallbackName.value = "";
           fallbackName.disabled = true;
-          fallbackHint.textContent = t("fallbackNone");
           return;
         }
         const selectedFallback = String(fallbackTarget.value || "").trim();
         const fallbackOptions = suggestionsForTarget(selectedFallback);
-        setDatalistOptions(fallbackSuggestions, fallbackOptions);
         setPickerOptions(fallbackPicker, fallbackOptions, t("fallbackPick"));
         if (!selectedFallback) {
           fallbackName.disabled = true;
           fallbackName.value = "";
-          fallbackHint.textContent = t("fallbackNone");
           return;
         }
         fallbackName.disabled = false;
@@ -2948,7 +3663,6 @@
         } else {
           fallbackName.placeholder = state.language === "it" ? "Dispositivo fallback (vuoto = predefinito)" : "Fallback device (empty = default)";
         }
-        fallbackHint.textContent = targetLabel(selectedFallback);
       }
       namePicker.addEventListener("change", () => {
         const picked = String(namePicker.value || "").trim();
@@ -2983,6 +3697,8 @@
         previousFallbackTarget = currentFallback;
         syncFallbackState();
       });
+      knob.addEventListener("change", syncKnobIndicator);
+      syncKnobIndicator();
       syncNameState();
       syncFallbackState();
       row.refreshSuggestionControls = () => {
@@ -2990,7 +3706,7 @@
         syncFallbackState();
       };
 
-      row.appendChild(knob);
+      row.appendChild(knobCell);
       row.appendChild(target);
       row.appendChild(nameWrap);
       row.appendChild(step);
@@ -3200,6 +3916,8 @@
           baud: parseInt($("baudInput").value, 10) || 115200
         },
         groups: normalizedCustomGroupsForConfig(state.customGroups),
+        templates: normalizedCustomTemplatesForConfig(state.customTemplates),
+        default_template: resolveTemplateID(state.defaultTemplateID || ""),
         debug: $("debugInput").checked,
         mappings: collectMappings()
       };
@@ -3221,9 +3939,12 @@
         $("baudInput").value = String(serial.baud || 115200);
         $("portInput").value = serial.port || "";
         state.customGroups = sanitizeCustomGroups(cfg.groups);
+        state.customTemplates = sanitizeCustomTemplates(cfg.templates);
+        state.defaultTemplateID = resolveDefaultTemplateID(cfg.default_template || "");
         state.manualPortDirty = (serial.port || "").trim().length > 0;
         state.userPortOverride = (serial.port || "").trim().length > 0;
         syncDebugConsoleVisibility();
+        renderTemplateOptions();
         renderMappings(cfg.mappings || []);
       } finally {
         state.ui.suspendDirtyTracking = false;
@@ -3681,6 +4402,8 @@
             baud: parseInt($("baudInput").value, 10) || 115200
           },
           groups: normalizedCustomGroupsForConfig(state.customGroups),
+          templates: normalizedCustomTemplatesForConfig(state.customTemplates),
+          default_template: resolveTemplateID(state.defaultTemplateID || ""),
           debug: $("debugInput").checked,
           mappings: entries.map((entry) => entry.mapping)
         };
@@ -3812,15 +4535,15 @@
     }
 
     function applyTemplate() {
-      const key = $("templateSelect").value;
-      const tpl = state.templates[key];
+      const key = resolveTemplateID($("templateSelect").value);
+      const tpl = templateMetaByID(key);
       if (!tpl) {
         setStatus("saveStatus", state.language === "it" ? "Seleziona un template da applicare." : "Select a template to apply.", "error");
         return;
       }
-      const cloned = tpl.mappings.map((mapping) => ({ ...mapping }));
+      const cloned = cloneTemplateMappings(tpl.mappings);
       renderMappings(cloned);
-      const label = (tpl.labels && tpl.labels[state.language]) || tpl.label;
+      const label = templateDisplayName(tpl);
       setStatus("saveStatus", state.language === "it" ? `Template applicato: ${label}. Controlla le mappature e clicca Salva config.` : `Applied template: ${label}. Review mappings and click Save Config.`, "ok");
       refreshDirtyState();
     }
@@ -3942,7 +4665,7 @@
 
 
     async function loadStartupStatus() {
-      const data = await fetchJSON("/api/startup");
+      let data = await fetchJSON("/api/startup");
       const checkbox = $("startupEnabled");
       const button = $("applyStartup");
       checkbox.checked = !!data.enabled;
@@ -3952,8 +4675,21 @@
         setStatus("startupStatus", data.message || (state.language === "it" ? "Avvio automatico non supportato su questo sistema." : "Startup integration is not supported on this system."));
         return;
       }
+      if (!data.enabled && !localStorage.getItem(startupDefaultAppliedKey)) {
+        try {
+          data = await fetchJSON("/api/startup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ enabled: true })
+          });
+          localStorage.setItem(startupDefaultAppliedKey, "1");
+        } catch (_err) {
+          // Keep current state when auto-enable cannot be applied.
+        }
+      }
       checkbox.disabled = false;
       button.disabled = false;
+      checkbox.checked = !!data.enabled;
       setStatus("startupStatus", data.enabled ? (state.language === "it" ? "Avvio automatico attivo." : "Startup launch is enabled.") : (state.language === "it" ? "Avvio automatico disattivato." : "Startup launch is disabled."), "ok");
     }
 
@@ -3975,7 +4711,6 @@
     function bindEvents() {
       $("openSettingsBtn").addEventListener("click", openSettingsView);
       $("closeSettingsBtn").addEventListener("click", () => closeSettingsView(false));
-      $("runSetupAgain").addEventListener("click", () => openOnboarding());
       $("testConnection").addEventListener("click", testConnection);
       $("portSelect").addEventListener("change", syncManualPortFromSelect);
       $("portSelect").addEventListener("input", syncManualPortFromSelect);
@@ -4029,6 +4764,20 @@
       $("applyStartup").addEventListener("click", applyStartupSetting);
       $("addMapping").addEventListener("click", addMappingWithNextKnob);
       $("applyTemplate").addEventListener("click", applyTemplate);
+      $("manageTemplates").addEventListener("click", openTemplateManager);
+      $("templateManagerSelect").addEventListener("change", syncTemplateManagerDetails);
+      $("templateManagerSelect").addEventListener("input", syncTemplateManagerDetails);
+      $("templateCreateFromCurrent").addEventListener("click", createTemplateFromCurrent);
+      $("templateDuplicate").addEventListener("click", duplicateSelectedTemplate);
+      $("templateUpdateFromCurrent").addEventListener("click", updateTemplateFromCurrent);
+      $("templateRename").addEventListener("click", renameSelectedTemplate);
+      $("templateDelete").addEventListener("click", deleteSelectedTemplate);
+      $("templateSetDefault").addEventListener("click", setSelectedTemplateAsDefault);
+      $("templateApplySelected").addEventListener("click", applySelectedTemplateFromManager);
+      $("templateManagerClose").addEventListener("click", closeTemplateManager);
+      $("templateManagerModal").addEventListener("click", (ev) => {
+        if (ev.target === $("templateManagerModal")) closeTemplateManager();
+      });
       $("saveConfig").addEventListener("click", saveConfig);
       $("rollbackConfig").addEventListener("click", rollbackLastSave);
       $("backupConfig").addEventListener("click", backupConfig);
@@ -4107,6 +4856,11 @@
         if (state.groupEditor.open) {
           ev.preventDefault();
           closeGroupEditor(false);
+          return;
+        }
+        if (state.templateManager.open) {
+          ev.preventDefault();
+          closeTemplateManager();
         }
       });
       window.addEventListener("beforeunload", (ev) => {
@@ -4150,7 +4904,6 @@
         scheduleIdentifyStart(150);
         setBootStatus(t("bootReady"));
         hideBootOverlay();
-        maybeStartOnboarding();
       } catch (err) {
         setStatus("saveStatus", err.message, "error");
         hideBootOverlay();

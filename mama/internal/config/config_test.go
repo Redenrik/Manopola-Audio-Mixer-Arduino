@@ -199,6 +199,76 @@ mappings:
 	}
 }
 
+func TestLoadAcceptsCustomTemplates(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+default_template: "my-stream"
+templates:
+  - id: my-stream
+    name: My Stream
+    mappings:
+      - knob: 1
+        target: master_out
+        step: 0.02
+      - knob: 2
+        target: app
+        selector:
+          kind: exe
+          value: "obs64"
+        step: 0.02
+mappings:
+  - knob: 1
+    target: master_out
+    step: 0.02
+`)
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.DefaultTemplate != "my-stream" {
+		t.Fatalf("default_template = %q, want my-stream", cfg.DefaultTemplate)
+	}
+	if len(cfg.Templates) != 1 {
+		t.Fatalf("expected 1 template, got %d", len(cfg.Templates))
+	}
+	if cfg.Templates[0].ID != "my-stream" {
+		t.Fatalf("template id = %q, want my-stream", cfg.Templates[0].ID)
+	}
+	if got := len(cfg.Templates[0].Mappings); got != 2 {
+		t.Fatalf("template mappings len = %d, want 2", got)
+	}
+}
+
+func TestLoadRejectsDuplicateTemplateIDs(t *testing.T) {
+	cfgPath := writeConfig(t, `
+serial:
+  port: "COM3"
+templates:
+  - id: stream
+    name: Stream A
+    mappings:
+      - knob: 1
+        target: master_out
+        step: 0.02
+  - id: STREAM
+    name: Stream B
+    mappings:
+      - knob: 1
+        target: master_out
+        step: 0.02
+mappings:
+  - knob: 1
+    target: master_out
+    step: 0.02
+`)
+
+	if _, err := Load(cfgPath); err == nil {
+		t.Fatal("expected error for duplicate template ids")
+	}
+}
+
 func TestLoadMigratesLegacyFallbackFlagToTarget(t *testing.T) {
 	cfgPath := writeConfig(t, `
 serial:

@@ -705,6 +705,7 @@ func cloneConfig(in config.Config) config.Config {
 	out := in
 	out.Mappings = cloneMappings(in.Mappings)
 	out.Groups = cloneGroupDefinitions(in.Groups)
+	out.Templates = cloneTemplates(in.Templates)
 	out.Profiles = make([]config.Profile, len(in.Profiles))
 	for i := range in.Profiles {
 		out.Profiles[i] = config.Profile{
@@ -744,6 +745,21 @@ func cloneGroupDefinitions(in []config.GroupDefinition) []config.GroupDefinition
 		out[i] = config.GroupDefinition{
 			Name:      in[i].Name,
 			Selectors: append([]config.Selector(nil), in[i].Selectors...),
+		}
+	}
+	return out
+}
+
+func cloneTemplates(in []config.MappingTemplate) []config.MappingTemplate {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]config.MappingTemplate, len(in))
+	for i := range in {
+		out[i] = config.MappingTemplate{
+			ID:       in[i].ID,
+			Name:     in[i].Name,
+			Mappings: cloneMappings(in[i].Mappings),
 		}
 	}
 	return out

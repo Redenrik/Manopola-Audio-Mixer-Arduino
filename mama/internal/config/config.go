@@ -110,18 +110,26 @@ type GroupDefinition struct {
 	Selectors []Selector `yaml:"selectors" json:"selectors"`
 }
 
+type MappingTemplate struct {
+	ID       string    `yaml:"id" json:"id"`
+	Name     string    `yaml:"name" json:"name"`
+	Mappings []Mapping `yaml:"mappings" json:"mappings"`
+}
+
 type SerialCfg struct {
 	Port string `yaml:"port" json:"port"`
 	Baud int    `yaml:"baud" json:"baud"`
 }
 
 type Config struct {
-	Serial        SerialCfg         `yaml:"serial" json:"serial"`
-	Mappings      []Mapping         `yaml:"mappings" json:"mappings"`
-	Groups        []GroupDefinition `yaml:"groups,omitempty" json:"groups,omitempty"`
-	Profiles      []Profile         `yaml:"profiles,omitempty" json:"profiles,omitempty"`
-	ActiveProfile string            `yaml:"active_profile,omitempty" json:"active_profile,omitempty"`
-	Debug         bool              `yaml:"debug" json:"debug"`
+	Serial          SerialCfg         `yaml:"serial" json:"serial"`
+	Mappings        []Mapping         `yaml:"mappings" json:"mappings"`
+	Groups          []GroupDefinition `yaml:"groups,omitempty" json:"groups,omitempty"`
+	Templates       []MappingTemplate `yaml:"templates,omitempty" json:"templates,omitempty"`
+	DefaultTemplate string            `yaml:"default_template,omitempty" json:"default_template,omitempty"`
+	Profiles        []Profile         `yaml:"profiles,omitempty" json:"profiles,omitempty"`
+	ActiveProfile   string            `yaml:"active_profile,omitempty" json:"active_profile,omitempty"`
+	Debug           bool              `yaml:"debug" json:"debug"`
 }
 
 type Profile struct {
@@ -130,15 +138,17 @@ type Profile struct {
 }
 
 type rawConfig struct {
-	Serial        SerialCfg         `yaml:"serial"`
-	Mappings      []rawMapping      `yaml:"mappings"`
-	Groups        []GroupDefinition `yaml:"groups"`
-	Profiles      []rawProfile      `yaml:"profiles"`
-	ActiveProfile string            `yaml:"active_profile"`
-	Debug         *bool             `yaml:"debug"`
-	LegacyPort    string            `yaml:"port"`
-	LegacyBaud    int               `yaml:"baud"`
-	LegacyKnobs   []rawMapping      `yaml:"knobs"`
+	Serial          SerialCfg         `yaml:"serial"`
+	Mappings        []rawMapping      `yaml:"mappings"`
+	Groups          []GroupDefinition `yaml:"groups"`
+	Templates       []MappingTemplate `yaml:"templates"`
+	DefaultTemplate string            `yaml:"default_template"`
+	Profiles        []rawProfile      `yaml:"profiles"`
+	ActiveProfile   string            `yaml:"active_profile"`
+	Debug           *bool             `yaml:"debug"`
+	LegacyPort      string            `yaml:"port"`
+	LegacyBaud      int               `yaml:"baud"`
+	LegacyKnobs     []rawMapping      `yaml:"knobs"`
 }
 
 type rawProfile struct {
@@ -186,11 +196,13 @@ func ParseYAML(b []byte) (Config, error) {
 
 func migrateRawConfig(raw rawConfig) Config {
 	c := Config{
-		Serial:        raw.Serial,
-		Groups:        append([]GroupDefinition(nil), raw.Groups...),
-		Profiles:      make([]Profile, 0, len(raw.Profiles)),
-		ActiveProfile: raw.ActiveProfile,
-		Debug:         raw.Debug != nil && *raw.Debug,
+		Serial:          raw.Serial,
+		Groups:          append([]GroupDefinition(nil), raw.Groups...),
+		Templates:       append([]MappingTemplate(nil), raw.Templates...),
+		DefaultTemplate: raw.DefaultTemplate,
+		Profiles:        make([]Profile, 0, len(raw.Profiles)),
+		ActiveProfile:   raw.ActiveProfile,
+		Debug:           raw.Debug != nil && *raw.Debug,
 	}
 
 	if c.Serial.Port == "" {
@@ -276,6 +288,10 @@ func Validate(c Config) (Config, error) {
 	if err := validateGroupDefinitions(c.Groups); err != nil {
 		return Config{}, err
 	}
+	if err := validateTemplateDefinitions(c.Templates); err != nil {
+		return Config{}, err
+	}
+	c.DefaultTemplate = strings.TrimSpace(c.DefaultTemplate)
 
 	if err := validateMappingSet(c.Mappings); err != nil {
 		return Config{}, err
@@ -340,6 +356,36 @@ func validateGroupDefinitions(groups []GroupDefinition) error {
 			if err := validateSelector(g.Selectors[j]); err != nil {
 				return fmt.Errorf("group %q: %w", g.Name, err)
 			}
+		}
+	}
+	return nil
+}
+
+func validateTemplateDefinitions(templates []MappingTemplate) error {
+	if len(templates) == 0 {
+		return nil
+	}
+	seenIDs := make(map[string]struct{}, len(templates))
+	for i := range templates {
+		tpl := &templates[i]
+		tpl.ID = strings.TrimSpace(tpl.ID)
+		tpl.Name = strings.TrimSpace(tpl.Name)
+		if tpl.ID == "" {
+			return fmt.Errorf("template %d: id must be set", i+1)
+		}
+		if tpl.Name == "" {
+			tpl.Name = tpl.ID
+		}
+		idKey := strings.ToLower(tpl.ID)
+		if _, exists := seenIDs[idKey]; exists {
+			return fmt.Errorf("duplicate template id %q", tpl.ID)
+		}
+		seenIDs[idKey] = struct{}{}
+		if len(tpl.Mappings) == 0 {
+			return fmt.Errorf("template %q must define at least one mapping", tpl.ID)
+		}
+		if err := validateMappingSet(tpl.Mappings); err != nil {
+			return fmt.Errorf("template %q: %w", tpl.ID, err)
 		}
 	}
 	return nil
