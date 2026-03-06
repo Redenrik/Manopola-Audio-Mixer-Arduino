@@ -1,50 +1,81 @@
 # Troubleshooting
 
-## Setup UI cannot detect serial ports
+## Auto-detect does not select the right serial port
 
-- Confirm Arduino master board is connected via USB.
-- Click `Refresh` in setup.
-- Ensure no other app is locking the COM/TTY port (Arduino Serial Monitor, terminal tools).
-- Manually set port if auto-detect misses it.
+- Confirm the master board is connected and powered.
+- Wait a few seconds after connecting USB before running auto-detect.
+- Close tools that may lock serial ports (Arduino Serial Monitor, terminal monitors).
+- Use manual port selection + **Test Connection** as fallback.
 
-## Port test says connected but knobs do not react
+## Test Connection says OK but knobs do nothing
 
 - Verify baud is `115200`.
-- Confirm firmware is flashed on both master and slave.
-- Check I2C wiring between boards (SDA/SCL + 5V + GND).
-- Enable `debug: true` and inspect logs for `event=serial_state` and `event=serial_rx`.
+- Confirm both boards are flashed (master + slave).
+- Check I2C wiring between boards (SDA, SCL, 5V, GND).
+- Enable debug logs and check for:
+  - `event=serial_state`
+  - `event=protocol_negotiated`
+  - incoming `E...` / `B...` events
 
-## Knobs react but target volume does not change
+## Knob events arrive but target volume does not change
 
-- Open mappings and verify knob assignment exists.
-- Check mapping `step` is greater than `0`.
-- Ensure target exists and is active (especially for `app` and `group`).
-- For app selectors, prefer `exe` kind when app display-name matching is unstable.
+- Verify that knob has a mapping and valid `step` (> 0 and <= 1).
+- For `app`/`group`, ensure target app sessions are active (currently producing audio).
+- If display-name matching is unreliable, use selector token format:
+  - `exe:discord`
+  - `exact:Spotify`
+  - `contains:chrome`
 
-## Runtime starts then exits with config error
+## App/group mapping says target unavailable
+
+- This usually means no matching active audio session currently exists.
+- Start audio playback in the target app.
+- Use fallback target for resilience (for example `master_out` or another app/group).
+
+## Startup-at-login does not work
+
+- Windows: ensure `Start Mixer.cmd` exists next to `config.yaml` in your package folder.
+- macOS: startup uses LaunchAgents and takes effect on next login.
+- Linux: startup uses `~/.config/autostart/io.mama.mixer.desktop`; verify the file exists after applying startup setting.
+
+## `start-mixer` says MAMA is already running
+
+- Background launcher stores PID in `.mama.pid`.
+- Use `Stop Mixer` / `stop-mixer.sh` first, then run `Start Mixer` / `start-mixer.sh` again.
+- If process is no longer alive, delete `.mama.pid` and rerun.
+
+## Runtime exits immediately with config error
 
 Common causes:
+
 - missing `serial.port`
-- duplicate knob IDs
-- invalid `step` (`> 0` and `<= 1`)
-- `app` mapping missing `selector`
-- `group` mapping missing `selectors`
-- overlapping `app/group` mappings with identical precedence (`priority` needed)
+- duplicate `knob` IDs
+- invalid `step` (must be `> 0` and `<= 1`)
+- `app` mapping without `selector`
+- `group` mapping without `selectors`
+
+Validate config using:
+
+```bash
+cd mama
+go test ./internal/config
+```
 
 ## Press action does not mute
 
 - Buttons emit `B<id>:1` only.
-- Confirm mapping target supports mute in your platform backend.
-- Test with `master_out` first to isolate mapping vs target issues.
+- Confirm mapped target supports mute on your backend.
+- Test with `master_out` first to isolate mapping vs endpoint issues.
 
-## Installer choice confusion on Windows
+## Windows installer choice is unclear
 
 - Use `MAMA-Setup-Windows.exe` for 64-bit Windows.
 - Use `MAMA-Setup-Windows-32bit.exe` for 32-bit Windows.
 
-## Security scan fails with module download errors
+## Security tooling fails due network/proxy constraints
 
-If commands fail with proxy/network restrictions:
+If module download fails:
+
 - configure `GOPROXY` for your environment
 - rerun:
   - `cd mama && go mod tidy && git diff --exit-code -- go.mod go.sum`

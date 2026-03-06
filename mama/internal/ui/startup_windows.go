@@ -12,7 +12,7 @@ import (
 
 const startupScriptName = "MAMA Start Mixer.cmd"
 
-func startupStatusForConfig(cfgPath string) (startupStatus, error) {
+func startupStatusForConfig(_ string) (startupStatus, error) {
 	scriptPath, err := startupScriptPath()
 	if err != nil {
 		return startupStatus{}, err

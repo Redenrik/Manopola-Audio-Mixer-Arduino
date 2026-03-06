@@ -8,7 +8,7 @@
 
 ## Baseline Requirements
 
-- Go `1.24.x`
+- Go `1.22+` (CI currently runs `1.24.x`)
 - clean checkout (`git status --short` empty)
 - tagged commit on `main`
 
@@ -83,6 +83,6 @@ Manifest payload includes:
 ## Reproducibility Checklist
 
 - same source commit/tag
-- same Go line (`1.24.x`)
+- compatible Go line (`1.22+`; CI currently `1.24.x`)
 - same packaging scripts
 - matching checksum manifests

@@ -2,13 +2,13 @@ serial:
   port: "COM3"     # Windows example. On Linux: /dev/ttyACM0 or /dev/ttyUSB0
   baud: 115200
 
-debug: true
+debug: false
 
-# Current backend support:
-# - implemented: master_out
-# - implemented: app (Unix hosts with pactl sink-input control)
-# - implemented: group (Unix hosts with pactl sink-input control)
-# Keep default mappings on master_out so first run works end-to-end.
+# Target availability depends on platform/backend:
+# - master_out: available on all supported hosts
+# - mic_in / line_in: available when capture endpoints are exposed by the OS
+# - app / group: available when per-app audio sessions are available and active
+# Keep defaults on master_out so first run works end-to-end everywhere.
 # step = volume change per encoder "click" (0.01 = 1%, 0.02 = 2%, etc.)
 mappings:
   - knob: 1

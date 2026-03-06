@@ -44,7 +44,7 @@ fi
 
 for target in "linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows/amd64" "windows/386"; do
   IFS="/" read -r goos goarch <<<"${target}"
-  run_check "cross_build_${goos}_${goarch}" bash -lc "cd \"${MAMA_DIR}\" && GOOS=${goos} GOARCH=${goarch} go build ./cmd/mama ./cmd/mama-ui"
+  run_check "cross_build_${goos}_${goarch}" bash -lc "cd \"${MAMA_DIR}\" && GOOS=${goos} GOARCH=${goarch} go build ./cmd/mama"
 done
 
 echo "end_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "${SUMMARY_FILE}"

@@ -4,7 +4,7 @@
 
 MAMA combines embedded firmware and desktop software. Changes often affect both:
 - `firmware/*` for hardware event generation
-- `mama/*` for serial parsing, mapping, and audio control
+- `mama/*` for serial parsing, mapping, audio control, and setup UI
 
 When submitting a PR, clearly state which layer is changed and why.
 
@@ -17,6 +17,8 @@ cd mama
 go test ./...
 go run ./cmd/mama
 ```
+
+Note: end-user and developer flows use the single `cmd/mama` entrypoint (no separate UI binary is required).
 
 ### Firmware
 

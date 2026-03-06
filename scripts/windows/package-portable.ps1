@@ -12,7 +12,6 @@ $mamaDir = Join-Path $repoRoot "mama"
 $outDir = Join-Path $repoRoot $OutputDir
 
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
-Remove-Item -Path (Join-Path $outDir "mama-ui.exe") -ErrorAction SilentlyContinue
 Get-ChildItem -Path $outDir -Filter "ui*.log" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
 Push-Location $mamaDir

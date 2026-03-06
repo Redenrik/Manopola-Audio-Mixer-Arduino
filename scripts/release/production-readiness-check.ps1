@@ -62,7 +62,7 @@ function Invoke-CrossBuild {
   try {
     $env:GOOS = $Goos
     $env:GOARCH = $Goarch
-    go build ./cmd/mama ./cmd/mama-ui
+    go build ./cmd/mama
   } finally {
     if ($null -eq $prevGoos) {
       Remove-Item Env:\GOOS -ErrorAction SilentlyContinue

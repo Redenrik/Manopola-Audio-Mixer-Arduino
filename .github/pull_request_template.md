@@ -6,7 +6,7 @@
 
 - [ ] Firmware (`firmware/*`)
 - [ ] Host runtime (`mama/cmd/mama`, `mama/internal/*`)
-- [ ] Setup UI (`mama/cmd/mama-ui`, `mama/internal/ui/*`)
+- [ ] Setup UI (`mama/internal/ui/*`)
 - [ ] Docs / release process
 
 ## Validation

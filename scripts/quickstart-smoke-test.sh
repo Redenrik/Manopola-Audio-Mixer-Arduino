@@ -18,6 +18,7 @@ required_files=(
   "$TEST_OUT/config.yaml"
   "$TEST_OUT/open-setup-ui.sh"
   "$TEST_OUT/start-mixer.sh"
+  "$TEST_OUT/stop-mixer.sh"
   "$TEST_OUT/README-QUICKSTART.txt"
 )
 
@@ -28,7 +29,7 @@ for file in "${required_files[@]}"; do
   fi
 done
 
-for exe in "$TEST_OUT/mama" "$TEST_OUT/open-setup-ui.sh" "$TEST_OUT/start-mixer.sh"; do
+for exe in "$TEST_OUT/mama" "$TEST_OUT/open-setup-ui.sh" "$TEST_OUT/start-mixer.sh" "$TEST_OUT/stop-mixer.sh"; do
   if [[ ! -x "$exe" ]]; then
     echo "Missing executable bit: $exe" >&2
     exit 1
@@ -38,7 +39,8 @@ done
 for help_cmd in \
   "$TEST_OUT/mama --help" \
   "$TEST_OUT/open-setup-ui.sh --help" \
-  "$TEST_OUT/start-mixer.sh --help"; do
+  "$TEST_OUT/start-mixer.sh --help" \
+  "$TEST_OUT/stop-mixer.sh"; do
   if ! bash -c "$help_cmd" >/dev/null; then
     echo "Help command failed: $help_cmd" >&2
     exit 1

@@ -1,54 +1,101 @@
 # Manopola Audio Mixer for Arduino (MAMA)
 
-MAMA is a physical USB audio mixer built with Arduino Nano boards and a Go desktop app.
-The desktop app is a single executable (`mama`) that runs:
-- the runtime mixer engine
-- the setup UI
-- tray/background mode
+MAMA is a physical USB audio mixer (Arduino master/slave) plus a single Go app that handles runtime mixing, setup UI, and live reconfiguration.
 
-## What MAMA Supports
+## What You Get
 
-- 5+ knob event pipeline over serial (`E<id>:+/-n`, `B<id>:1`)
-- target types: `master_out`, `mic_in`, `line_in`, `app`, `group`
-- profile-based mappings with priorities/selectors
-- live target discovery for devices/apps/groups
-- immediate apply while editing mappings
+- Single app binary: `mama` (`mama.exe` on Windows)
+- Live serial-driven knob control (`E<id>:+/-n`, `B<id>:1`)
+- Target types: `master_out`, `mic_in`, `line_in`, `app`, `group`
+- Smart groups and custom templates in the UI
+- Immediate apply while editing mappings
 
 ## End-User Downloads
 
 Recommended release assets:
+
 - Windows 64-bit: `MAMA-Setup-Windows.exe`
 - Windows 32-bit: `MAMA-Setup-Windows-32bit.exe`
-- macOS (universal2): `MAMA-macOS.tar.gz`
-- Linux (amd64): `MAMA-Linux.tar.gz`
+- macOS universal2: `MAMA-macOS.tar.gz`
+- Linux amd64: `MAMA-Linux.tar.gz`
 
-Advanced assets are also published for power users:
+Advanced/power-user assets:
+
+- Windows portable zip bundles (`amd64`, `386`)
+- macOS portable (`amd64`, `arm64`)
 - Linux arm64 portable
-- macOS amd64/arm64 portable
-- Windows amd64/386 portable zip bundles
 
-## Quick Start (End Users)
+## Quick Start (No Coding)
 
 ### Windows
 
-1. Download the correct installer:
-   - 64-bit Windows: `MAMA-Setup-Windows.exe`
-   - 32-bit Windows: `MAMA-Setup-Windows-32bit.exe`
-2. Run the installer.
-3. Launch **MAMA Setup UI**.
-4. Set serial port, map knobs, and save.
-5. Keep MAMA running in tray.
+1. Install with `MAMA-Setup-Windows.exe` (or `MAMA-Setup-Windows-32bit.exe` on 32-bit systems).
+2. Launch **MAMA Setup UI** from Start Menu.
+3. In Settings, auto-detect/test the serial port.
+4. Map knobs and click **Save Config**.
+5. Keep MAMA running (close hides to tray, tray menu provides Show/Quit).
 
 ### macOS / Linux
 
-1. Download and extract your OS package.
-2. Run setup launcher:
+1. Extract package to a writable folder.
+2. Start setup UI launcher:
    - macOS: `Open Setup UI.command`
    - Linux: `open-setup-ui.sh`
-3. Save mappings.
-4. Start hidden runtime launcher:
+3. Configure serial + mappings, then save.
+4. Optional runtime launcher:
    - macOS: `Start Mixer.command`
    - Linux: `start-mixer.sh`
+5. Stop background runtime when needed:
+   - macOS: `Stop Mixer.command`
+   - Linux: `stop-mixer.sh`
+
+Notes:
+- macOS/Linux use a local browser UI (`http://127.0.0.1:18765`).
+- `Start Mixer` / `start-mixer.sh` launches MAMA in background and stores PID in `.mama.pid`.
+- `Stop Mixer` / `stop-mixer.sh` uses `.mama.pid` to stop background runtime.
+- Windows uses embedded desktop UI + tray by default.
+- Startup-at-login can be enabled from Settings on Windows, macOS, and Linux.
+
+## Hardware and Firmware
+
+- Master board: `firmware/master/master.ino`
+- Slave board: `firmware/slave/slave.ino`
+- Protocol hello: `MAMA:HELLO:1`
+- Legacy hello accepted by host: `V:1`
+- Default baud: `115200`
+
+## Config Basics
+
+Default config discovery order:
+
+1. `./config.yaml`
+2. `mama/internal/config/default.yaml`
+
+Most important mapping fields:
+
+- `knob`
+- `target`
+- `step` (0..1, where `0.02` means 2% per detent)
+- `selector` (`app`) / `selectors` (`group`)
+- `fallback_target` + `fallback_name` (optional app/group fallback)
+
+Full schema and examples: [docs/CONFIG_REFERENCE.md](docs/CONFIG_REFERENCE.md)
+
+## Advanced CLI Usage
+
+From `mama/`:
+
+```bash
+go run ./cmd/mama --help
+```
+
+Key flags:
+
+- `-config` path to YAML config
+- `-listen` HTTP bind (default `127.0.0.1:18765`)
+- `-open` auto-open browser UI
+- `-desktop` embedded desktop shell (Windows only)
+- `-start-hidden` start minimized to tray (Windows desktop mode)
 
 ## Developer Quick Start
 
@@ -58,7 +105,7 @@ go test ./...
 go run ./cmd/mama
 ```
 
-If you use `make`:
+Or via make wrappers:
 
 ```bash
 make test
@@ -66,47 +113,21 @@ make verify
 make release-readiness
 ```
 
-## Serial Protocol
+## Documentation Index
 
-Firmware emits newline-terminated lines:
-- `MAMA:HELLO:1`
-- `E1:+1`
-- `E1:-1`
-- `B1:1`
-
-Host compatibility:
-- supports protocol version `1`
-- accepts legacy `V:1` for backward compatibility
-- rejects unsupported announced versions safely
-
-## Configuration
-
-Default config path order:
-1. `./config.yaml`
-2. `mama/internal/config/default.yaml`
-
-Primary mapping fields:
-- `knob`
-- `target`
-- `step`
-- `selector` / `selectors` for `app` and `group`
-- optional `priority` for overlap resolution
-
-For full install/build/release details, see docs below.
-
-## Documentation
-
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/README.md](docs/README.md)
 - [docs/INSTALLATION.md](docs/INSTALLATION.md)
+- [docs/CONFIG_REFERENCE.md](docs/CONFIG_REFERENCE.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 - [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md)
 - [docs/RELEASE_REPRODUCIBLE_BUILDS.md](docs/RELEASE_REPRODUCIBLE_BUILDS.md)
 - [docs/SIGNING_AND_NOTARIZATION.md](docs/SIGNING_AND_NOTARIZATION.md)
-- [docs/SOAK_TEST_PLAN.md](docs/SOAK_TEST_PLAN.md)
 - [docs/SUPPORT_POLICY.md](docs/SUPPORT_POLICY.md)
-- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+- [docs/SOAK_TEST_PLAN.md](docs/SOAK_TEST_PLAN.md)
 - [SECURITY.md](SECURITY.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## License
 
-MIT. See `LICENSE`.
+MIT. See [LICENSE](LICENSE).

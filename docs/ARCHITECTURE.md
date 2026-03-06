@@ -2,83 +2,88 @@
 
 ## Overview
 
-MAMA has three layers:
+MAMA is composed of three layers:
 
-1. Hardware input layer (Arduino master/slave)
+1. Hardware input layer (Arduino master/slave encoders)
 2. Transport layer (USB serial text protocol)
-3. Host control layer (Go desktop app + audio backend)
+3. Host control layer (Go app: runtime + local setup UI + platform shell)
 
-The shipped desktop product is a single app process (`mama`) that includes:
-- runtime event loop
-- setup API and embedded UI page
-- tray behavior and background mode
+The shipped host app is one binary:
+
+- `mama` (`mama.exe` on Windows)
+
+There is no separate runtime/UI executable requirement for end users.
+
+## Runtime Model
+
+- Runtime engine and UI server run in the same process.
+- Config changes in the UI are applied live without restart.
+- On Windows, desktop mode is enabled by default (embedded window + tray).
+- On macOS/Linux, the app runs a local HTTP UI (browser) plus runtime loop.
 
 ## Data Flow
 
-1. User rotates or presses a physical encoder.
-2. Firmware debounces and emits serial lines.
+1. Physical encoder rotation/press occurs on hardware.
+2. Firmware emits serial lines.
 3. Host parser converts lines into typed events.
-4. Runtime resolves knob -> mapping target.
-5. Audio backend applies volume/mute action.
-6. UI polls/streams state and reflects live status.
+4. Runtime resolves `knob -> mapping`.
+5. Audio backend applies volume/mute operations.
+6. UI polls runtime state and renders status/health.
 
 ## Firmware Topology
 
 - `firmware/master/master.ino`
-  - local read for encoders 1-3
-  - I2C poll for slave encoders 4-5
-  - USB serial output to host
+  - reads local encoders (1-3)
+  - polls slave via I2C (encoders 4-5)
+  - emits protocol lines over USB serial
 - `firmware/slave/slave.ino`
-  - local read for encoders 4-5
-  - fixed-size I2C response packet to master
+  - reads local encoders (4-5)
+  - returns fixed-size I2C packet to master
 
 ## Serial Protocol
 
-Hello and control events:
+Primary protocol:
+
 - `MAMA:HELLO:1`
 - `E<id>:+/-<n>`
 - `B<id>:1`
 
 Compatibility:
-- protocol version `1` is supported
-- legacy `V:<n>` remains accepted for older firmware
-- unsupported announced versions are rejected safely
+
+- Host supports protocol version `1`.
+- Host still accepts legacy hello `V:1`.
+- Unsupported hello versions are rejected safely.
 
 ## Host Modules
 
-- `mama/internal/config`
-  - load/save YAML
-  - schema validation and normalization
-- `mama/internal/proto`
-  - serial protocol parser
-- `mama/internal/serial`
-  - port open/read/reconnect behavior
-- `mama/internal/audio`
-  - platform-specific audio target control
-- `mama/internal/mixer`
-  - target resolution, grouping, conflict handling
-- `mama/internal/runtime`
-  - event loop, mapping execution, metrics/logging
-- `mama/internal/ui`
-  - setup HTTP endpoints and embedded UI
-
-## Runtime Binaries
-
 - `mama/cmd/mama`
-  - production app binary (runtime + setup UI + tray mode)
-- `mama/cmd/mama-ui`
-  - compatibility/developer-only UI server entrypoint (not required for end users)
+  - app entrypoint, flags, startup/shutdown orchestration
+- `mama/internal/config`
+  - YAML schema, migration, validation, defaults
+- `mama/internal/proto`
+  - serial line parsing and event typing
+- `mama/internal/serial`
+  - serial open/read/probe/reconnect logic
+- `mama/internal/runtime`
+  - event loop, retries, logging, metrics helpers
+- `mama/internal/mixer`
+  - mapping resolution, target control, fallback logic
+- `mama/internal/audio`
+  - platform audio backends and target discovery
+- `mama/internal/ui`
+  - HTTP API, startup integration hooks, static UI delivery
 
 ## Packaging Model
 
-Release flow publishes easy user artifacts:
-- Windows installers (64-bit and 32-bit)
-- macOS universal package
-- Linux package
+Recommended release assets:
 
-Advanced architecture-specific portable artifacts are also published for power users.
+- Windows installers (`amd64`, `386`)
+- macOS universal2 package
+- Linux amd64 package
 
-## Current Constraints
+Advanced portable assets are also published for architecture-specific workflows.
 
-- native Windows arm64 build is blocked by upstream dependency compatibility
-- hardware-in-loop validation remains a maintainer/manual gate
+## Known Constraints
+
+- Native Windows arm64 build is not officially supported yet.
+- Hardware-in-loop validation is still a required manual release gate.
