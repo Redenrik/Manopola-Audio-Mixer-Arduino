@@ -234,18 +234,6 @@
       padding-top: 10px;
     }
 
-    .advanced-wrap summary {
-      cursor: pointer;
-      font-weight: 600;
-      color: var(--ink);
-    }
-
-    .advanced-wrap .content {
-      margin-top: 10px;
-      display: grid;
-      gap: 10px;
-    }
-
     .focus-highlight {
       outline: 3px solid rgba(255, 125, 0, 0.45);
       outline-offset: 2px;
@@ -624,36 +612,6 @@
       color: var(--ink-dim);
     }
 
-    .wizard-steps {
-      margin: 10px 0 0;
-      padding-left: 18px;
-      display: grid;
-      gap: 8px;
-    }
-
-    .wizard-step {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px;
-      background: var(--panel-soft);
-    }
-
-    .wizard-step.done {
-      border-color: #8ac9bf;
-      background: var(--panel-soft);
-    }
-
-    .wizard-step.active {
-      border-color: #f4a261;
-      box-shadow: 0 8px 16px rgba(244, 162, 97, 0.18);
-    }
-
-    .wizard-step small {
-      display: block;
-      color: var(--ink-dim);
-      margin-top: 4px;
-    }
-
     .map-name-wrap {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -682,8 +640,8 @@
 
     .map-knob-cell {
       display: grid;
-      gap: 6px;
-      justify-items: center;
+      gap: 8px;
+      justify-items: stretch;
     }
 
     .map-knob-cell .map-knob {
@@ -691,19 +649,20 @@
     }
 
     .map-knob-indicator {
-      width: 54px;
+      width: 100%;
+      min-width: 0;
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 6px 4px 4px;
+      border-radius: 12px;
+      padding: 8px 6px 6px;
       background: linear-gradient(180deg, var(--knob-grad-top), var(--knob-grad-bottom));
       text-align: center;
       transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
     }
 
     .map-knob-indicator .dial {
-      width: 28px;
-      height: 28px;
-      margin: 0 auto 4px;
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 6px;
       border-radius: 50%;
       border: 3px solid var(--dial-ring);
       position: relative;
@@ -711,23 +670,23 @@
       transform: rotate(0deg);
       transition: transform 120ms ease;
       transform-origin: 50% 50%;
-      border-width: 3px;
+      border-width: 4px;
     }
 
     .map-knob-indicator .dial::after {
       content: "";
       position: absolute;
       left: 50%;
-      top: 5px;
-      width: 3px;
-      height: 9px;
-      margin-left: -1.5px;
+      top: 6px;
+      width: 4px;
+      height: 12px;
+      margin-left: -2px;
       border-radius: 4px;
       background: var(--dial-mark);
     }
 
     .map-knob-label {
-      font-size: 0.72rem;
+      font-size: 0.8rem;
       color: var(--ink-dim);
       line-height: 1.1;
     }
@@ -753,7 +712,8 @@
 
     .map-row-health {
       margin: 0;
-      min-width: 56px;
+      min-width: 0;
+      width: 100%;
       text-align: center;
     }
 
@@ -968,9 +928,6 @@
               <h2 id="settingsTitle">Settings</h2>
               <span id="unsavedBadge" class="dirty-badge hidden">Unsaved changes</span>
             </div>
-            <div class="toolbar-actions">
-              <button id="closeSettingsBtn" class="btn-lite" type="button">Back</button>
-            </div>
           </div>
           <p class="hint" id="settingsIntro">Choose language and visual style.</p>
           <div class="actions" style="margin-top:12px;">
@@ -990,6 +947,14 @@
               </select>
             </label>
           </div>
+          <div class="actions" style="align-items:center;">
+            <label style="display:flex; gap:8px; align-items:center; margin:0;">
+              <input id="startupEnabled" type="checkbox" checked aria-label="Launch mixer at OS startup">
+              <span id="startupLabel">Launch mixer at OS startup</span>
+            </label>
+            <button type="button" id="applyStartup">Apply Startup Setting</button>
+          </div>
+          <p class="status" id="startupStatus" role="status" aria-live="polite"></p>
         </section>
 
         <section class="panel" id="settingsConnectionPanel">
@@ -1057,28 +1022,16 @@
             <span id="debugLabel">Debug logs enabled</span>
           </label>
         </div>
-        <div class="actions" style="align-items:center;">
-          <label style="display:flex; gap:8px; align-items:center; margin:0;">
-            <input id="startupEnabled" type="checkbox" checked aria-label="Launch mixer at OS startup">
-            <span id="startupLabel">Launch mixer at OS startup</span>
-          </label>
-          <button type="button" id="applyStartup">Apply Startup Setting</button>
-        </div>
-        <p class="status" id="startupStatus" role="status" aria-live="polite"></p>
         <div class="advanced-wrap">
-          <details>
-            <summary id="advancedConfigSummary">Advanced config tools</summary>
-            <div class="content">
-              <div class="actions">
-                <button id="backupConfig" type="button">Backup Snapshot</button>
-                <button id="restoreConfig" type="button">Restore Snapshot</button>
-                <button id="exportConfig" type="button">Export Config</button>
-                <button id="exportDiagnostics" type="button">Export Diagnostics</button>
-                <button id="importConfig" type="button">Import Config</button>
-                <input id="importConfigFile" type="file" accept="application/json" style="display:none;">
-              </div>
-            </div>
-          </details>
+          <p class="hint" id="advancedConfigSummary">Advanced config tools</p>
+          <div class="actions">
+            <button id="backupConfig" type="button">Backup Snapshot</button>
+            <button id="restoreConfig" type="button">Restore Snapshot</button>
+            <button id="exportConfig" type="button">Export Config</button>
+            <button id="exportDiagnostics" type="button">Export Diagnostics</button>
+            <button id="importConfig" type="button">Import Config</button>
+            <input id="importConfigFile" type="file" accept="application/json" style="display:none;">
+          </div>
         </div>
         <p class="hint" style="margin-top: 10px;"><span id="configPathLabel">Config path:</span> <span class="mono" id="configPath">loading...</span></p>
       </section>
@@ -1089,6 +1042,7 @@
           <p class="status" id="saveStatus" role="status" aria-live="polite"></p>
         </div>
         <div class="actions" style="margin:0;">
+          <button id="closeSettingsSticky" type="button" class="btn-lite">Done</button>
           <button class="btn-primary" id="saveConfigSticky" type="button">Save Config</button>
           <button id="rollbackConfigSticky" type="button">Rollback Last Save</button>
         </div>
@@ -1217,18 +1171,6 @@
           { id: "save", panelId: "settingsMappingsPanel" }
         ]
       },
-      // Backward-compatible safety for legacy wizard conditionals still present in handlers.
-      wizard: {
-        active: false,
-        index: 0,
-        steps: [
-          { id: "detect" },
-          { id: "test" },
-          { id: "map" },
-          { id: "save" },
-          { id: "verify" }
-        ]
-      },
       groupEditor: {
         open: false,
         sourceInput: null,
@@ -1237,7 +1179,7 @@
       },
       customGroups: [],
       customTemplates: [],
-      defaultTemplateID: "",
+      defaultTemplateID: "universal",
       templateManager: {
         open: false,
         selectedID: ""
@@ -1296,9 +1238,9 @@
           ]
         },
         universal: {
-          label: "Universal Daily Mix",
+          label: "Universal Mix",
           description: "Master, mic, music, games, browser",
-          labels: { en: "Universal Daily Mix", it: "Mix quotidiano universale" },
+          labels: { en: "Universal Mix", it: "Mix universale" },
           descriptions: { en: "Master, mic, music, games, browser", it: "Master, microfono, musica, giochi, browser" },
           mappings: [
             { knob: 1, target: "master_out", step: 0.02, name: "" },
@@ -1339,6 +1281,7 @@
         connectionIntro: "Configure serial connection.",
         mappingsIntro: "Assign each knob target and identify knob numbers in real time.",
         closeSettingsBtn: "Back",
+        closeSettingsSticky: "Done",
         unsavedChanges: "Unsaved changes",
         discardChangesConfirm: "You have unsaved changes. Discard them and go back?",
         advancedHeading: "Advanced",
@@ -1358,9 +1301,6 @@
         onboardingMappingsHint: "Assign targets and per-click step (%) for each knob. Use a template if needed.",
         onboardingSaveTitle: "4. Save and start",
         onboardingSaveHint: "Save configuration. Changes apply immediately while the app is running.",
-        wizardHeading: "First-Run Wizard",
-        wizardIntro: "Follow this guided flow to detect your board, confirm serial access, map knobs, save, and verify live events.",
-        wizardStart: "Start Wizard", wizardNext: "Next Step", wizardReset: "Reset",
         connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", autoDetectPort: "Auto-Detect MAMA", autoDetectBusy: "Detecting...", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
         bootTitle: "Starting MAMA",
         bootDetecting: "Detecting MAMA board and serial port...",
@@ -1449,8 +1389,7 @@
         templateDeleteConfirm: "Delete template {name}?",
         templateDeleteDone: "Template {name} deleted.",
         templateDefaultDone: "Default template set to {name}.",
-        noPorts: "No ports detected", waiting: "waiting...", buttonPress: "button press", delta: "delta", knobNoMapping: "No mapping", knobUnavailable: "Unavailable", knobMuted: "Muted", knobLive: "Live", knobApps: "apps", healthOK: "OK", healthUnavailable: "Unavailable", healthFallback: "Fallback", healthMissing: "Missing", healthPermission: "Permission", healthUnsupported: "Unsupported", healthError: "Error", recoveryRetry: "Retry Now", recoveryConnecting: "Connecting to serial device...", recoveryReconnecting: "Serial disconnected, auto-retry in progress.", recoveryInactive: "Runtime not active.",
-        wizardSteps: { detect: { title: "Detect board", hint: "Refresh detected serial ports and select your board." }, test: { title: "Test port", hint: "Run Test Connection to ensure the board is reachable." }, map: { title: "Map knobs", hint: "Use Start Identify and rotate/press knobs to confirm IDs before editing mappings." }, save: { title: "Save config", hint: "Persist serial + mapping configuration." }, verify: { title: "Verify", hint: "Run identify again to confirm knob events after save." } }
+        noPorts: "No ports detected", waiting: "waiting...", buttonPress: "button press", delta: "delta", knobNoMapping: "No mapping", knobUnavailable: "Not detected now", knobMuted: "Muted", knobLive: "Live", knobApps: "apps", healthOK: "OK", healthUnavailable: "Not detected", healthFallback: "Fallback", healthMissing: "Missing", healthPermission: "Permission", healthUnsupported: "Unsupported", healthError: "Error", recoveryRetry: "Retry Now", recoveryConnecting: "Connecting to serial device...", recoveryReconnecting: "Serial disconnected, auto-retry in progress.", recoveryInactive: "Runtime not active."
       },
       it: {
         pageTitle: "Configurazione MAMA",
@@ -1468,6 +1407,7 @@
         connectionIntro: "Configura la connessione seriale.",
         mappingsIntro: "Assegna un target a ogni manopola e identifica i knob in tempo reale.",
         closeSettingsBtn: "Indietro",
+        closeSettingsSticky: "Fatto",
         unsavedChanges: "Modifiche non salvate",
         discardChangesConfirm: "Ci sono modifiche non salvate. Vuoi scartarle e tornare indietro?",
         advancedHeading: "Avanzate",
@@ -1487,9 +1427,6 @@
         onboardingMappingsHint: "Assegna target e step (%) per click per ogni manopola. Puoi usare un template.",
         onboardingSaveTitle: "4. Salva e avvia",
         onboardingSaveHint: "Salva la configurazione. Le modifiche vengono applicate subito.",
-        wizardHeading: "Procedura guidata iniziale",
-        wizardIntro: "Segui questa procedura per rilevare la scheda, confermare la seriale, mappare le manopole, salvare e verificare gli eventi live.",
-        wizardStart: "Avvia procedura", wizardNext: "Passo successivo", wizardReset: "Reimposta",
         connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", autoDetectPort: "Auto-Rileva MAMA", autoDetectBusy: "Rilevamento...", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
         bootTitle: "Avvio MAMA",
         bootDetecting: "Rilevamento scheda MAMA e porta seriale...",
@@ -1578,8 +1515,7 @@
         templateDeleteConfirm: "Eliminare il template {name}?",
         templateDeleteDone: "Template {name} eliminato.",
         templateDefaultDone: "Template predefinito impostato su {name}.",
-        noPorts: "Nessuna porta rilevata", waiting: "in attesa...", buttonPress: "pressione tasto", delta: "delta", knobNoMapping: "Nessuna mappatura", knobUnavailable: "Non disponibile", knobMuted: "Muto", knobLive: "Attivo", knobApps: "app", healthOK: "OK", healthUnavailable: "Non disponibile", healthFallback: "Fallback", healthMissing: "Mancante", healthPermission: "Permessi", healthUnsupported: "Non supportato", healthError: "Errore", recoveryRetry: "Riprova ora", recoveryConnecting: "Connessione dispositivo seriale...", recoveryReconnecting: "Seriale disconnessa, riconnessione automatica in corso.", recoveryInactive: "Runtime non attivo.",
-        wizardSteps: { detect: { title: "Rileva scheda", hint: "Aggiorna le porte seriali rilevate e seleziona la tua scheda." }, test: { title: "Test porta", hint: "Esegui Test connessione per verificare che la scheda sia raggiungibile." }, map: { title: "Mappa manopole", hint: "Usa Avvia identificazione e ruota/premi le manopole per confermare gli ID prima di modificare le mappature." }, save: { title: "Salva config", hint: "Salva la configurazione seriale e delle mappature." }, verify: { title: "Verifica", hint: "Avvia di nuovo l'identificazione per confermare gli eventi dopo il salvataggio." } }
+        noPorts: "Nessuna porta rilevata", waiting: "in attesa...", buttonPress: "pressione tasto", delta: "delta", knobNoMapping: "Nessuna mappatura", knobUnavailable: "Non rilevato ora", knobMuted: "Muto", knobLive: "Attivo", knobApps: "app", healthOK: "OK", healthUnavailable: "Non rilevato", healthFallback: "Fallback", healthMissing: "Mancante", healthPermission: "Permessi", healthUnsupported: "Non supportato", healthError: "Errore", recoveryRetry: "Riprova ora", recoveryConnecting: "Connessione dispositivo seriale...", recoveryReconnecting: "Seriale disconnessa, riconnessione automatica in corso.", recoveryInactive: "Runtime non attivo."
       }
     };
 
@@ -1725,8 +1661,7 @@
       document.title = t("pageTitle");
       const bindings = {
         bootTitle: "bootTitle",
-        titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", themeLabel: "themeLabel", settingsTitle: "settingsTitle", settingsIntro: "settingsIntro", connectionIntro: "connectionIntro", mappingsIntro: "mappingsIntro", closeSettingsBtn: "closeSettingsBtn", unsavedBadge: "unsavedChanges", saveBarDirty: "unsavedChanges", advancedHeading: "advancedHeading", advancedSummary: "advancedSummary", advancedConfigSummary: "advancedConfigSummary", onboardingTitle: "onboardingTitle", onboardingIntro: "onboardingIntro", onboardingSkip: "onboardingSkip", onboardingPrev: "onboardingPrev", onboardingNext: "onboardingNext", onboardingFinish: "onboardingFinish", wizardHeading: "wizardHeading", wizardIntro: "wizardIntro",
-        wizardStart: "wizardStart", wizardNext: "wizardNext", wizardReset: "wizardReset", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
+        titleMain: "titleMain", subtitleMain: "subtitleMain", configPathLabel: "configPathLabel", languageLabel: "languageLabel", themeLabel: "themeLabel", settingsTitle: "settingsTitle", settingsIntro: "settingsIntro", connectionIntro: "connectionIntro", mappingsIntro: "mappingsIntro", closeSettingsBtn: "closeSettingsBtn", closeSettingsSticky: "closeSettingsSticky", unsavedBadge: "unsavedChanges", saveBarDirty: "unsavedChanges", advancedHeading: "advancedHeading", advancedSummary: "advancedSummary", advancedConfigSummary: "advancedConfigSummary", onboardingTitle: "onboardingTitle", onboardingIntro: "onboardingIntro", onboardingSkip: "onboardingSkip", onboardingPrev: "onboardingPrev", onboardingNext: "onboardingNext", onboardingFinish: "onboardingFinish", connectionHeading: "connectionHeading", serialPortLabel: "serialPortLabel", refreshPorts: "refreshPorts",
         manualPortLabel: "manualPortLabel", baudLabel: "baudLabel", debugLabel: "debugLabel", autoDetectPort: "autoDetectPort", testConnection: "testConnection", startupLabel: "startupLabel", applyStartup: "applyStartup", identifyHeading: "identifyHeading", identifyIntro: "identifyIntro", debugHeading: "debugHeading", mappingsHeading: "mappingsHeading",
         mappingTemplateLabel: "mappingTemplateLabel", applyTemplate: "applyTemplate", manageTemplates: "manageTemplates", headerKnob: "headerKnob", headerTarget: "headerTarget", headerName: "headerName", headerStep: "headerStep", headerFallback: "headerFallback", headerActions: "headerActions",
         addMapping: "addMapping", saveConfig: "saveConfig", saveConfigSticky: "saveConfig", rollbackConfig: "rollbackConfig", rollbackConfigSticky: "rollbackConfig", backupConfig: "backupConfig", restoreConfig: "restoreConfig", exportConfig: "exportConfig", exportDiagnostics: "exportDiagnostics", importConfig: "importConfig", startIdentify: "startIdentify", stopIdentify: "stopIdentify", windowsTargetWarning: "windowsTargetWarning",
@@ -1752,10 +1687,6 @@
       }
       $("openSettingsBtn").setAttribute("aria-label", t("openSettings"));
       $("openSettingsBtn").setAttribute("title", t("openSettings"));
-    }
-
-    function localizedWizardStep(stepID) {
-      return (i18n[state.language].wizardSteps && i18n[state.language].wizardSteps[stepID]) || i18n.en.wizardSteps[stepID] || { title: stepID, hint: "" };
     }
 
     function setLanguage(lang) {
@@ -1979,49 +1910,6 @@
       return selected || manual;
     }
 
-
-    function renderWizard() {
-      const host = $("wizardSteps");
-      host.innerHTML = "";
-      state.wizard.steps.forEach((step, idx) => {
-        const li = document.createElement("li");
-        li.className = "wizard-step";
-        if (idx < state.wizard.index) li.classList.add("done");
-        if (state.wizard.active && idx === state.wizard.index) li.classList.add("active");
-        const localized = localizedWizardStep(step.id);
-        li.innerHTML = `<strong>${idx + 1}. ${localized.title}</strong><small>${localized.hint}</small>`;
-        host.appendChild(li);
-      });
-    }
-
-    function startWizard() {
-      state.wizard.active = true;
-      state.wizard.index = 0;
-      renderWizard();
-      setStatus("wizardStatus", `Step 1: ${localizedWizardStep("detect").hint}`, "ok");
-    }
-
-    function resetWizard() {
-      state.wizard.active = false;
-      state.wizard.index = 0;
-      renderWizard();
-      setStatus("wizardStatus", state.language === "it" ? "Procedura reimpostata." : "Wizard reset.");
-    }
-
-    function nextWizardStep() {
-      if (!state.wizard.active) {
-        setStatus("wizardStatus", state.language === "it" ? "Avvia prima la procedura." : "Start the wizard first.", "error");
-        return;
-      }
-      if (state.wizard.index >= state.wizard.steps.length - 1) {
-        setStatus("wizardStatus", state.language === "it" ? "Procedura completata: scheda rilevata, testata, mappata, salvata e verificata." : "Wizard complete: board detected, tested, mapped, saved, and verified.", "ok");
-        return;
-      }
-      state.wizard.index += 1;
-      renderWizard();
-      const current = localizedWizardStep(state.wizard.steps[state.wizard.index].id);
-      setStatus("wizardStatus", `Step ${state.wizard.index + 1}: ${current.hint}`, "ok");
-    }
 
     function normalizeKnobCount(value) {
       const n = Number(value);
@@ -2313,7 +2201,13 @@
     }
 
     function builtInTemplateIDs() {
-      return Object.keys(state.templates || {});
+      const ids = Object.keys(state.templates || {});
+      const preferred = ids.findIndex((id) => String(id || "").trim().toLowerCase() === "universal");
+      if (preferred > 0) {
+        const [picked] = ids.splice(preferred, 1);
+        ids.unshift(picked);
+      }
+      return ids;
     }
 
     function templateIDExists(id, ignoreID = "") {
@@ -3540,14 +3434,6 @@
       return [];
     }
 
-    function filterSuggestionValues(values, query) {
-      const q = String(query || "").trim().toLowerCase();
-      if (!q) return Array.isArray(values) ? values : [];
-      return (Array.isArray(values) ? values : []).filter((value) => {
-        return String(value || "").toLowerCase().includes(q);
-      });
-    }
-
     function setPickerOptions(select, values, placeholder) {
       if (!select) return;
       const previous = String(select.value || "");
@@ -3841,10 +3727,10 @@
       let nameSuggestionValues = [];
       let fallbackSuggestionValues = [];
       function refreshNamePickerFromInput() {
-        setPickerOptions(namePicker, filterSuggestionValues(nameSuggestionValues, name.value), t("selectorPick"));
+        setPickerOptions(namePicker, nameSuggestionValues, t("selectorPick"));
       }
       function refreshFallbackPickerFromInput() {
-        setPickerOptions(fallbackPicker, filterSuggestionValues(fallbackSuggestionValues, fallbackName.value), t("fallbackPick"));
+        setPickerOptions(fallbackPicker, fallbackSuggestionValues, t("fallbackPick"));
       }
       function syncRowHealthState() {
         const item = mappingStatusForKnob(knob.value);
@@ -4642,9 +4528,6 @@
           body: JSON.stringify({ port, baud })
         });
         setStatus("connectionStatus", body.message || (state.language === "it" ? "Connessione riuscita" : "Connection successful"), "ok");
-        if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "test") {
-          setStatus("wizardStatus", state.language === "it" ? "Test porta superato. Clicca Passo successivo per continuare la mappatura." : "Port test passed. Click Next Step to continue mapping.", "ok");
-        }
       } catch (err) {
         setStatus("connectionStatus", err.message, "error");
       }
@@ -4768,9 +4651,6 @@
         setStatus("saveStatus", state.language === "it" ? "Configurazione salvata" : "Config saved", "ok");
         await refreshRuntimeStatus();
         await loadMappingStatus();
-        if (state.wizard.active && state.wizard.steps[state.wizard.index].id === "save") {
-          setStatus("wizardStatus", state.language === "it" ? "Configurazione salvata. Clicca Passo successivo per la verifica finale." : "Config saved successfully. Click Next Step for final verification.", "ok");
-        }
       } catch (err) {
         setStatus("saveStatus", err.message, "error");
       }
@@ -5059,7 +4939,7 @@
 
     function bindEvents() {
       $("openSettingsBtn").addEventListener("click", openSettingsView);
-      $("closeSettingsBtn").addEventListener("click", () => closeSettingsView(false));
+      $("closeSettingsSticky").addEventListener("click", () => closeSettingsView(false));
       $("testConnection").addEventListener("click", testConnection);
       $("portSelect").addEventListener("change", syncManualPortFromSelect);
       $("portSelect").addEventListener("input", syncManualPortFromSelect);
