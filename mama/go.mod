@@ -1,6 +1,6 @@
 module mama
 
-go 1.22
+go 1.24.0
 
 require (
 	github.com/getlantern/systray v1.2.2
@@ -9,7 +9,7 @@ require (
 	github.com/jchv/go-webview2 v0.0.0-20260205173254-56598839c808
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e
 	go.bug.st/serial v1.6.2
-	golang.org/x/sys v0.1.0
+	golang.org/x/sys v0.41.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
