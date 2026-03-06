@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -100,9 +101,13 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
+	cfgPath := s.cfgPath
+	if abs, err := filepath.Abs(cfgPath); err == nil {
+		cfgPath = abs
+	}
 	resp := map[string]any{
 		"ok":         true,
-		"configPath": s.cfgPath,
+		"configPath": cfgPath,
 	}
 	if s.mixerService != nil {
 		resp["runtime"] = s.mixerService.Status()

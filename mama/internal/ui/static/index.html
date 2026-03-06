@@ -42,6 +42,9 @@
       --titlebar-btn-hover: #e7f4f1;
       --titlebar-close-hover: #d74d43;
       --titlebar-close-text: #fff;
+      --scroll-track: #dce9e5;
+      --scroll-thumb: #8fb3a9;
+      --scroll-thumb-hover: #6f988d;
     }
 
     :root[data-theme="dark"] {
@@ -80,9 +83,32 @@
       --titlebar-btn-hover: #26423a;
       --titlebar-close-hover: #ba4c40;
       --titlebar-close-text: #fff;
+      --scroll-track: #233732;
+      --scroll-thumb: #4f766b;
+      --scroll-thumb-hover: #6a9a8e;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+      scrollbar-width: thin;
+      scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+    }
+    *::-webkit-scrollbar {
+      width: 11px;
+      height: 11px;
+    }
+    *::-webkit-scrollbar-track {
+      background: var(--scroll-track);
+      border-radius: 999px;
+    }
+    *::-webkit-scrollbar-thumb {
+      background: var(--scroll-thumb);
+      border: 2px solid var(--scroll-track);
+      border-radius: 999px;
+    }
+    *::-webkit-scrollbar-thumb:hover {
+      background: var(--scroll-thumb-hover);
+    }
     body {
       margin: 0;
       font-family: "Segoe UI", "Trebuchet MS", sans-serif;
@@ -131,27 +157,33 @@
 
     .titlebar-actions {
       display: flex;
-      align-items: stretch;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px 6px 0;
       margin-left: auto;
     }
 
     .titlebar-btn {
-      width: 48px;
-      height: 42px;
-      border: 0;
+      width: 34px;
+      height: 30px;
+      border: 1px solid var(--titlebar-border);
       border-left: 1px solid var(--titlebar-border);
+      border-radius: 8px;
       background: transparent;
       color: var(--titlebar-btn);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      cursor: default;
+      cursor: pointer;
       padding: 0;
       transition: background 120ms ease, color 120ms ease;
     }
 
     .titlebar-btn:hover {
       background: var(--titlebar-btn-hover);
+      transform: none;
+      box-shadow: none;
+      border-color: var(--titlebar-border);
     }
 
     .titlebar-btn:focus-visible {
@@ -162,6 +194,7 @@
     .titlebar-btn.close:hover {
       background: var(--titlebar-close-hover);
       color: var(--titlebar-close-text);
+      border-color: var(--titlebar-close-hover);
     }
 
     .titlebar-btn svg {
@@ -341,12 +374,6 @@
       color: #ffd9a9;
     }
 
-    .advanced-wrap {
-      margin-top: 12px;
-      border-top: 1px dashed var(--line);
-      padding-top: 10px;
-    }
-
     .focus-highlight {
       outline: 3px solid rgba(255, 125, 0, 0.45);
       outline-offset: 2px;
@@ -513,9 +540,11 @@
 
     .map-row-actions {
       display: inline-flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: flex-end;
-      gap: 6px;
+      justify-content: center;
+      gap: 8px;
+      margin: 0 auto;
     }
 
     .map-row-actions .icon-btn {
@@ -869,7 +898,7 @@
       }
 
       .map-row-actions {
-        justify-content: flex-start;
+        justify-content: center;
       }
     }
 
@@ -1138,30 +1167,24 @@
         <div class="mapping-validation-list hidden" id="mappingValidationList" role="list"></div>
         <div class="actions">
           <button id="addMapping" type="button">Add Mapping</button>
-          <button class="btn-primary" id="saveConfig" type="button">Save Config</button>
-          <button id="rollbackConfig" type="button">Rollback Last Save</button>
         </div>
       </section>
 
       <section class="panel" id="settingsAdvancedPanel">
         <h2 id="advancedHeading">Advanced</h2>
-        <p class="hint" id="advancedSummary">Advanced settings</p>
         <div class="actions" style="align-items:center;">
           <label style="display:flex; gap:8px; align-items:center; margin:0;">
             <input id="debugInput" type="checkbox" aria-label="Enable debug logs">
             <span id="debugLabel">Debug logs enabled</span>
           </label>
         </div>
-        <div class="advanced-wrap">
-          <p class="hint" id="advancedConfigSummary">Advanced config tools</p>
-          <div class="actions">
-            <button id="backupConfig" type="button">Backup Snapshot</button>
-            <button id="restoreConfig" type="button">Restore Snapshot</button>
-            <button id="exportConfig" type="button">Export Config</button>
-            <button id="exportDiagnostics" type="button">Export Diagnostics</button>
-            <button id="importConfig" type="button">Import Config</button>
-            <input id="importConfigFile" type="file" accept="application/json" style="display:none;">
-          </div>
+        <div class="actions">
+          <button id="backupConfig" type="button">Backup Snapshot</button>
+          <button id="restoreConfig" type="button">Restore Snapshot</button>
+          <button id="exportConfig" type="button">Export Config</button>
+          <button id="exportDiagnostics" type="button">Export Diagnostics</button>
+          <button id="importConfig" type="button">Import Config</button>
+          <input id="importConfigFile" type="file" accept="application/json" style="display:none;">
         </div>
         <p class="hint" style="margin-top: 10px;"><span id="configPathLabel">Config path:</span> <span class="mono" id="configPath">loading...</span></p>
       </section>
@@ -5233,9 +5256,7 @@
       $("templateManagerModal").addEventListener("click", (ev) => {
         if (ev.target === $("templateManagerModal")) closeTemplateManager();
       });
-      $("saveConfig").addEventListener("click", saveConfig);
       $("saveConfigSticky").addEventListener("click", saveConfig);
-      $("rollbackConfig").addEventListener("click", rollbackLastSave);
       $("rollbackConfigSticky").addEventListener("click", rollbackLastSave);
       $("backupConfig").addEventListener("click", backupConfig);
       $("restoreConfig").addEventListener("click", restoreConfig);

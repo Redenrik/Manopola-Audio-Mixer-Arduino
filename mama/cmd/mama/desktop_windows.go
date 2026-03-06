@@ -21,12 +21,15 @@ const (
 	trayCallbackMessage = win.WM_APP + 0x52
 	trayMenuShowID      = 1001
 	trayMenuQuitID      = 1002
+	dwmAttrCornerPref   = 33
+	dwmCornerRoundSmall = 3
 )
 
 var (
 	desktopWndProcPtr  uintptr
 	desktopWndProcOnce sync.Once
 	desktopShells      sync.Map // map[win.HWND]*desktopShell
+	dwmSetWindowAttr   = windows.NewLazySystemDLL("dwmapi.dll").NewProc("DwmSetWindowAttribute")
 )
 
 type desktopShell struct {
@@ -159,10 +162,29 @@ func (s *desktopShell) enableCustomTitleBar() {
 	if style == 0 {
 		return
 	}
-	style &^= win.WS_CAPTION
+	style &^= (win.WS_CAPTION | win.WS_BORDER | win.WS_DLGFRAME)
 	style |= win.WS_THICKFRAME | win.WS_SYSMENU | win.WS_MINIMIZEBOX | win.WS_MAXIMIZEBOX
 	win.SetWindowLong(s.hwnd, win.GWL_STYLE, int32(style))
+	exStyle := uint32(win.GetWindowLong(s.hwnd, win.GWL_EXSTYLE))
+	if exStyle != 0 {
+		exStyle &^= (win.WS_EX_WINDOWEDGE | win.WS_EX_CLIENTEDGE | win.WS_EX_STATICEDGE)
+		win.SetWindowLong(s.hwnd, win.GWL_EXSTYLE, int32(exStyle))
+	}
 	win.SetWindowPos(s.hwnd, 0, 0, 0, 0, 0, win.SWP_NOMOVE|win.SWP_NOSIZE|win.SWP_NOZORDER|win.SWP_NOACTIVATE|win.SWP_FRAMECHANGED)
+	applyRoundedCorners(s.hwnd)
+}
+
+func applyRoundedCorners(hwnd win.HWND) {
+	if err := dwmSetWindowAttr.Find(); err != nil {
+		return
+	}
+	preference := uint32(dwmCornerRoundSmall)
+	_, _, _ = dwmSetWindowAttr.Call(
+		uintptr(hwnd),
+		uintptr(dwmAttrCornerPref),
+		uintptr(unsafe.Pointer(&preference)),
+		uintptr(unsafe.Sizeof(preference)),
+	)
 }
 
 func (s *desktopShell) windowState() desktopWindowState {
