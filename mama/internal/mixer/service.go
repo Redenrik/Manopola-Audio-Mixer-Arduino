@@ -56,6 +56,16 @@ type Status struct {
 	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
+const adjustFlushInterval = 20 * time.Millisecond
+
+type pendingAdjust struct {
+	mapping config.Mapping
+	step    float64
+	delta   int
+	knobID  int
+	debug   bool
+}
+
 type Service struct {
 	backend audio.Backend
 	metrics *runtime.Metrics
@@ -264,6 +274,9 @@ func (s *Service) Run(ctx context.Context) error {
 func (s *Service) runSession(parent context.Context, reader *serialx.Reader, port string, baud int) error {
 	lines := make(chan string, 128)
 	readErrC := make(chan error, 1)
+	flushTicker := time.NewTicker(adjustFlushInterval)
+	defer flushTicker.Stop()
+	pendingAdjusts := make(map[int]pendingAdjust)
 
 	ctx, cancel := context.WithCancel(parent)
 	closeOnce := sync.OnceFunc(func() {
@@ -283,17 +296,41 @@ func (s *Service) runSession(parent context.Context, reader *serialx.Reader, por
 		readErrC <- reader.ReadLines(ctx, lines)
 	}()
 
+	flushPending := func() {
+		if len(pendingAdjusts) == 0 {
+			return
+		}
+		knobIDs := make([]int, 0, len(pendingAdjusts))
+		for knobID := range pendingAdjusts {
+			knobIDs = append(knobIDs, knobID)
+		}
+		sort.Ints(knobIDs)
+		for _, knobID := range knobIDs {
+			entry := pendingAdjusts[knobID]
+			delete(pendingAdjusts, knobID)
+			if entry.delta == 0 {
+				continue
+			}
+			s.applyAdjust(entry.mapping, entry.step, entry.delta, entry.knobID, entry.debug)
+		}
+	}
+
 	for {
 		select {
+		case <-flushTicker.C:
+			flushPending()
 		case <-ctx.Done():
+			flushPending()
 			return ctx.Err()
 		case err := <-readErrC:
+			flushPending()
 			if err != nil {
 				return err
 			}
 			return nil
 		case line, ok := <-lines:
 			if !ok {
+				flushPending()
 				select {
 				case err := <-readErrC:
 					if err != nil {
@@ -381,79 +418,92 @@ func (s *Service) runSession(parent context.Context, reader *serialx.Reader, por
 
 			switch ev.Kind {
 			case proto.EventEncoderDelta:
-				step := effectiveAdjustStep(m)
-				if err := s.backend.Adjust(m.Target, backendTargetName(m), step, ev.Delta); err != nil {
-					if errors.Is(err, audio.ErrTargetUnavailable) {
-						if cfg.Debug {
-							runtime.Log("target_unavailable", runtime.Fields{"knob_id": ev.KnobID, "operation": "adjust"})
-						}
-						handled, fallbackErr := s.tryFallbackAdjust(m, step, ev.Delta, ev.KnobID, cfg.Debug)
-						if handled {
-							if fallbackErr != nil {
-								s.metrics.IncBackendFailures()
-								s.publish(Event{
-									Type:    EventTypeError,
-									Time:    time.Now().UTC(),
-									Kind:    "encoder_delta",
-									KnobID:  ev.KnobID,
-									Message: "fallback adjust failed",
-									Error:   fallbackErr.Error(),
-								})
-							}
-						}
-						continue
-					}
-					s.metrics.IncBackendFailures()
-					s.publish(Event{
-						Type:    EventTypeError,
-						Time:    time.Now().UTC(),
-						Kind:    "encoder_delta",
-						KnobID:  ev.KnobID,
-						Message: "backend adjust failed",
-						Error:   err.Error(),
-					})
-					if cfg.Debug {
-						runtime.Log("backend_error", runtime.Fields{"error": err, "knob_id": ev.KnobID, "operation": "adjust"})
-					}
-				}
+				entry := pendingAdjusts[ev.KnobID]
+				entry.mapping = m
+				entry.step = effectiveAdjustStep(m)
+				entry.delta += ev.Delta
+				entry.knobID = ev.KnobID
+				entry.debug = cfg.Debug
+				pendingAdjusts[ev.KnobID] = entry
 			case proto.EventButtonPress:
-				if err := s.backend.ToggleMute(m.Target, backendTargetName(m)); err != nil {
-					if errors.Is(err, audio.ErrTargetUnavailable) {
-						if cfg.Debug {
-							runtime.Log("target_unavailable", runtime.Fields{"knob_id": ev.KnobID, "operation": "toggle_mute"})
-						}
-						handled, fallbackErr := s.tryFallbackToggle(m, ev.KnobID, cfg.Debug)
-						if handled {
-							if fallbackErr != nil {
-								s.metrics.IncBackendFailures()
-								s.publish(Event{
-									Type:    EventTypeError,
-									Time:    time.Now().UTC(),
-									Kind:    "button_press",
-									KnobID:  ev.KnobID,
-									Message: "fallback mute toggle failed",
-									Error:   fallbackErr.Error(),
-								})
-							}
-						}
-						continue
-					}
-					s.metrics.IncBackendFailures()
-					s.publish(Event{
-						Type:    EventTypeError,
-						Time:    time.Now().UTC(),
-						Kind:    "button_press",
-						KnobID:  ev.KnobID,
-						Message: "backend mute toggle failed",
-						Error:   err.Error(),
-					})
-					if cfg.Debug {
-						runtime.Log("backend_error", runtime.Fields{"error": err, "knob_id": ev.KnobID, "operation": "toggle_mute"})
-					}
-				}
+				flushPending()
+				s.applyToggle(m, ev.KnobID, cfg.Debug)
 			default:
 				s.metrics.IncDroppedEvents()
 			}
+		}
+	}
+}
+
+func (s *Service) applyAdjust(m config.Mapping, step float64, delta int, knobID int, debug bool) {
+	if delta == 0 {
+		return
+	}
+	if err := s.backend.Adjust(m.Target, backendTargetName(m), step, delta); err != nil {
+		if errors.Is(err, audio.ErrTargetUnavailable) {
+			if debug {
+				runtime.Log("target_unavailable", runtime.Fields{"knob_id": knobID, "operation": "adjust"})
+			}
+			handled, fallbackErr := s.tryFallbackAdjust(m, step, delta, knobID, debug)
+			if handled && fallbackErr != nil {
+				s.metrics.IncBackendFailures()
+				s.publish(Event{
+					Type:    EventTypeError,
+					Time:    time.Now().UTC(),
+					Kind:    "encoder_delta",
+					KnobID:  knobID,
+					Message: "fallback adjust failed",
+					Error:   fallbackErr.Error(),
+				})
+			}
+			return
+		}
+		s.metrics.IncBackendFailures()
+		s.publish(Event{
+			Type:    EventTypeError,
+			Time:    time.Now().UTC(),
+			Kind:    "encoder_delta",
+			KnobID:  knobID,
+			Message: "backend adjust failed",
+			Error:   err.Error(),
+		})
+		if debug {
+			runtime.Log("backend_error", runtime.Fields{"error": err, "knob_id": knobID, "operation": "adjust"})
+		}
+	}
+}
+
+func (s *Service) applyToggle(m config.Mapping, knobID int, debug bool) {
+	if err := s.backend.ToggleMute(m.Target, backendTargetName(m)); err != nil {
+		if errors.Is(err, audio.ErrTargetUnavailable) {
+			if debug {
+				runtime.Log("target_unavailable", runtime.Fields{"knob_id": knobID, "operation": "toggle_mute"})
+			}
+			handled, fallbackErr := s.tryFallbackToggle(m, knobID, debug)
+			if handled && fallbackErr != nil {
+				s.metrics.IncBackendFailures()
+				s.publish(Event{
+					Type:    EventTypeError,
+					Time:    time.Now().UTC(),
+					Kind:    "button_press",
+					KnobID:  knobID,
+					Message: "fallback mute toggle failed",
+					Error:   fallbackErr.Error(),
+				})
+			}
+			return
+		}
+		s.metrics.IncBackendFailures()
+		s.publish(Event{
+			Type:    EventTypeError,
+			Time:    time.Now().UTC(),
+			Kind:    "button_press",
+			KnobID:  knobID,
+			Message: "backend mute toggle failed",
+			Error:   err.Error(),
+		})
+		if debug {
+			runtime.Log("backend_error", runtime.Fields{"error": err, "knob_id": knobID, "operation": "toggle_mute"})
 		}
 	}
 }

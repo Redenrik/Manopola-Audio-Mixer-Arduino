@@ -19,8 +19,9 @@ There is no separate runtime/UI executable requirement for end users.
 - Runtime engine and UI server run in the same process.
 - Config changes in the UI are applied live without restart.
 - On Windows, desktop mode is enabled by default (embedded window + tray).
-- On macOS/Linux, desktop mode runs in browser-shell form (local HTTP UI + runtime loop).
-- On macOS/Linux desktop mode includes native tray/menu-bar controls (platform desktop session required).
+- On macOS, desktop mode runs in an embedded native window.
+- On Linux, desktop mode runs in browser-shell form (local HTTP UI + runtime loop) with native tray controls.
+- Runtime coalesces rapid encoder deltas in short intervals before backend apply to reduce lag under fast knob turns.
 
 ## Data Flow
 
@@ -88,3 +89,4 @@ Advanced portable assets are also published for architecture-specific workflows.
 
 - Native Windows arm64 build is not officially supported yet.
 - Hardware-in-loop validation is still a required manual release gate.
+- Dedicated macOS app/group session control is scoped as next-step work in [COREAUDIO_SESSION_BACKEND_SCOPE.md](COREAUDIO_SESSION_BACKEND_SCOPE.md).

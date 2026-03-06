@@ -15,12 +15,18 @@ type Backend interface {
 	ListTargets() ([]DiscoveredTarget, error)
 }
 
+type TargetCapabilities struct {
+	Volume *bool `json:"volume,omitempty"`
+	Mute   *bool `json:"mute,omitempty"`
+}
+
 type DiscoveredTarget struct {
-	ID       string            `json:"id"`
-	Type     config.TargetType `json:"type"`
-	Name     string            `json:"name,omitempty"`
-	Selector string            `json:"selector,omitempty"`
-	Aliases  []string          `json:"aliases,omitempty"`
+	ID           string              `json:"id"`
+	Type         config.TargetType   `json:"type"`
+	Name         string              `json:"name,omitempty"`
+	Selector     string              `json:"selector,omitempty"`
+	Aliases      []string            `json:"aliases,omitempty"`
+	Capabilities *TargetCapabilities `json:"capabilities,omitempty"`
 }
 
 type TargetState struct {

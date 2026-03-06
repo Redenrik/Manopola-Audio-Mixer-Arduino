@@ -8,6 +8,7 @@ require (
 	github.com/itchyny/volume-go v0.2.2
 	github.com/jchv/go-webview2 v0.0.0-20260205173254-56598839c808
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e
+	github.com/webview/webview_go v0.0.0-20240831120633-6173450d4dd6
 	go.bug.st/serial v1.6.2
 	golang.org/x/sys v0.1.0
 	gopkg.in/yaml.v3 v3.0.1

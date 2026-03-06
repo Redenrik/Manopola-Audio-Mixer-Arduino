@@ -5,7 +5,8 @@ usage() {
   cat <<'USAGE'
 Usage: scripts/release/package-macos-universal.sh <out_dir>
 
-Builds a universal2 (amd64+arm64) macOS portable MAMA directory.
+Builds a universal2 (amd64+arm64) macOS portable MAMA directory
+including a launchable MAMA.app bundle.
 USAGE
 }
 
@@ -42,10 +43,54 @@ cp "${MAMA_DIR}/internal/config/default.yaml" "${OUT_DIR}/config.yaml"
 cp "${MAMA_DIR}/assets/icons/mama-app.png" "${OUT_DIR}/mama-app.png"
 cp "${MAMA_DIR}/assets/icons/mama-tray.png" "${OUT_DIR}/mama-tray.png"
 
+APP_DIR="${OUT_DIR}/MAMA.app"
+APP_CONTENTS="${APP_DIR}/Contents"
+APP_MACOS="${APP_CONTENTS}/MacOS"
+APP_RESOURCES="${APP_CONTENTS}/Resources"
+mkdir -p "${APP_MACOS}" "${APP_RESOURCES}"
+
+cp "${OUT_DIR}/mama" "${APP_MACOS}/MAMA"
+cp "${OUT_DIR}/config.yaml" "${APP_MACOS}/config.yaml"
+cp "${OUT_DIR}/mama-app.png" "${APP_MACOS}/mama-app.png"
+cp "${OUT_DIR}/mama-tray.png" "${APP_MACOS}/mama-tray.png"
+
+cat > "${APP_CONTENTS}/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>MAMA</string>
+  <key>CFBundleDisplayName</key>
+  <string>MAMA Audio Mixer</string>
+  <key>CFBundleIdentifier</key>
+  <string>io.mama.mixer.app</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0.0</string>
+  <key>CFBundleExecutable</key>
+  <string>MAMA</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>11.0</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+</dict>
+</plist>
+PLIST
+
+touch "${APP_DIR}"
+
 cat > "${OUT_DIR}/Open Setup UI.command" <<'LAUNCH_UI'
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
+if [[ -d "./MAMA.app" ]]; then
+  exec open -a "./MAMA.app" --args "$@"
+fi
 exec ./mama "$@"
 LAUNCH_UI
 
@@ -100,3 +145,4 @@ exit 1
 STOP_MIXER
 
 chmod +x "${OUT_DIR}/mama" "${OUT_DIR}/Open Setup UI.command" "${OUT_DIR}/Start Mixer.command" "${OUT_DIR}/Stop Mixer.command"
+chmod +x "${APP_MACOS}/MAMA"

@@ -188,6 +188,20 @@ func (b *baseBackend) ListTargets() ([]DiscoveredTarget, error) {
 	return targets, nil
 }
 
+func (b *baseBackend) supportedTargetTypes() []config.TargetType {
+	types := []config.TargetType{config.TargetMasterOut}
+	if b.mic != nil {
+		types = append(types, config.TargetMicIn)
+	}
+	if b.lineIn != nil {
+		types = append(types, config.TargetLineIn)
+	}
+	if b.app != nil {
+		types = append(types, config.TargetApp, config.TargetGroup)
+	}
+	return types
+}
+
 func parseSelectorToken(token string) config.Selector {
 	kind := config.SelectorExact
 	value := strings.TrimSpace(token)

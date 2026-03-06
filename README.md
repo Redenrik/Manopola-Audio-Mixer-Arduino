@@ -41,7 +41,7 @@ Advanced/power-user assets:
 1. Preferred: install with `MAMA-macOS.pkg` (macOS) or `MAMA-Linux.deb` (Linux).
 2. Alternative: extract `MAMA-macOS.tar.gz` or `MAMA-Linux.tar.gz` to a writable folder.
 3. Start setup UI launcher:
-   - macOS: `Open Setup UI.command`
+   - macOS: `MAMA.app` (double-click, no terminal)
    - Linux: `open-setup-ui.sh`
 4. Configure serial + mappings, then save.
 5. Optional runtime launcher:
@@ -52,11 +52,15 @@ Advanced/power-user assets:
    - Linux: `stop-mixer.sh`
 
 Notes:
-- macOS/Linux use desktop-shell runtime mode with a local browser UI (`http://127.0.0.1:18765`).
+- Windows/macOS use embedded desktop-shell UI windows.
+- Linux uses desktop-shell runtime mode with a local browser UI (`http://127.0.0.1:18765`).
 - `Start Mixer` / `start-mixer.sh` launches MAMA in background and stores PID in `.mama.pid`.
 - `Stop Mixer` / `stop-mixer.sh` uses `.mama.pid` to stop background runtime.
 - Windows uses embedded desktop UI + tray by default.
-- macOS/Linux use native tray/menu-bar controls in desktop mode.
+- Linux uses native tray controls in desktop mode.
+- On macOS, `mic_in`/`line_in` control the default system input level.
+- On macOS, `app`/`group` session targets depend on an available per-app audio backend and may be unavailable.
+- On macOS, programmatic master-volume updates do not trigger the keyboard volume HUD overlay.
 - Startup-at-login can be enabled from Settings on Windows, macOS, and Linux.
 
 ## Hardware and Firmware
@@ -97,8 +101,8 @@ Key flags:
 - `-config` path to YAML config
 - `-listen` HTTP bind (default `127.0.0.1:18765`)
 - `-open` auto-open browser UI
-- `-desktop` desktop shell mode (embedded shell on Windows, browser shell on macOS/Linux)
-- `-start-hidden` start hidden shell (Windows: tray hidden; macOS/Linux: runtime starts without opening browser)
+- `-desktop` desktop shell mode (embedded shell on Windows/macOS, browser shell on Linux)
+- `-start-hidden` start hidden shell (Windows: tray hidden; Linux: runtime starts without opening browser; macOS embedded mode starts minimized)
 
 ## Developer Quick Start
 

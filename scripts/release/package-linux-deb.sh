@@ -38,8 +38,11 @@ if [[ ! -d "${PORTABLE_DIR}" ]]; then
   exit 1
 fi
 
-if ! command -v dpkg-deb >/dev/null 2>&1; then
-  echo "dpkg-deb not found (required for .deb packaging)" >&2
+HAS_DPKG_DEB=false
+if command -v dpkg-deb >/dev/null 2>&1; then
+  HAS_DPKG_DEB=true
+elif ! command -v ar >/dev/null 2>&1 || ! command -v tar >/dev/null 2>&1; then
+  echo "dpkg-deb not found and ar/tar fallback tools are unavailable" >&2
   exit 1
 fi
 
@@ -115,5 +118,31 @@ Categories=AudioVideo;Audio;
 DESKTOP
 
 mkdir -p "$(dirname "${OUTPUT_DEB}")"
-dpkg-deb --build "${PKG_ROOT}" "${OUTPUT_DEB}"
+if [[ "${HAS_DPKG_DEB}" == "true" ]]; then
+  dpkg-deb --build "${PKG_ROOT}" "${OUTPUT_DEB}"
+else
+  echo "dpkg-deb not found; using ar/tar fallback for .deb packaging"
+  FALLBACK_DIR="${TMP_DIR}/fallback"
+  mkdir -p "${FALLBACK_DIR}/control" "${FALLBACK_DIR}/data"
+
+  cp -a "${PKG_ROOT}/DEBIAN/." "${FALLBACK_DIR}/control/"
+  cp -a "${PKG_ROOT}/." "${FALLBACK_DIR}/data/"
+  rm -rf "${FALLBACK_DIR}/data/DEBIAN"
+
+  printf '2.0\n' > "${FALLBACK_DIR}/debian-binary"
+  (
+    cd "${FALLBACK_DIR}/control"
+    tar -czf "${FALLBACK_DIR}/control.tar.gz" .
+  )
+  (
+    cd "${FALLBACK_DIR}/data"
+    tar -czf "${FALLBACK_DIR}/data.tar.gz" .
+  )
+
+  rm -f "${OUTPUT_DEB}"
+  (
+    cd "${FALLBACK_DIR}"
+    ar r "${OUTPUT_DEB}" debian-binary control.tar.gz data.tar.gz
+  )
+fi
 echo "Linux installer package ready at: ${OUTPUT_DEB}"

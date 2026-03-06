@@ -548,6 +548,12 @@ func (s *Server) handlePortAutoDetect(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleTargets(w http.ResponseWriter, r *http.Request) {
 	knownTargets := config.KnownTargets()
+	availableTargets := knownTargets
+	if provider, ok := s.backend.(interface{ SupportedTargetTypes() []config.TargetType }); ok {
+		if supported := provider.SupportedTargetTypes(); len(supported) > 0 {
+			availableTargets = supported
+		}
+	}
 	discovered, err := s.backend.ListTargets()
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -559,16 +565,85 @@ func (s *Server) handleTargets(w http.ResponseWriter, r *http.Request) {
 		known = append(known, string(t))
 	}
 
+	available := make([]string, 0, len(availableTargets))
+	for _, t := range availableTargets {
+		available = append(available, string(t))
+	}
+
 	supported := make([]string, 0, len(discovered))
 	for _, t := range discovered {
 		supported = append(supported, t.ID)
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"known":      known,
-		"supported":  supported,
-		"discovered": discovered,
-	})
+	resp := map[string]any{
+		"known":          known,
+		"availableTypes": available,
+		"supported":      supported,
+		"discovered":     discovered,
+	}
+	if diagnostics := summarizeTargetsDiagnostics(discovered); diagnostics != nil {
+		resp["diagnostics"] = diagnostics
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+type targetsDiagnostics struct {
+	AppSessions *appSessionDiagnostics `json:"appSessions,omitempty"`
+}
+
+type appSessionDiagnostics struct {
+	Total               int `json:"total"`
+	WithCapabilities    int `json:"withCapabilities,omitempty"`
+	UnknownCapabilities int `json:"unknownCapabilities,omitempty"`
+	VolumeSupported     int `json:"volumeSupported,omitempty"`
+	MuteSupported       int `json:"muteSupported,omitempty"`
+	FullySupported      int `json:"fullySupported,omitempty"`
+	WriteUnsupported    int `json:"writeUnsupported,omitempty"`
+}
+
+func summarizeTargetsDiagnostics(discovered []audio.DiscoveredTarget) *targetsDiagnostics {
+	summary := appSessionDiagnostics{}
+	hasAppTargets := false
+
+	for _, target := range discovered {
+		if target.Type != config.TargetApp {
+			continue
+		}
+		hasAppTargets = true
+		summary.Total++
+		if target.Capabilities == nil {
+			continue
+		}
+		summary.WithCapabilities++
+
+		volumeKnown := target.Capabilities.Volume != nil
+		volumeSupported := volumeKnown && *target.Capabilities.Volume
+		muteKnown := target.Capabilities.Mute != nil
+		muteSupported := muteKnown && *target.Capabilities.Mute
+
+		if volumeSupported {
+			summary.VolumeSupported++
+		}
+		if muteSupported {
+			summary.MuteSupported++
+		}
+		if volumeSupported && muteSupported {
+			summary.FullySupported++
+		}
+		if (volumeKnown && !volumeSupported) || (muteKnown && !muteSupported) {
+			summary.WriteUnsupported++
+		}
+	}
+
+	if !hasAppTargets {
+		return nil
+	}
+	summary.UnknownCapabilities = summary.Total - summary.WithCapabilities
+
+	return &targetsDiagnostics{
+		AppSessions: &summary,
+	}
 }
 
 func (s *Server) handleStartup(w http.ResponseWriter, r *http.Request) {

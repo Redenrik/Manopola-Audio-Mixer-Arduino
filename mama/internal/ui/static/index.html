@@ -4017,6 +4017,7 @@
       const fallbackTarget = document.createElement("select");
       fallbackTarget.className = "map-fallback-target";
       fallbackTarget.setAttribute("aria-label", "Fallback target");
+      const knownTargets = new Set(state.knownTargets || []);
       const fallbackOptions = [
         { value: "", label: t("fallbackNone") },
         { value: "master_out", label: targetLabel("master_out") },
@@ -4026,6 +4027,7 @@
         { value: "group", label: targetLabel("group") }
       ];
       for (const entry of fallbackOptions) {
+        if (entry.value && !knownTargets.has(entry.value)) continue;
         const option = document.createElement("option");
         option.value = entry.value;
         option.textContent = entry.label;
@@ -4656,7 +4658,9 @@
     function applyTargetsPayload(body, options = {}) {
       const discovered = Array.isArray(body && body.discovered) ? body.discovered : [];
       state.discoveredTargets = discovered;
-      if (Array.isArray(body && body.known) && body.known.length > 0) {
+      if (Array.isArray(body && body.availableTypes) && body.availableTypes.length > 0) {
+        state.knownTargets = body.availableTypes;
+      } else if (Array.isArray(body && body.known) && body.known.length > 0) {
         state.knownTargets = body.known;
       } else if (discovered.length > 0) {
         const discoveredTypes = Array.from(new Set(discovered
@@ -5560,4 +5564,3 @@
   </script>
 </body>
 </html>
-

@@ -30,7 +30,7 @@ func main() {
 	flag.StringVar(&cfgPath, "config", "", "path to config yaml (default: auto)")
 	flag.StringVar(&listenAddr, "listen", "127.0.0.1:18765", "HTTP listen address")
 	flag.BoolVar(&openBrowser, "open", true, "open web UI in default browser")
-	flag.BoolVar(&desktopMode, "desktop", defaultDesktopMode(), "use desktop shell mode (embedded shell on Windows, browser shell on macOS/Linux)")
+	flag.BoolVar(&desktopMode, "desktop", defaultDesktopMode(), "use desktop shell mode (embedded shell on Windows/macOS, browser shell on Linux)")
 	flag.BoolVar(&startHidden, "start-hidden", false, "start desktop shell hidden (where supported)")
 	flag.Parse()
 

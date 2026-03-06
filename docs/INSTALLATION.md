@@ -25,7 +25,7 @@ Download from the latest release:
 ### macOS (Recommended Installer)
 
 1. Open `MAMA-macOS.pkg` and complete installation.
-2. Launch setup from `/Applications/MAMA/Open Setup UI.command`.
+2. Launch `MAMA.app` from `/Applications`.
 3. Configure serial + mappings and save.
 
 ### Linux (Recommended Installer)
@@ -51,11 +51,14 @@ Download from the latest release:
    - Linux: `stop-mixer.sh`
 
 Notes:
-- On macOS/Linux the app runs in desktop-shell browser mode (`127.0.0.1` only).
-- In desktop mode, macOS/Linux provide tray/menu-bar controls (desktop session required).
+- On macOS, desktop mode runs in an embedded app window.
+- On Linux, desktop mode runs in browser-shell mode (`127.0.0.1` only) with tray controls.
 - `Start Mixer` / `start-mixer.sh` disables auto-open browser and runs MAMA in background.
 - background PID is written to `.mama.pid` in the package folder.
 - `Stop Mixer` / `stop-mixer.sh` stops the PID tracked in `.mama.pid`.
+- On macOS, `mic_in`/`line_in` adjust the default input device level.
+- On macOS, `app`/`group` targets may be unavailable when no per-app session backend is present.
+- On macOS, system-volume changes made by MAMA do not show the keyboard volume HUD overlay.
 - Startup-at-login can be enabled from the app Settings page (Windows/macOS/Linux).
 
 ## Maintainers: Build Release Artifacts
@@ -77,6 +80,8 @@ bash scripts/release/package-portable.sh linux amd64 dist/MAMA-Linux
 tar -C dist -czf dist/MAMA-Linux.tar.gz MAMA-Linux
 bash scripts/release/package-linux-deb.sh dist/MAMA-Linux v1.0.0 dist/MAMA-Linux.deb
 ```
+
+`package-linux-deb.sh` uses `dpkg-deb` when available, and falls back to `ar` + `tar` on hosts where `dpkg-deb` is not installed.
 
 Optional advanced Linux arm64:
 

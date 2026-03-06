@@ -1,32 +1,26 @@
 serial:
-  port: "COM3"     # Windows example. On Linux: /dev/ttyACM0 or /dev/ttyUSB0
-  baud: 115200
-
-debug: false
-
-# Target availability depends on platform/backend:
-# - master_out: available on all supported hosts
-# - mic_in / line_in: available when capture endpoints are exposed by the OS
-# - app / group: available when per-app audio sessions are available and active
-# Keep defaults on master_out so first run works end-to-end everywhere.
-# step = volume change per encoder "click" (0.01 = 1%, 0.02 = 2%, etc.)
+    port: /dev/cu.usbserial-110
+    baud: 115200
 mappings:
-  - knob: 1
-    target: master_out
-    step: 0.02
-
-  - knob: 2
-    target: master_out
-    step: 0.02
-
-  - knob: 3
-    target: master_out
-    step: 0.02
-
-  - knob: 4
-    target: master_out
-    step: 0.02
-
-  - knob: 5
-    target: master_out
-    step: 0.02
+    - knob: 1
+      target: master_out
+      step: 0.02
+      sensitivity: normal
+    - knob: 2
+      target: mic_in
+      step: 0.02
+      sensitivity: normal
+    - knob: 3
+      target: master_out
+      step: 0.02
+      sensitivity: normal
+    - knob: 4
+      target: master_out
+      step: 0.02
+      sensitivity: normal
+    - knob: 5
+      target: master_out
+      step: 0.02
+      sensitivity: normal
+default_template: universal
+debug: false

@@ -6,6 +6,7 @@ usage() {
 Usage: scripts/release/package-macos-pkg.sh <portable_dir> <version> <output_pkg>
 
 Builds a macOS .pkg installer from a macOS portable MAMA directory.
+Installs /Applications/MAMA.app.
 USAGE
 }
 
@@ -36,6 +37,10 @@ if [[ ! -d "${PORTABLE_DIR}" ]]; then
   echo "portable directory not found: ${PORTABLE_DIR}" >&2
   exit 1
 fi
+if [[ ! -d "${PORTABLE_DIR}/MAMA.app" ]]; then
+  echo "portable directory is missing MAMA.app: ${PORTABLE_DIR}/MAMA.app" >&2
+  exit 1
+fi
 
 if ! command -v pkgbuild >/dev/null 2>&1; then
   echo "pkgbuild not found (required for .pkg packaging)" >&2
@@ -54,14 +59,30 @@ cleanup() {
 trap cleanup EXIT
 
 PAYLOAD_ROOT="${TMP_DIR}/payload"
-mkdir -p "${PAYLOAD_ROOT}/Applications/MAMA"
-cp -a "${PORTABLE_DIR}/." "${PAYLOAD_ROOT}/Applications/MAMA/"
+SCRIPTS_DIR="${TMP_DIR}/scripts"
+mkdir -p "${PAYLOAD_ROOT}/Applications" "${SCRIPTS_DIR}"
+cp -a "${PORTABLE_DIR}/MAMA.app" "${PAYLOAD_ROOT}/Applications/MAMA.app"
+
+cat > "${SCRIPTS_DIR}/preinstall" <<'PREINSTALL'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Cleanup legacy folder install layout to avoid duplicate launch entries.
+legacy_dir="/Applications/MAMA"
+if [[ -d "${legacy_dir}" ]]; then
+  if [[ -f "${legacy_dir}/mama" && -f "${legacy_dir}/Open Setup UI.command" ]]; then
+    rm -rf "${legacy_dir}"
+  fi
+fi
+PREINSTALL
+chmod +x "${SCRIPTS_DIR}/preinstall"
 
 mkdir -p "$(dirname "${OUTPUT_PKG}")"
 pkgbuild \
   --root "${PAYLOAD_ROOT}" \
-  --identifier "io.mama.mixer.installer" \
+  --identifier "io.mama.mixer.app.installer" \
   --version "${VERSION}" \
+  --scripts "${SCRIPTS_DIR}" \
   --install-location "/" \
   "${OUTPUT_PKG}"
 
