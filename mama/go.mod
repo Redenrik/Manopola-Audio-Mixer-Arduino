@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/getlantern/systray v1.2.2
-	github.com/go-ole/go-ole v1.2.6
+	github.com/go-ole/go-ole v1.3.0
 	github.com/itchyny/volume-go v0.2.2
 	github.com/jchv/go-webview2 v0.0.0-20260205173254-56598839c808
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e
