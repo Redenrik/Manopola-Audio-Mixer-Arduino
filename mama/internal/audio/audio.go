@@ -43,3 +43,8 @@ func NewBackend() Backend {
 func Unsupported(target config.TargetType) error {
 	return fmt.Errorf("target not supported yet: %s", target)
 }
+
+func boolPtr(value bool) *bool {
+	out := value
+	return &out
+}

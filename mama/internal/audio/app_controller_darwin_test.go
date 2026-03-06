@@ -11,14 +11,6 @@ import (
 
 type fakeCoreAudioBridge struct {
 	processes []coreAudioProcessInfo
-
-	volume          map[uint32]int
-	mute            map[uint32]bool
-	volumeSupported map[uint32]bool
-	muteSupported   map[uint32]bool
-
-	setVolumeCalls []uint32
-	setMuteCalls   []uint32
 }
 
 func (f *fakeCoreAudioBridge) ListProcesses() ([]coreAudioProcessInfo, error) {
@@ -27,30 +19,89 @@ func (f *fakeCoreAudioBridge) ListProcesses() ([]coreAudioProcessInfo, error) {
 	return out, nil
 }
 
-func (f *fakeCoreAudioBridge) GetProcessVolume(processObjectID uint32) (int, bool, error) {
-	return f.volume[processObjectID], f.volumeSupported[processObjectID], nil
+type fakeDarwinTapBridge struct {
+	supported bool
+	states    map[string]darwinTapState
+
+	ensureCalls   []darwinTapTarget
+	setGainCalls  map[string]int
+	setMutedCalls map[string]bool
 }
 
-func (f *fakeCoreAudioBridge) SetProcessVolume(processObjectID uint32, volume int) (bool, error) {
-	if !f.volumeSupported[processObjectID] {
-		return false, nil
+func (f *fakeDarwinTapBridge) Supported() bool {
+	return f.supported
+}
+
+func (f *fakeDarwinTapBridge) EnsureTap(target darwinTapTarget) error {
+	f.ensureCalls = append(f.ensureCalls, target)
+	state := f.ReadVirtualState(target.Key)
+	state.Wanted = true
+	state.Attached = true
+	f.saveState(target.Key, state)
+	return nil
+}
+
+func (f *fakeDarwinTapBridge) ReleaseTap(sessionKey string) error {
+	state := f.ReadVirtualState(sessionKey)
+	state.Attached = false
+	state.Wanted = false
+	f.saveState(sessionKey, state)
+	return nil
+}
+
+func (f *fakeDarwinTapBridge) SetGain(sessionKey string, volume int) error {
+	if f.setGainCalls == nil {
+		f.setGainCalls = map[string]int{}
 	}
-	f.volume[processObjectID] = volume
-	f.setVolumeCalls = append(f.setVolumeCalls, processObjectID)
-	return true, nil
+	state := f.ReadVirtualState(sessionKey)
+	state.Volume = clampPercent(volume)
+	state.Attached = true
+	state.Wanted = true
+	f.setGainCalls[sessionKey] = state.Volume
+	f.saveState(sessionKey, state)
+	return nil
 }
 
-func (f *fakeCoreAudioBridge) GetProcessMute(processObjectID uint32) (bool, bool, error) {
-	return f.mute[processObjectID], f.muteSupported[processObjectID], nil
-}
-
-func (f *fakeCoreAudioBridge) SetProcessMute(processObjectID uint32, muted bool) (bool, error) {
-	if !f.muteSupported[processObjectID] {
-		return false, nil
+func (f *fakeDarwinTapBridge) SetMuted(sessionKey string, muted bool) error {
+	if f.setMutedCalls == nil {
+		f.setMutedCalls = map[string]bool{}
 	}
-	f.mute[processObjectID] = muted
-	f.setMuteCalls = append(f.setMuteCalls, processObjectID)
-	return true, nil
+	state := f.ReadVirtualState(sessionKey)
+	state.Muted = muted
+	state.Attached = true
+	state.Wanted = true
+	f.setMutedCalls[sessionKey] = muted
+	f.saveState(sessionKey, state)
+	return nil
+}
+
+func (f *fakeDarwinTapBridge) ReadVirtualState(sessionKey string) darwinTapState {
+	if f.states == nil {
+		f.states = map[string]darwinTapState{}
+	}
+	if state, ok := f.states[sessionKey]; ok {
+		return state
+	}
+	return darwinTapState{Volume: 100}
+}
+
+func (f *fakeDarwinTapBridge) Reconcile(targets []darwinTapTarget) error {
+	return nil
+}
+
+func (f *fakeDarwinTapBridge) Stats(sessionKey string) (darwinTapStats, error) {
+	state := f.ReadVirtualState(sessionKey)
+	if !state.Attached {
+		return darwinTapStats{}, errors.New("not attached")
+	}
+	return darwinTapStats{Attached: true, Callbacks: 1, Frames: 1024}, nil
+}
+
+func (f *fakeDarwinTapBridge) saveState(sessionKey string, state darwinTapState) {
+	if f.states == nil {
+		f.states = map[string]darwinTapState{}
+	}
+	f.states[sessionKey] = state
 }
 
 func TestDarwinAppControllerSelectAndAdjust(t *testing.T) {
@@ -62,12 +113,14 @@ func TestDarwinAppControllerSelectAndAdjust(t *testing.T) {
 			BundleID:       "com.spotify.client",
 			ExecutablePath: "/Applications/Spotify.app/Contents/MacOS/Spotify",
 		}},
-		volume:          map[uint32]int{10: 40},
-		mute:            map[uint32]bool{10: true},
-		volumeSupported: map[uint32]bool{10: true},
-		muteSupported:   map[uint32]bool{10: true},
 	}
-	controller := newDarwinAppSessionController(bridge)
+	tap := &fakeDarwinTapBridge{
+		supported: true,
+		states: map[string]darwinTapState{
+			"bundle:com.spotify.client": {Volume: 40, Muted: true},
+		},
+	}
+	controller := newDarwinAppSessionController(bridge, tap)
 
 	targets, err := controller.ListTargets()
 	if err != nil {
@@ -89,11 +142,16 @@ func TestDarwinAppControllerSelectAndAdjust(t *testing.T) {
 	if err := controller.Adjust("exe:spotify", 0.02, 2); err != nil {
 		t.Fatalf("Adjust error: %v", err)
 	}
-	if got := bridge.volume[10]; got != 44 {
-		t.Fatalf("volume=%d want 44", got)
+
+	const key = "bundle:com.spotify.client"
+	if got := tap.setGainCalls[key]; got != 44 {
+		t.Fatalf("gain=%d want 44", got)
 	}
-	if len(bridge.setMuteCalls) != 1 {
-		t.Fatalf("setMuteCalls=%v want one unmute", bridge.setMuteCalls)
+	if got, ok := tap.setMutedCalls[key]; !ok || got {
+		t.Fatalf("setMutedCalls[%q]=%v,%t want false,true", key, got, ok)
+	}
+	if got := len(tap.ensureCalls); got != 1 {
+		t.Fatalf("ensureCalls=%d want 1", got)
 	}
 }
 
@@ -106,12 +164,9 @@ func TestDarwinAppControllerGroupDedupAndUnsupported(t *testing.T) {
 			BundleID:       "com.discord.Discord",
 			ExecutablePath: "/Applications/Discord.app/Contents/MacOS/Discord",
 		}},
-		volume:          map[uint32]int{20: 55},
-		mute:            map[uint32]bool{20: false},
-		volumeSupported: map[uint32]bool{20: false},
-		muteSupported:   map[uint32]bool{20: true},
 	}
-	controller := newDarwinAppSessionController(bridge)
+	tap := &fakeDarwinTapBridge{supported: false}
+	controller := newDarwinAppSessionController(bridge, tap)
 
 	err := controller.AdjustGroup([]config.Selector{
 		{Kind: config.SelectorContains, Value: "discord"},
@@ -121,12 +176,11 @@ func TestDarwinAppControllerGroupDedupAndUnsupported(t *testing.T) {
 		t.Fatal("AdjustGroup expected unsupported error")
 	}
 	if !errors.Is(err, Unsupported(config.TargetGroup)) {
-		// Unsupported returns a formatted error; compare message for now.
 		if err.Error() != Unsupported(config.TargetGroup).Error() {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	}
-	if len(bridge.setVolumeCalls) != 0 {
-		t.Fatalf("setVolumeCalls=%v want none", bridge.setVolumeCalls)
+	if len(tap.ensureCalls) != 0 {
+		t.Fatalf("ensureCalls=%v want none", tap.ensureCalls)
 	}
 }

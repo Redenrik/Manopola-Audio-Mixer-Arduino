@@ -15,6 +15,7 @@ import (
 
 type darwinAppSession struct {
 	id            string
+	stateKey      string
 	processObject uint32
 	pid           int
 	name          string
@@ -32,6 +33,7 @@ type darwinAppSession struct {
 
 type darwinAppSessionController struct {
 	bridge          coreAudioBridge
+	tap             darwinTapBridge
 	refreshInterval time.Duration
 
 	mu       sync.Mutex
@@ -40,15 +42,19 @@ type darwinAppSessionController struct {
 }
 
 func newAppSessionController() appSessionController {
-	return newDarwinAppSessionController(newCoreAudioBridge())
+	return newDarwinAppSessionController(newCoreAudioBridge(), newDarwinTapBridge())
 }
 
-func newDarwinAppSessionController(bridge coreAudioBridge) *darwinAppSessionController {
+func newDarwinAppSessionController(bridge coreAudioBridge, tap darwinTapBridge) *darwinAppSessionController {
 	if bridge == nil {
 		bridge = newCoreAudioBridge()
 	}
+	if tap == nil {
+		tap = newDarwinTapBridge()
+	}
 	return &darwinAppSessionController{
 		bridge:          bridge,
+		tap:             tap,
 		refreshInterval: 250 * time.Millisecond,
 	}
 }
@@ -58,33 +64,28 @@ func (d *darwinAppSessionController) Adjust(selectorToken string, step float64, 
 	if err != nil {
 		return err
 	}
-	if !target.volumeCapable && !d.refreshVolumeState(&target) {
+	if !target.volumeCapable {
 		return Unsupported(config.TargetApp)
+	}
+	if err := d.tap.EnsureTap(target.tapTarget()); err != nil {
+		return d.mapWriteError(target.id, err)
 	}
 
 	next := target.volume + int(step*100*float64(deltaSteps))
-	if next < 0 {
-		next = 0
-	}
-	if next > 100 {
-		next = 100
-	}
+	next = clampPercent(next)
 
-	supported, err := d.bridge.SetProcessVolume(target.processObject, next)
-	if err != nil {
+	if err := d.tap.SetGain(target.stateKey, next); err != nil {
 		return d.mapWriteError(target.id, err)
-	}
-	if !supported {
-		return Unsupported(config.TargetApp)
 	}
 
 	updatedMuted := target.isMuted
 	if deltaSteps > 0 && target.isMuted && target.muteCapable {
-		_, _ = d.bridge.SetProcessMute(target.processObject, false)
-		updatedMuted = false
+		if err := d.tap.SetMuted(target.stateKey, false); err == nil {
+			updatedMuted = false
+		}
 	}
 
-	d.rememberWriteState(target.processObject, &next, &updatedMuted)
+	d.rememberWriteState(target.stateKey, &next, &updatedMuted)
 	return nil
 }
 
@@ -93,20 +94,19 @@ func (d *darwinAppSessionController) ToggleMute(selectorToken string) error {
 	if err != nil {
 		return err
 	}
-	if !target.muteCapable && !d.refreshMuteState(&target) {
+	if !target.muteCapable {
 		return Unsupported(config.TargetApp)
+	}
+	if err := d.tap.EnsureTap(target.tapTarget()); err != nil {
+		return d.mapWriteError(target.id, err)
 	}
 
 	next := !target.isMuted
-	supported, err := d.bridge.SetProcessMute(target.processObject, next)
-	if err != nil {
+	if err := d.tap.SetMuted(target.stateKey, next); err != nil {
 		return d.mapWriteError(target.id, err)
 	}
-	if !supported {
-		return Unsupported(config.TargetApp)
-	}
 
-	d.rememberWriteState(target.processObject, nil, &next)
+	d.rememberWriteState(target.stateKey, nil, &next)
 	return nil
 }
 
@@ -116,29 +116,25 @@ func (d *darwinAppSessionController) AdjustGroup(selectors []config.Selector, st
 		return err
 	}
 	for _, target := range targets {
-		if !target.volumeCapable && !d.refreshVolumeState(&target) {
+		if !target.volumeCapable {
 			return Unsupported(config.TargetGroup)
 		}
-		next := target.volume + int(step*100*float64(deltaSteps))
-		if next < 0 {
-			next = 0
-		}
-		if next > 100 {
-			next = 100
-		}
-		supported, err := d.bridge.SetProcessVolume(target.processObject, next)
-		if err != nil {
+		if err := d.tap.EnsureTap(target.tapTarget()); err != nil {
 			return d.mapWriteError(target.id, err)
 		}
-		if !supported {
-			return Unsupported(config.TargetGroup)
+
+		next := clampPercent(target.volume + int(step*100*float64(deltaSteps)))
+		if err := d.tap.SetGain(target.stateKey, next); err != nil {
+			return d.mapWriteError(target.id, err)
 		}
+
 		updatedMuted := target.isMuted
 		if deltaSteps > 0 && target.isMuted && target.muteCapable {
-			_, _ = d.bridge.SetProcessMute(target.processObject, false)
-			updatedMuted = false
+			if err := d.tap.SetMuted(target.stateKey, false); err == nil {
+				updatedMuted = false
+			}
 		}
-		d.rememberWriteState(target.processObject, &next, &updatedMuted)
+		d.rememberWriteState(target.stateKey, &next, &updatedMuted)
 	}
 	return nil
 }
@@ -149,18 +145,18 @@ func (d *darwinAppSessionController) ToggleMuteGroup(selectors []config.Selector
 		return err
 	}
 	for _, target := range targets {
-		if !target.muteCapable && !d.refreshMuteState(&target) {
+		if !target.muteCapable {
 			return Unsupported(config.TargetGroup)
 		}
-		next := !target.isMuted
-		supported, err := d.bridge.SetProcessMute(target.processObject, next)
-		if err != nil {
+		if err := d.tap.EnsureTap(target.tapTarget()); err != nil {
 			return d.mapWriteError(target.id, err)
 		}
-		if !supported {
-			return Unsupported(config.TargetGroup)
+
+		next := !target.isMuted
+		if err := d.tap.SetMuted(target.stateKey, next); err != nil {
+			return d.mapWriteError(target.id, err)
 		}
-		d.rememberWriteState(target.processObject, nil, &next)
+		d.rememberWriteState(target.stateKey, nil, &next)
 	}
 	return nil
 }
@@ -184,36 +180,17 @@ func (d *darwinAppSessionController) ReadGroupState(selectors []config.Selector)
 		return TargetState{}, err
 	}
 
-	volCount := 0
 	totalVolume := 0
 	allMuted := true
-	muteCount := 0
 	for _, target := range targets {
-		if target.volumeCapable {
-			volCount++
-			totalVolume += target.volume
-		}
-		if target.muteCapable {
-			muteCount++
-			if !target.isMuted {
-				allMuted = false
-			}
+		totalVolume += target.volume
+		if !target.isMuted {
+			allMuted = false
 		}
 	}
 
-	avg := 0
-	if volCount > 0 {
-		avg = int(math.Round(float64(totalVolume) / float64(volCount)))
-		if avg < 0 {
-			avg = 0
-		}
-		if avg > 100 {
-			avg = 100
-		}
-	}
-	if muteCount == 0 {
-		allMuted = false
-	}
+	avg := int(math.Round(float64(totalVolume) / float64(len(targets))))
+	avg = clampPercent(avg)
 
 	return TargetState{
 		Available:    true,
@@ -328,73 +305,33 @@ func (d *darwinAppSessionController) fetchSessions() ([]darwinAppSession, error)
 		return nil, err
 	}
 
-	previousByProcess := map[uint32]darwinAppSession{}
-	d.mu.Lock()
-	for _, cached := range d.cached {
-		previousByProcess[cached.processObject] = cached
-	}
-	d.mu.Unlock()
-
 	sessions := make([]darwinAppSession, 0, len(processes))
+	tapTargets := make([]darwinTapTarget, 0, len(processes))
 	for _, process := range processes {
-		if process.ObjectID == 0 || process.PID <= 0 {
+		session, ok := buildDarwinSession(process)
+		if !ok {
 			continue
 		}
-		if !process.RunningOutput {
-			continue
-		}
-
-		exe := strings.TrimSpace(filepath.Base(process.ExecutablePath))
-		exeNoExt := strings.TrimSpace(strings.TrimSuffix(exe, filepath.Ext(exe)))
-		bundleID := strings.TrimSpace(process.BundleID)
-		name := deriveDarwinProcessName(exeNoExt, exe, bundleID)
-		aliases := normalizeMatchValues(name, bundleID, exe, exeNoExt, process.ExecutablePath)
-		exeAliases := normalizeMatchValues(exe, exeNoExt, bundleID)
-		if len(aliases) == 0 && len(exeAliases) > 0 {
-			aliases = append(aliases, exeAliases...)
-		}
-
-		prev, hasPrev := previousByProcess[process.ObjectID]
-		volume, volumeCapable, volumeErr := d.bridge.GetProcessVolume(process.ObjectID)
-		if volumeErr != nil {
-			if hasPrev {
-				volume = prev.volume
-				if prev.volumeCapable {
-					volumeCapable = true
-				}
-			} else if !volumeCapable {
-				volume = 0
-			}
-		}
-		muted, muteCapable, muteErr := d.bridge.GetProcessMute(process.ObjectID)
-		if muteErr != nil {
-			if hasPrev {
-				muted = prev.isMuted
-				if prev.muteCapable {
-					muteCapable = true
-				}
-			} else if !muteCapable {
-				muted = false
-			}
-		}
-
-		sessions = append(sessions, darwinAppSession{
-			id:            fmt.Sprintf("%d", process.ObjectID),
-			processObject: process.ObjectID,
-			pid:           process.PID,
-			name:          name,
-			bundleID:      bundleID,
-			exe:           exe,
-			exeNoExt:      exeNoExt,
-			execPath:      strings.TrimSpace(process.ExecutablePath),
-			aliases:       aliases,
-			exeAliases:    exeAliases,
-			volume:        volume,
-			isMuted:       muted,
-			volumeCapable: volumeCapable,
-			muteCapable:   muteCapable,
-		})
+		sessions = append(sessions, session)
+		tapTargets = append(tapTargets, session.tapTarget())
 	}
+
+	supported := d.tap != nil && d.tap.Supported()
+	if supported {
+		_ = d.tap.Reconcile(tapTargets)
+	}
+
+	for i := range sessions {
+		state := darwinTapState{Volume: 100}
+		if supported {
+			state = d.tap.ReadVirtualState(sessions[i].stateKey)
+		}
+		sessions[i].volume = clampPercent(state.Volume)
+		sessions[i].isMuted = state.Muted
+		sessions[i].volumeCapable = supported
+		sessions[i].muteCapable = supported
+	}
+
 	return sessions, nil
 }
 
@@ -418,31 +355,23 @@ func (d *darwinAppSessionController) mapWriteError(sessionID string, err error) 
 	return fmt.Errorf("%w: app session %q no longer available", ErrTargetUnavailable, sessionID)
 }
 
-func (d *darwinAppSessionController) rememberWriteState(processObject uint32, volume *int, muted *bool) {
-	if processObject == 0 {
+func (d *darwinAppSessionController) rememberWriteState(stateKey string, volume *int, muted *bool) {
+	if stateKey == "" {
 		return
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	updated := false
 	for i := range d.cached {
-		if d.cached[i].processObject != processObject {
+		if d.cached[i].stateKey != stateKey {
 			continue
 		}
 		if volume != nil {
-			v := *volume
-			if v < 0 {
-				v = 0
-			}
-			if v > 100 {
-				v = 100
-			}
-			d.cached[i].volume = v
-			d.cached[i].volumeCapable = true
+			d.cached[i].volume = clampPercent(*volume)
 		}
 		if muted != nil {
 			d.cached[i].isMuted = *muted
-			d.cached[i].muteCapable = true
 		}
 		updated = true
 	}
@@ -451,34 +380,60 @@ func (d *darwinAppSessionController) rememberWriteState(processObject uint32, vo
 	}
 }
 
-func (d *darwinAppSessionController) refreshVolumeState(target *darwinAppSession) bool {
-	if target == nil {
-		return false
+func buildDarwinSession(process coreAudioProcessInfo) (darwinAppSession, bool) {
+	if process.ObjectID == 0 || process.PID <= 0 || !process.RunningOutput {
+		return darwinAppSession{}, false
 	}
-	volume, supported, err := d.bridge.GetProcessVolume(target.processObject)
-	if !supported {
-		return false
+
+	execPath := strings.TrimSpace(process.ExecutablePath)
+	exe := strings.TrimSpace(filepath.Base(execPath))
+	exeNoExt := strings.TrimSpace(strings.TrimSuffix(exe, filepath.Ext(exe)))
+	bundleID := strings.TrimSpace(process.BundleID)
+	name := deriveDarwinProcessName(exeNoExt, exe, bundleID)
+	aliases := normalizeMatchValues(name, bundleID, exe, exeNoExt, execPath)
+	exeAliases := normalizeMatchValues(exe, exeNoExt, bundleID)
+	if len(aliases) == 0 && len(exeAliases) > 0 {
+		aliases = append(aliases, exeAliases...)
 	}
-	target.volumeCapable = true
-	if err == nil {
-		target.volume = volume
-	}
-	return true
+
+	return darwinAppSession{
+		id:            fmt.Sprintf("%d", process.ObjectID),
+		stateKey:      darwinTapStateKey(bundleID, execPath, exeNoExt, name, process.ObjectID),
+		processObject: process.ObjectID,
+		pid:           process.PID,
+		name:          name,
+		bundleID:      bundleID,
+		exe:           exe,
+		exeNoExt:      exeNoExt,
+		execPath:      execPath,
+		aliases:       aliases,
+		exeAliases:    exeAliases,
+	}, true
 }
 
-func (d *darwinAppSessionController) refreshMuteState(target *darwinAppSession) bool {
-	if target == nil {
-		return false
+func (s darwinAppSession) tapTarget() darwinTapTarget {
+	return darwinTapTarget{
+		Key:           s.stateKey,
+		ProcessObject: s.processObject,
+		BundleID:      s.bundleID,
+		Name:          s.name,
 	}
-	muted, supported, err := d.bridge.GetProcessMute(target.processObject)
-	if !supported {
-		return false
+}
+
+func darwinTapStateKey(bundleID, execPath, exeNoExt, name string, processObject uint32) string {
+	if value := strings.TrimSpace(bundleID); value != "" {
+		return "bundle:" + strings.ToLower(value)
 	}
-	target.muteCapable = true
-	if err == nil {
-		target.isMuted = muted
+	if value := strings.TrimSpace(execPath); value != "" {
+		return "path:" + strings.ToLower(value)
 	}
-	return true
+	if value := strings.TrimSpace(exeNoExt); value != "" {
+		return "exe:" + strings.ToLower(value)
+	}
+	if value := strings.TrimSpace(name); value != "" {
+		return "name:" + strings.ToLower(value)
+	}
+	return fmt.Sprintf("process:%d", processObject)
 }
 
 func deriveDarwinProcessName(exeNoExt, exe, bundleID string) string {
@@ -520,9 +475,4 @@ func darwinSessionMatchesSelector(session darwinAppSession, selector config.Sele
 		return selectorMatchesAnyValue(selector, session.exeAliases)
 	}
 	return selectorMatchesAnyValue(selector, session.aliases)
-}
-
-func boolPtr(v bool) *bool {
-	b := v
-	return &b
 }

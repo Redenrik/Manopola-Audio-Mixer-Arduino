@@ -1,158 +1,145 @@
 # CoreAudio Session Backend Scope (macOS)
 
-This document scopes the next implementation step: a dedicated macOS CoreAudio session backend for `app` / `group` targets.
+This document tracks the macOS `app` / `group` backend after validating the public tap path on a live system.
 
-## Objective
+## Decision
 
-Deliver a macOS-native backend that can:
+Direct CoreAudio process objects remain discovery-only.
 
-- discover active app audio sessions
-- map sessions to stable selector tokens (`exact`, `contains`, `exe`, etc.)
-- adjust per-session volume
-- toggle per-session mute
-- support grouped selectors (`group` target)
+MAMA’s writable macOS path for `app` and `group` targets is a tap-backed mixer built from:
 
-## Current Baseline
+- `AudioHardwareCreateProcessTap`
+- a private aggregate device
+- a render loop that reads tapped audio, applies software gain/mute, and replays it to the current default output
 
-- macOS now uses an embedded desktop shell window.
-- `master_out` works.
-- `mic_in` / `line_in` map to default input level.
-- `app` / `group` are currently unavailable on macOS when no session backend is present.
+## Why The Pivot Happened
 
-## Scope Boundaries
+Live probing on macOS 26.3 showed that:
 
-In scope:
+- process objects are enumerable through `kAudioHardwarePropertyProcessObjectList`
+- active apps expose PID, bundle ID, executable path, and output-running state
+- those process objects do not expose reliable writable per-app volume or mute controls
+- the objects discovered through `kAudioProcessPropertyDevices` resolve to shared device controls, not isolated app controls
 
-- dedicated `darwin` app-session controller implementation
-- CoreAudio bridge and session polling/cache
-- backend wiring + UI target discovery compatibility
-- tests for selector matching, discovery normalization, and volume/mute operations
+That makes direct process-object writes unsuitable for shipping `app` / `group` control.
 
-Out of scope (for this step):
+## Feasibility Gate
 
-- replacing non-macOS backends
-- redesigning mapping schema
-- unrelated UI redesign
+Phase 0 is only considered passed if a public-API probe can:
 
-## Proposed Architecture
+- create a process tap for a running app
+- create a private aggregate device
+- attach the tap to the aggregate
+- start aggregate IO
+- observe live audio frames
+- re-output the tapped app through software gain/mute
 
-### 1) Backend split for session controllers
+This gate is now met locally when following Apple’s sample sequence:
 
-- Keep Linux `pactl` controller Linux-only.
-- Add macOS-specific controller entrypoint:
-  - `newAppSessionController()` on `darwin` returns CoreAudio implementation when supported.
-  - Fallback remains `nil` when unavailable.
+1. Create the process tap.
+2. Create an empty private aggregate device.
+3. Add the output subdevice through `kAudioAggregateDevicePropertyFullSubDeviceList`.
+4. Add the tap through `kAudioAggregateDevicePropertyTapList`.
+5. Wait for aggregate streams to publish.
+6. Start `AudioDeviceCreateIOProcID` / `AudioDeviceStart`.
 
-### 2) CoreAudio bridge layer
+The earlier assumption that the aggregate could be composed in one shot through the create dictionary was the wrong model for this backend.
 
-Create low-level `darwin` bridge package/files for:
+## Supported Versions
 
-- enumerating active process/session objects
-- reading per-session volume/mute
-- setting per-session volume/mute
+- Minimum writable support: macOS 14.2+
+  - `AudioHardwareCreateProcessTap` is only available starting with macOS 14.2.
+- Restart resilience improvements: macOS 26.0+
+  - use `CATapDescription.bundleIDs`
+  - use `CATapDescription.processRestoreEnabled`
 
-Bridge responsibilities:
+## Backend Split
 
-- isolate cgo/CoreAudio details
-- provide Go-friendly structs/errors
-- normalize transient CoreAudio errors into retryable/unavailable classes
+### Discovery bridge
 
-### 3) Session controller layer
+`coreAudioBridge` is discovery-only and is responsible for:
 
-Implement `appSessionController` methods on top of bridge:
+- enumerating process objects
+- reading PID
+- reading bundle ID
+- reading executable path
+- reading output-running state
 
-- `ListTargets()`
-- `ReadState(...)` / `ReadGroupState(...)`
-- `Adjust(...)` / `AdjustGroup(...)`
-- `ToggleMute(...)` / `ToggleMuteGroup(...)`
+### Tap bridge
 
-Behavior:
+The writable path lives in a separate macOS-only tap bridge and is responsible for:
 
-- selector matching keeps existing semantics
-- group operations dedupe matched sessions by stable session ID
-- stale sessions map to `ErrTargetUnavailable`
+- `EnsureTap(session)`
+- `ReleaseTap(sessionKey)`
+- `SetGain(sessionKey, percent)`
+- `SetMuted(sessionKey, bool)`
+- `ReadVirtualState(sessionKey)`
+- `Reconcile(processes)`
 
-### 4) Caching and refresh policy
+The tap bridge owns:
 
-Use a short-lived cache (for example 150-300ms) to avoid expensive bridge calls per encoder event.
+- tap creation and destruction
+- aggregate device creation and destruction
+- aggregate IO start/stop
+- software gain/mute state
+- output-device rebuilds
+- app restart restoration
 
-Cache content:
+## Controller Semantics
 
-- session ID
-- display name
-- executable/bundle token(s)
-- current volume/mute
-- timestamp
+The Darwin app-session controller now:
 
-## Implementation Plan
+- uses process objects only for discovery and selector matching
+- uses tap-backed virtual state for `Adjust`, `ToggleMute`, `ReadState`, and group operations
+- reports `app` target capabilities based on tap support, not on direct HAL per-process controls
 
-### Phase 0: Feasibility spike
+Read state on macOS is therefore virtual mixer state:
 
-- validate CoreAudio APIs needed for per-session control on supported macOS versions
-- confirm minimum macOS version for reliable session enumeration/control
-- produce a compatibility matrix
+- default is `100` / unmuted before a tap is attached
+- after attach, MAMA reports the gain/mute values it is applying in the tap render path
 
-Exit criteria:
+## Reconciliation Rules
 
-- clear API set + minimum OS decision documented
+On macOS 14.2 through 25.x:
 
-### Phase 1: Discovery-only backend
+- tapped state is preserved in MAMA
+- if the app exits, the live tap is torn down
+- when the app reappears with the same stable session key, MAMA recreates the tap automatically
 
-- implement bridge discovery
-- return discovered app targets via `/api/targets`
-- no write operations yet
+On macOS 26.0+:
 
-Exit criteria:
+- taps are created with bundle-ID restore support when a bundle ID exists
+- MAMA keeps the tap alive across short app restarts when the output device is unchanged
+- output-device changes still force a rebuild because the aggregate path is device-specific
 
-- app sessions appear in UI suggestions on macOS
-- selector matching tests pass
+## Diagnostic Command
 
-### Phase 2: Write operations
+Non-shipping probe command:
 
-- implement per-session adjust/mute
-- implement grouped operations
-- wire error handling and fallback behavior
+```bash
+go run ./cmd/mama-tap-probe -bundle com.spotify.client -duration 5s
+```
 
-Exit criteria:
+Useful flags:
 
-- `app` and `group` mappings control live sessions on macOS
-- no panic/crash on session churn
+- `-volume`
+- `-muted`
 
-### Phase 3: Hardening
+The command prints the selected process object, output device UID, callback count, and frame count so tap viability can be checked without touching the main app path.
 
-- debounce/retry for transient CoreAudio failures
-- diagnostics logs for session attach/detach
-- performance check under rapid encoder input
+## Shipping Constraints
 
-Exit criteria:
+- public APIs only
+- no private CoreAudio APIs
+- no unsupported system patches
+- no direct process-object volume/mute writes for macOS `app` / `group`
 
-- stable behavior under churn + fast knob turns
+Apple also requires `NSAudioCaptureUsageDescription` for packaged tap capture apps. If MAMA moves to a bundled macOS app distribution path, that permission string must be present in the app bundle metadata.
 
-## Test Plan
+## Remaining Hardening Work
 
-Unit tests:
-
-- selector normalization and match behavior
-- session dedupe rules
-- group aggregate read-state behavior
-- error mapping (`unavailable` vs hard failure)
-
-Integration/smoke:
-
-- discover sessions for at least 3 running apps
-- adjust/mute one app repeatedly
-- group control across 2+ apps
-- app launch/quit churn while rotating knobs quickly
-
-## Risks and Unknowns
-
-- CoreAudio public API support for per-app output sessions may vary by macOS version.
-- Session identity stability may change across app restart/output-device switch.
-- Permission/security constraints may affect discovery/control on hardened systems.
-
-## Acceptance Criteria
-
-- On macOS, at least one active app session appears in discovered targets when media is playing.
-- A knob mapped to `app` changes only that app’s volume.
-- A knob mapped to `group` changes all matched app sessions.
-- Errors for disappeared sessions are non-fatal and surfaced as target-unavailable.
+- permission UX and failure reporting around system audio capture
+- underrun / doubled-audio checks under rapid encoder input
+- output-device switch soak testing
+- multi-app group load testing
+- packaging-time audio-capture entitlement/plist review for macOS distribution

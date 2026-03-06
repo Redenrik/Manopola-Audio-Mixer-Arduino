@@ -1098,10 +1098,6 @@ type coreAudioProcessInfo struct {
 
 type coreAudioBridge interface {
 	ListProcesses() ([]coreAudioProcessInfo, error)
-	GetProcessVolume(processObjectID uint32) (volume int, supported bool, err error)
-	SetProcessVolume(processObjectID uint32, volume int) (supported bool, err error)
-	GetProcessMute(processObjectID uint32) (muted bool, supported bool, err error)
-	SetProcessMute(processObjectID uint32, muted bool) (supported bool, err error)
 }
 
 type defaultCoreAudioBridge struct{}
