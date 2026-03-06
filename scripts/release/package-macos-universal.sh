@@ -76,6 +76,8 @@ cat > "${APP_CONTENTS}/Info.plist" <<'PLIST'
   <string>APPL</string>
   <key>LSMinimumSystemVersion</key>
   <string>11.0</string>
+  <key>NSAudioCaptureUsageDescription</key>
+  <string>MAMA captures app audio to apply per-app volume and mute controls.</string>
   <key>NSHighResolutionCapable</key>
   <true/>
 </dict>
