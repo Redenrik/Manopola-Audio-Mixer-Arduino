@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -38,6 +39,11 @@ type desktopShell struct {
 	quitOnce        sync.Once
 }
 
+type desktopWindowState struct {
+	Desktop   bool `json:"desktop"`
+	Maximized bool `json:"maximized"`
+}
+
 func defaultDesktopMode() bool {
 	return true
 }
@@ -51,7 +57,6 @@ func runDesktopShell(ctx context.Context, cancel context.CancelFunc, url string,
 
 	w.SetTitle("MAMA Audio Mixer")
 	w.SetSize(1220, 840, webview.HintNone)
-	w.Navigate(url)
 
 	hwnd := win.HWND(uintptr(w.Window()))
 	if hwnd == 0 {
@@ -63,6 +68,11 @@ func runDesktopShell(ctx context.Context, cancel context.CancelFunc, url string,
 		return err
 	}
 	defer shell.dispose()
+	if err := shell.bindWindowBridge(); err != nil {
+		return err
+	}
+	shell.enableCustomTitleBar()
+	w.Navigate(url)
 	if startHidden {
 		shell.hide()
 	} else {
@@ -75,6 +85,21 @@ func runDesktopShell(ctx context.Context, cancel context.CancelFunc, url string,
 	}()
 
 	w.Run()
+	return nil
+}
+
+func (s *desktopShell) bindWindowBridge() error {
+	if err := s.web.Bind("mamaWindowAction", func(action string) (desktopWindowState, error) {
+		return s.windowAction(action)
+	}); err != nil {
+		return fmt.Errorf("bind mamaWindowAction failed: %w", err)
+	}
+	if err := s.web.Bind("mamaWindowState", func() (desktopWindowState, error) {
+		return s.windowState(), nil
+	}); err != nil {
+		return fmt.Errorf("bind mamaWindowState failed: %w", err)
+	}
+	s.web.Init(`window.__MAMA_DESKTOP_EMBEDDED__ = true;`)
 	return nil
 }
 
@@ -127,6 +152,49 @@ func newDesktopShell(hwnd win.HWND, w webview.WebView, cancel context.CancelFunc
 	s.originalWndProc = oldProc
 
 	return s, nil
+}
+
+func (s *desktopShell) enableCustomTitleBar() {
+	style := uint32(win.GetWindowLong(s.hwnd, win.GWL_STYLE))
+	if style == 0 {
+		return
+	}
+	style &^= win.WS_CAPTION
+	style |= win.WS_THICKFRAME | win.WS_SYSMENU | win.WS_MINIMIZEBOX | win.WS_MAXIMIZEBOX
+	win.SetWindowLong(s.hwnd, win.GWL_STYLE, int32(style))
+	win.SetWindowPos(s.hwnd, 0, 0, 0, 0, 0, win.SWP_NOMOVE|win.SWP_NOSIZE|win.SWP_NOZORDER|win.SWP_NOACTIVATE|win.SWP_FRAMECHANGED)
+}
+
+func (s *desktopShell) windowState() desktopWindowState {
+	return desktopWindowState{
+		Desktop:   true,
+		Maximized: win.IsZoomed(s.hwnd),
+	}
+}
+
+func (s *desktopShell) windowAction(action string) (desktopWindowState, error) {
+	switch strings.TrimSpace(strings.ToLower(action)) {
+	case "minimize":
+		win.ShowWindow(s.hwnd, win.SW_MINIMIZE)
+	case "maximize":
+		win.ShowWindow(s.hwnd, win.SW_MAXIMIZE)
+	case "restore":
+		win.ShowWindow(s.hwnd, win.SW_RESTORE)
+	case "toggle_maximize":
+		if win.IsZoomed(s.hwnd) {
+			win.ShowWindow(s.hwnd, win.SW_RESTORE)
+		} else {
+			win.ShowWindow(s.hwnd, win.SW_MAXIMIZE)
+		}
+	case "close":
+		s.hide()
+	case "drag":
+		win.ReleaseCapture()
+		win.SendMessage(s.hwnd, win.WM_NCLBUTTONDOWN, uintptr(win.HTCAPTION), 0)
+	default:
+		return s.windowState(), fmt.Errorf("unsupported window action: %q", action)
+	}
+	return s.windowState(), nil
 }
 
 func (s *desktopShell) dispose() {

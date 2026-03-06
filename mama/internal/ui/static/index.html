@@ -36,6 +36,12 @@
       --meter-track: #d8e6e1;
       --meter-fill-a: #028090;
       --meter-fill-b: #ff7d00;
+      --titlebar-bg: rgba(255, 255, 255, 0.9);
+      --titlebar-border: #cfe0da;
+      --titlebar-btn: #254d41;
+      --titlebar-btn-hover: #e7f4f1;
+      --titlebar-close-hover: #d74d43;
+      --titlebar-close-text: #fff;
     }
 
     :root[data-theme="dark"] {
@@ -68,6 +74,12 @@
       --meter-track: #30463f;
       --meter-fill-a: #37a9b5;
       --meter-fill-b: #ff9f45;
+      --titlebar-bg: rgba(23, 35, 32, 0.92);
+      --titlebar-border: #39504a;
+      --titlebar-btn: #d7ebe4;
+      --titlebar-btn-hover: #26423a;
+      --titlebar-close-hover: #ba4c40;
+      --titlebar-close-text: #fff;
     }
 
     * { box-sizing: border-box; }
@@ -80,6 +92,107 @@
         radial-gradient(circle at 80% 10%, var(--glow-b), transparent 28%),
         var(--bg);
       min-height: 100vh;
+    }
+
+    .app-titlebar {
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: 42px;
+      z-index: 4300;
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      background: linear-gradient(180deg, var(--titlebar-bg), var(--panel-soft));
+      border-bottom: 1px solid var(--titlebar-border);
+      backdrop-filter: blur(7px);
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .titlebar-drag {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      cursor: move;
+      min-width: 0;
+    }
+
+    .titlebar-name {
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--ink-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .titlebar-actions {
+      display: flex;
+      align-items: stretch;
+      margin-left: auto;
+    }
+
+    .titlebar-btn {
+      width: 48px;
+      height: 42px;
+      border: 0;
+      border-left: 1px solid var(--titlebar-border);
+      background: transparent;
+      color: var(--titlebar-btn);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: default;
+      padding: 0;
+      transition: background 120ms ease, color 120ms ease;
+    }
+
+    .titlebar-btn:hover {
+      background: var(--titlebar-btn-hover);
+    }
+
+    .titlebar-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+    }
+
+    .titlebar-btn.close:hover {
+      background: var(--titlebar-close-hover);
+      color: var(--titlebar-close-text);
+    }
+
+    .titlebar-btn svg {
+      width: 13px;
+      height: 13px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .titlebar-btn .icon-restore {
+      display: none;
+    }
+
+    .titlebar-btn.maximized .icon-maximize {
+      display: none;
+    }
+
+    .titlebar-btn.maximized .icon-restore {
+      display: block;
+    }
+
+    body.desktop-shell .shell {
+      padding-top: calc(42px + clamp(12px, 1.6vw, 22px));
+    }
+
+    body.desktop-shell .boot-overlay {
+      inset: 42px 0 0 0;
     }
 
     .boot-overlay {
@@ -883,6 +996,23 @@
   </style>
 </head>
 <body>
+  <header class="app-titlebar hidden" id="appTitlebar">
+    <div class="titlebar-drag" id="appDragRegion" aria-hidden="true">
+      <span class="titlebar-name">MAMA Audio Mixer</span>
+    </div>
+    <div class="titlebar-actions" role="group" aria-label="Window controls">
+      <button class="titlebar-btn" id="windowMinBtn" type="button" aria-label="Minimize" title="Minimize">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path></svg>
+      </button>
+      <button class="titlebar-btn" id="windowMaxBtn" type="button" aria-label="Maximize" title="Maximize">
+        <svg class="icon-maximize" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14"></rect></svg>
+        <svg class="icon-restore" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h11v11H8z"></path><path d="M5 16V5h11"></path></svg>
+      </button>
+      <button class="titlebar-btn close" id="windowCloseBtn" type="button" aria-label="Close" title="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+      </button>
+    </div>
+  </header>
   <div class="boot-overlay" id="bootOverlay" role="status" aria-live="polite">
     <section class="boot-card">
       <div class="boot-spinner" aria-hidden="true"></div>
@@ -1153,6 +1283,10 @@
       manualPortDirty: false,
       language: "en",
       themePreference: "system",
+      desktopWindow: {
+        enabled: false,
+        maximized: false
+      },
       ui: {
         settingsOpen: false,
         dirty: false,
@@ -1301,6 +1435,10 @@
         onboardingMappingsHint: "Assign targets and per-click step (%) for each knob. Use a template if needed.",
         onboardingSaveTitle: "4. Save and start",
         onboardingSaveHint: "Save configuration. Changes apply immediately while the app is running.",
+        windowMinimize: "Minimize",
+        windowMaximize: "Maximize",
+        windowRestore: "Restore",
+        windowClose: "Close",
         connectionHeading: "Connection", serialPortLabel: "Serial Port", refreshPorts: "Refresh", manualPortLabel: "Or type port manually", baudLabel: "Baud", debugLabel: "Debug logs enabled", autoDetectPort: "Auto-Detect MAMA", autoDetectBusy: "Detecting...", testConnection: "Test Connection", startupLabel: "Launch mixer at OS startup", applyStartup: "Apply Startup Setting",
         bootTitle: "Starting MAMA",
         bootDetecting: "Detecting MAMA board and serial port...",
@@ -1427,6 +1565,10 @@
         onboardingMappingsHint: "Assegna target e step (%) per click per ogni manopola. Puoi usare un template.",
         onboardingSaveTitle: "4. Salva e avvia",
         onboardingSaveHint: "Salva la configurazione. Le modifiche vengono applicate subito.",
+        windowMinimize: "Riduci a icona",
+        windowMaximize: "Ingrandisci",
+        windowRestore: "Ripristina",
+        windowClose: "Chiudi",
         connectionHeading: "Connessione", serialPortLabel: "Porta seriale", refreshPorts: "Aggiorna", manualPortLabel: "Oppure inserisci la porta manualmente", baudLabel: "Baud", debugLabel: "Log debug attivi", autoDetectPort: "Auto-Rileva MAMA", autoDetectBusy: "Rilevamento...", testConnection: "Test connessione", startupLabel: "Avvia il mixer all'accesso del sistema", applyStartup: "Applica avvio automatico",
         bootTitle: "Avvio MAMA",
         bootDetecting: "Rilevamento scheda MAMA e porta seriale...",
@@ -1687,6 +1829,21 @@
       }
       $("openSettingsBtn").setAttribute("aria-label", t("openSettings"));
       $("openSettingsBtn").setAttribute("title", t("openSettings"));
+      const minLabel = t("windowMinimize");
+      const maxLabel = state.desktopWindow.maximized ? t("windowRestore") : t("windowMaximize");
+      const closeLabel = t("windowClose");
+      if ($("windowMinBtn")) {
+        $("windowMinBtn").setAttribute("aria-label", minLabel);
+        $("windowMinBtn").setAttribute("title", minLabel);
+      }
+      if ($("windowMaxBtn")) {
+        $("windowMaxBtn").setAttribute("aria-label", maxLabel);
+        $("windowMaxBtn").setAttribute("title", maxLabel);
+      }
+      if ($("windowCloseBtn")) {
+        $("windowCloseBtn").setAttribute("aria-label", closeLabel);
+        $("windowCloseBtn").setAttribute("title", closeLabel);
+      }
     }
 
     function setLanguage(lang) {
@@ -1901,6 +2058,57 @@
         throw new Error(body.error || ("HTTP " + res.status));
       }
       return body;
+    }
+
+    function desktopWindowBridgeEnabled() {
+      return typeof window !== "undefined" && typeof window.mamaWindowAction === "function";
+    }
+
+    function applyDesktopWindowState(body) {
+      const payload = (body && typeof body === "object") ? body : {};
+      const enabled = !!payload.desktop && desktopWindowBridgeEnabled();
+      state.desktopWindow.enabled = enabled;
+      state.desktopWindow.maximized = enabled && !!payload.maximized;
+      document.body.classList.toggle("desktop-shell", enabled);
+      $("appTitlebar").classList.toggle("hidden", !enabled);
+      $("windowMaxBtn").classList.toggle("maximized", state.desktopWindow.maximized);
+      localizeStaticUI();
+    }
+
+    async function refreshDesktopWindowState() {
+      if (!desktopWindowBridgeEnabled()) {
+        applyDesktopWindowState({ desktop: false, maximized: false });
+        return;
+      }
+      try {
+        if (typeof window.mamaWindowState === "function") {
+          const body = await window.mamaWindowState();
+          applyDesktopWindowState(body);
+        } else {
+          applyDesktopWindowState({ desktop: true, maximized: false });
+        }
+      } catch (err) {
+        appendDebugLine("ERR desktop window state: " + (err && err.message ? err.message : String(err)));
+      }
+    }
+
+    async function desktopWindowAction(action) {
+      if (!desktopWindowBridgeEnabled()) return;
+      try {
+        const body = await window.mamaWindowAction(String(action || ""));
+        applyDesktopWindowState(body);
+      } catch (err) {
+        appendDebugLine("ERR desktop window action: " + (err && err.message ? err.message : String(err)));
+      }
+    }
+
+    async function initDesktopWindowControls() {
+      if (!desktopWindowBridgeEnabled()) {
+        applyDesktopWindowState({ desktop: false, maximized: false });
+        return;
+      }
+      applyDesktopWindowState({ desktop: true, maximized: false });
+      await refreshDesktopWindowState();
     }
 
     function effectivePort() {
@@ -4939,6 +5147,24 @@
 
     function bindEvents() {
       $("openSettingsBtn").addEventListener("click", openSettingsView);
+      $("windowMinBtn").addEventListener("click", () => {
+        desktopWindowAction("minimize");
+      });
+      $("windowMaxBtn").addEventListener("click", () => {
+        desktopWindowAction("toggle_maximize");
+      });
+      $("windowCloseBtn").addEventListener("click", () => {
+        desktopWindowAction("close");
+      });
+      $("appDragRegion").addEventListener("mousedown", (ev) => {
+        if (ev.button !== 0) return;
+        ev.preventDefault();
+        desktopWindowAction("drag");
+      });
+      $("appDragRegion").addEventListener("dblclick", (ev) => {
+        ev.preventDefault();
+        desktopWindowAction("toggle_maximize");
+      });
       $("closeSettingsSticky").addEventListener("click", () => closeSettingsView(false));
       $("testConnection").addEventListener("click", testConnection);
       $("portSelect").addEventListener("change", syncManualPortFromSelect);
@@ -5110,6 +5336,10 @@
         stopRuntimeStatusPolling();
         stopTargetRefreshPolling();
       });
+      window.addEventListener("resize", () => {
+        if (!state.desktopWindow.enabled) return;
+        refreshDesktopWindowState();
+      });
     }
 
     async function main() {
@@ -5119,6 +5349,7 @@
       applyThemePreference(savedTheme, false);
       bindSystemThemeListener();
       bindEvents();
+      await initDesktopWindowControls();
       syncDebugConsoleVisibility();
       showBootOverlay(t("bootDetecting"));
       try {
