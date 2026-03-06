@@ -35,7 +35,8 @@ Download from the latest release:
    - Linux: `stop-mixer.sh`
 
 Notes:
-- On macOS/Linux the UI is local browser-based (`127.0.0.1` only).
+- On macOS/Linux the app runs in desktop-shell browser mode (`127.0.0.1` only).
+- In desktop mode, macOS/Linux provide tray/menu-bar controls (desktop session required).
 - `Start Mixer` / `start-mixer.sh` disables auto-open browser and runs MAMA in background.
 - background PID is written to `.mama.pid` in the package folder.
 - `Stop Mixer` / `stop-mixer.sh` stops the PID tracked in `.mama.pid`.

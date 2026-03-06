@@ -38,6 +38,19 @@
 - macOS: startup uses LaunchAgents and takes effect on next login.
 - Linux: startup uses `~/.config/autostart/io.mama.mixer.desktop`; verify the file exists after applying startup setting.
 
+## Tray icon does not appear on Linux
+
+- Confirm you are running a desktop session with status tray support.
+- Some Wayland environments require an extension (for example AppIndicator support).
+- If tray is unavailable, MAMA still runs and UI can be opened manually at `http://127.0.0.1:18765`.
+
+## Linux build fails with appindicator/gtk errors
+
+- Install tray build dependencies:
+  - `libgtk-3-dev`
+  - `libayatana-appindicator3-dev` (or distro equivalent)
+- Re-run `go build` after installing dependencies.
+
 ## `start-mixer` says MAMA is already running
 
 - Background launcher stores PID in `.mama.pid`.

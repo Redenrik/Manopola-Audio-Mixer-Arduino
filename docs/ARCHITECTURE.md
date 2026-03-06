@@ -19,7 +19,8 @@ There is no separate runtime/UI executable requirement for end users.
 - Runtime engine and UI server run in the same process.
 - Config changes in the UI are applied live without restart.
 - On Windows, desktop mode is enabled by default (embedded window + tray).
-- On macOS/Linux, the app runs a local HTTP UI (browser) plus runtime loop.
+- On macOS/Linux, desktop mode runs in browser-shell form (local HTTP UI + runtime loop).
+- On macOS/Linux desktop mode includes native tray/menu-bar controls (platform desktop session required).
 
 ## Data Flow
 

@@ -30,8 +30,8 @@ func main() {
 	flag.StringVar(&cfgPath, "config", "", "path to config yaml (default: auto)")
 	flag.StringVar(&listenAddr, "listen", "127.0.0.1:18765", "HTTP listen address")
 	flag.BoolVar(&openBrowser, "open", true, "open web UI in default browser")
-	flag.BoolVar(&desktopMode, "desktop", defaultDesktopMode(), "use embedded desktop window with system tray")
-	flag.BoolVar(&startHidden, "start-hidden", false, "start desktop window hidden in system tray")
+	flag.BoolVar(&desktopMode, "desktop", defaultDesktopMode(), "use desktop shell mode (embedded shell on Windows, browser shell on macOS/Linux)")
+	flag.BoolVar(&startHidden, "start-hidden", false, "start desktop shell hidden (where supported)")
 	flag.Parse()
 
 	if cfgPath == "" {
@@ -102,7 +102,7 @@ func main() {
 
 	var runErr error
 	if desktopMode {
-		if err := runDesktopShell(ctx, cancel, uiURL, cfg.Debug, startHidden); err != nil && runErr == nil {
+		if err := runDesktopShell(ctx, cancel, uiURL, openBrowser, startHidden); err != nil && runErr == nil {
 			runErr = fmt.Errorf("desktop shell error: %w", err)
 		}
 		cancel()

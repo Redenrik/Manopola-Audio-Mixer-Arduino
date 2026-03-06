@@ -94,7 +94,7 @@ func buildLinuxStartupDesktopEntry(runtimePath, cfgPath string) ([]byte, error) 
 		return nil, fmt.Errorf("config path must not be empty")
 	}
 
-	execLine := linuxDesktopExecLine(absRuntime, "-config", absConfig, "-open=false")
+	execLine := linuxDesktopExecLine(absRuntime, "-config", absConfig, "-open=false", "-start-hidden=true")
 	workingDir := strings.TrimSpace(filepath.Dir(absRuntime))
 	if workingDir == "" {
 		workingDir = "."

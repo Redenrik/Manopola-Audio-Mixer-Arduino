@@ -66,5 +66,5 @@ Maintainers should still verify:
 Before publishing, run a quick UX sanity pass:
 - fresh install on Windows 64-bit and 32-bit
 - first-launch mapping save flow works
-- tray behavior works (close-to-tray, reopen, quit)
+- tray behavior works (Windows/macOS/Linux: reopen, quit)
 - serial auto-detection and manual selection both work

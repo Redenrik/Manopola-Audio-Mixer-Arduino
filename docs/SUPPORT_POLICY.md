@@ -17,8 +17,8 @@
 
 | Capability | Windows | macOS | Linux |
 |---|---|---|---|
-| Embedded desktop shell | Yes | No | No |
-| Tray icon / close-to-tray UX | Yes | No | No |
+| Desktop shell mode | Yes (embedded shell) | Yes (browser shell) | Yes (browser shell) |
+| Tray icon / close-to-tray UX | Yes | Yes (menu bar) | Yes (status tray; DE dependent) |
 | Browser-based local UI | Optional (`-desktop=false`) | Yes | Yes |
 | In-app startup integration | Yes | Yes | Yes (XDG autostart) |
 

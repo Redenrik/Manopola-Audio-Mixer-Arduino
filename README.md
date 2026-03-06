@@ -50,10 +50,11 @@ Advanced/power-user assets:
    - Linux: `stop-mixer.sh`
 
 Notes:
-- macOS/Linux use a local browser UI (`http://127.0.0.1:18765`).
+- macOS/Linux use desktop-shell runtime mode with a local browser UI (`http://127.0.0.1:18765`).
 - `Start Mixer` / `start-mixer.sh` launches MAMA in background and stores PID in `.mama.pid`.
 - `Stop Mixer` / `stop-mixer.sh` uses `.mama.pid` to stop background runtime.
 - Windows uses embedded desktop UI + tray by default.
+- macOS/Linux use native tray/menu-bar controls in desktop mode.
 - Startup-at-login can be enabled from Settings on Windows, macOS, and Linux.
 
 ## Hardware and Firmware
@@ -94,8 +95,8 @@ Key flags:
 - `-config` path to YAML config
 - `-listen` HTTP bind (default `127.0.0.1:18765`)
 - `-open` auto-open browser UI
-- `-desktop` embedded desktop shell (Windows only)
-- `-start-hidden` start minimized to tray (Windows desktop mode)
+- `-desktop` desktop shell mode (embedded shell on Windows, browser shell on macOS/Linux)
+- `-start-hidden` start hidden shell (Windows: tray hidden; macOS/Linux: runtime starts without opening browser)
 
 ## Developer Quick Start
 

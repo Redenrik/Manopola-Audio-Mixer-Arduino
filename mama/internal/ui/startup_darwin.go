@@ -118,6 +118,8 @@ func buildMacStartupPlist(runtimePath, configPath string) ([]byte, error) {
 		`      <string>` + runtimeEsc + `</string>`,
 		`      <string>-config</string>`,
 		`      <string>` + configEsc + `</string>`,
+		`      <string>-open=false</string>`,
+		`      <string>-start-hidden=true</string>`,
 		`    </array>`,
 		`    <key>WorkingDirectory</key>`,
 		`    <string>` + workingDirEsc + `</string>`,

@@ -60,7 +60,7 @@ if [[ -f "$pid_file" ]]; then
     exit 0
   fi
 fi
-nohup ./mama -open=false "$@" >/dev/null 2>&1 &
+nohup ./mama -open=false -start-hidden=true "$@" >/dev/null 2>&1 &
 echo $! > "$pid_file"
 echo "MAMA started in background (PID $(cat "$pid_file"))."
 LAUNCH_MIXER
@@ -116,7 +116,7 @@ if [[ -f "$pid_file" ]]; then
     exit 0
   fi
 fi
-nohup ./mama -open=false "$@" >/dev/null 2>&1 &
+nohup ./mama -open=false -start-hidden=true "$@" >/dev/null 2>&1 &
 echo $! > "$pid_file"
 echo "MAMA started in background (PID $(cat "$pid_file"))."
 LAUNCH_MIXER
