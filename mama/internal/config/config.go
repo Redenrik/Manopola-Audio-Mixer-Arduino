@@ -707,6 +707,10 @@ func KnownTargets() []TargetType {
 }
 
 func ResolveDefaultPath() string {
+	if path, ok := platformDefaultPath(); ok {
+		return path
+	}
+
 	if exePath, err := os.Executable(); err == nil {
 		exeDir := filepath.Dir(exePath)
 		exeConfig := filepath.Join(exeDir, "config.yaml")

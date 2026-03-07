@@ -60,8 +60,12 @@ trap cleanup EXIT
 
 PAYLOAD_ROOT="${TMP_DIR}/payload"
 SCRIPTS_DIR="${TMP_DIR}/scripts"
+COMPONENT_PLIST="${TMP_DIR}/components.plist"
 mkdir -p "${PAYLOAD_ROOT}/Applications" "${SCRIPTS_DIR}"
 cp -a "${PORTABLE_DIR}/MAMA.app" "${PAYLOAD_ROOT}/Applications/MAMA.app"
+
+pkgbuild --analyze --root "${PAYLOAD_ROOT}" "${COMPONENT_PLIST}" >/dev/null
+/usr/libexec/PlistBuddy -c "Set :0:BundleIsRelocatable false" "${COMPONENT_PLIST}"
 
 cat > "${SCRIPTS_DIR}/preinstall" <<'PREINSTALL'
 #!/usr/bin/env bash
@@ -80,6 +84,7 @@ chmod +x "${SCRIPTS_DIR}/preinstall"
 mkdir -p "$(dirname "${OUTPUT_PKG}")"
 pkgbuild \
   --root "${PAYLOAD_ROOT}" \
+  --component-plist "${COMPONENT_PLIST}" \
   --identifier "io.mama.mixer.app.installer" \
   --version "${VERSION}" \
   --scripts "${SCRIPTS_DIR}" \

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/moutend/go-wca"
+	"github.com/moutend/go-wca/pkg/wca"
 	"mama/internal/config"
 )
 

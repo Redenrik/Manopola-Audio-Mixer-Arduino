@@ -36,12 +36,41 @@ type TargetState struct {
 	SessionCount int  `json:"sessionCount,omitempty"`
 }
 
+type unsupportedTargetError struct {
+	target config.TargetType
+}
+
+func (e unsupportedTargetError) Error() string {
+	return fmt.Sprintf("target not supported yet: %s", e.target)
+}
+
+func (e unsupportedTargetError) Unwrap() error {
+	return ErrUnsupported
+}
+
+func (e unsupportedTargetError) Is(target error) bool {
+	if target == nil {
+		return false
+	}
+	if target == ErrUnsupported {
+		return true
+	}
+	switch other := target.(type) {
+	case unsupportedTargetError:
+		return e.target == other.target
+	case *unsupportedTargetError:
+		return other != nil && e.target == other.target
+	default:
+		return false
+	}
+}
+
 func NewBackend() Backend {
 	return newBackend()
 }
 
 func Unsupported(target config.TargetType) error {
-	return fmt.Errorf("target not supported yet: %s", target)
+	return unsupportedTargetError{target: target}
 }
 
 func boolPtr(value bool) *bool {

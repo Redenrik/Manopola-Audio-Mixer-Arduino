@@ -6,7 +6,7 @@ import (
 	"errors"
 	"math"
 
-	"github.com/moutend/go-wca"
+	"github.com/moutend/go-wca/pkg/wca"
 )
 
 type windowsMicVolumeController struct{}

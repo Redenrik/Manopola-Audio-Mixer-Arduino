@@ -89,4 +89,4 @@ Advanced portable assets are also published for architecture-specific workflows.
 
 - Native Windows arm64 build is not officially supported yet.
 - Hardware-in-loop validation is still a required manual release gate.
-- Dedicated macOS app/group session control is scoped as next-step work in [COREAUDIO_SESSION_BACKEND_SCOPE.md](COREAUDIO_SESSION_BACKEND_SCOPE.md).
+- macOS `app`/`group` control uses a CoreAudio tap-backed mixer path on macOS `14.2+` and requires System Audio Recording permission from the user.

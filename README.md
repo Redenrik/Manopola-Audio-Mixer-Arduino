@@ -59,7 +59,7 @@ Notes:
 - Windows uses embedded desktop UI + tray by default.
 - Linux uses native tray controls in desktop mode.
 - On macOS, `mic_in`/`line_in` control the default system input level.
-- On macOS, `app`/`group` session targets depend on an available per-app audio backend and may be unavailable.
+- On macOS, `app`/`group` targets are supported on macOS `14.2+` and may request System Audio Recording permission the first time MAMA attaches to a live app.
 - On macOS, programmatic master-volume updates do not trigger the keyboard volume HUD overlay.
 - Startup-at-login can be enabled from Settings on Windows, macOS, and Linux.
 

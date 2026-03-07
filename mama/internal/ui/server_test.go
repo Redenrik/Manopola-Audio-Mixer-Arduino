@@ -3,14 +3,17 @@ package ui
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	"mama/internal/audio"
 	"mama/internal/config"
 	"mama/internal/mixer"
 )
@@ -299,6 +302,9 @@ func TestHandleStartup_Get(t *testing.T) {
 }
 
 func TestHandleStartup_PostUnsupportedOnNonWindows(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("unsupported-startup path only applies on linux in tests")
+	}
 	s := New("config.yaml")
 	req := httptest.NewRequest(http.MethodPost, "/api/startup", strings.NewReader(`{"enabled":true}`))
 	rr := httptest.NewRecorder()
@@ -403,5 +409,52 @@ func TestHandleMappingStatus_ReturnsActiveMappings(t *testing.T) {
 	}
 	if body.Mappings[0].Knob != 1 || body.Mappings[0].Target != "master_out" {
 		t.Fatalf("unexpected first mapping: %+v", body.Mappings[0])
+	}
+}
+
+func TestClassifyMappingHealth_UsesTypedAudioErrors(t *testing.T) {
+	mapping := config.Mapping{Target: config.TargetApp}
+	item := mappingStatusItem{Target: config.TargetApp}
+
+	cases := []struct {
+		name    string
+		err     error
+		health  string
+		message string
+	}{
+		{
+			name:    "permission",
+			err:     errors.New("permission denied: create process tap"),
+			health:  "permission",
+			message: "permission denied: create process tap",
+		},
+		{
+			name:    "unsupported",
+			err:     audio.Unsupported(config.TargetApp),
+			health:  "unsupported",
+			message: audio.Unsupported(config.TargetApp).Error(),
+		},
+		{
+			name:    "output_device",
+			err:     errors.New("output device unavailable: no default output"),
+			health:  "unavailable",
+			message: "output device unavailable: no default output",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.err
+			switch tc.name {
+			case "permission":
+				err = fmt.Errorf("%w: create process tap", audio.ErrPermissionDenied)
+			case "output_device":
+				err = fmt.Errorf("%w: no default output", audio.ErrOutputDeviceUnavailable)
+			}
+			health, message := classifyMappingHealth(mapping, item, err)
+			if health != tc.health || message != tc.message {
+				t.Fatalf("health=%q message=%q want %q %q", health, message, tc.health, tc.message)
+			}
+		})
 	}
 }

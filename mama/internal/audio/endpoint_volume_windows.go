@@ -2,7 +2,7 @@
 
 package audio
 
-import "github.com/moutend/go-wca"
+import "github.com/moutend/go-wca/pkg/wca"
 
 func invokeEndpointVolume(dataFlow uint32, fn func(*wca.IAudioEndpointVolume) (interface{}, error)) (ret interface{}, err error) {
 	return invokeEndpointVolumeFor(dataFlow, "", fn)

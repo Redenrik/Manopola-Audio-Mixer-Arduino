@@ -27,6 +27,7 @@ Download from the latest release:
 1. Open `MAMA-macOS.pkg` and complete installation.
 2. Launch `MAMA.app` from `/Applications`.
 3. Configure serial + mappings and save.
+4. If you use `app` or `group` mappings, allow System Audio Recording for `MAMA` when macOS prompts.
 
 ### Linux (Recommended Installer)
 
@@ -57,7 +58,7 @@ Notes:
 - background PID is written to `.mama.pid` in the package folder.
 - `Stop Mixer` / `stop-mixer.sh` stops the PID tracked in `.mama.pid`.
 - On macOS, `mic_in`/`line_in` adjust the default input device level.
-- On macOS, `app`/`group` targets may be unavailable when no per-app session backend is present.
+- On macOS, `app`/`group` targets are officially supported on macOS `14.2+` and may request System Audio Recording permission when a matching app is active.
 - On macOS, system-volume changes made by MAMA do not show the keyboard volume HUD overlay.
 - Startup-at-login can be enabled from the app Settings page (Windows/macOS/Linux).
 

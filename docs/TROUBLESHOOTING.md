@@ -26,6 +26,13 @@
   - `exact:Spotify`
   - `contains:chrome`
 
+## macOS app/group mapping shows Permission
+
+- macOS `app`/`group` control requires macOS `14.2+`.
+- When MAMA first attaches to a live app, macOS may prompt for System Audio Recording permission.
+- If you denied it, open `System Settings > Privacy & Security > System Audio Recording` and allow `MAMA`.
+- After changing permission, relaunch MAMA or refresh mapping status again with the target app actively playing audio.
+
 ## App/group mapping says target unavailable
 
 - This usually means no matching active audio session currently exists.

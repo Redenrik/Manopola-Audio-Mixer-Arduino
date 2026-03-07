@@ -808,6 +808,19 @@
       font-size: 0.88rem;
     }
 
+    .inline-banner {
+      border: 1px solid #e9baaa;
+      background: #fff3ee;
+      color: #7a2614;
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin: 10px 0 14px;
+    }
+
+    .inline-banner.hidden {
+      display: none;
+    }
+
     .health-badge {
       display: inline-block;
       margin-left: 6px;
@@ -1290,6 +1303,9 @@
         <h2 id="mappingsHeading">Mappings</h2>
         <p class="hint" id="mappingsIntro">Assign each knob target and identify knob numbers in real time.</p>
         <p class="hint" id="windowsTargetWarning"></p>
+        <section class="inline-banner hidden" id="macosAppControlBanner" role="status" aria-live="polite">
+          <span id="macosAppControlBannerMessage"></span>
+        </section>
         <div class="actions templates">
           <label style="min-width: 250px; margin: 0;">
             <span id="mappingTemplateLabel">Mapping Template</span>
@@ -1435,7 +1451,9 @@
       identifyStartTimer: null,
       identifyRetryTimer: null,
       mappingStatusTimer: null,
+      mappingStatusRefreshTimer: null,
       mappingStatusInFlight: false,
+      mappingStatusQueued: false,
       runtimeStatusTimer: null,
       runtimeStatusInFlight: false,
       targetRefreshTimer: null,
@@ -1612,7 +1630,7 @@
         bootApplying: "Applying detected serial port...",
         bootReady: "Ready",
         identifyHeading: "Knob Identification", identifyIntro: "Knob activity is detected automatically once the serial port is configured. Rotate or press any physical knob. Matching indicator flashes below.", debugHeading: "Debug Console", startIdentify: "Start Identify", stopIdentify: "Stop",
-        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", manageTemplates: "Manage Templates", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackNone: "No fallback", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", addKnob: "Add Knob", saveConfig: "Save Config", rollbackConfig: "Rollback Last Save", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", exportDiagnostics: "Export Diagnostics", importConfig: "Import Config", selectorPick: "Pick detected item", fallbackPick: "Pick fallback item", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).", nonWindowsTargetWarning: "macOS/Linux note: app/group controls depend on available audio session backend. Device and master controls remain available.",
+        mappingsHeading: "Mappings", mappingTemplateLabel: "Mapping Template", applyTemplate: "Apply Template", manageTemplates: "Manage Templates", headerKnob: "Knob", headerTarget: "Target", headerName: "Name / Selector", headerSensitivity: "Sensitivity", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Slow", sensitivityNormal: "Normal", sensitivityFast: "Fast", fallbackNone: "No fallback", fallbackToMaster: "Master fallback", addMapping: "Add Mapping", addKnob: "Add Knob", saveConfig: "Save Config", rollbackConfig: "Rollback Last Save", backupConfig: "Backup Snapshot", restoreConfig: "Restore Snapshot", exportConfig: "Export Config", exportDiagnostics: "Export Diagnostics", importConfig: "Import Config", selectorPick: "Pick detected item", fallbackPick: "Pick fallback item", windowsTargetWarning: "Windows note: app/group controls are supported when the target app is actively outputting audio (has an active session).", macosTargetWarning: "macOS note: app/group controls are supported on 14.2+ and may request System Audio Recording permission when a matching app is live.", linuxTargetWarning: "Linux note: app/group controls depend on the available audio session backend. Device and master controls remain available.", macosPermissionBanner: "macOS app/group control needs System Audio Recording access. Open System Settings > Privacy & Security > System Audio Recording, allow MAMA, then retry while the target app is playing audio.", macosUnsupportedBanner: "macOS app/group control requires macOS 14.2 or newer. Device and master controls remain available on this machine.",
         headerActions: "Actions",
         duplicateMapping: "Duplicate mapping",
         removeMapping: "Remove mapping",
@@ -1742,7 +1760,7 @@
         bootApplying: "Applicazione porta seriale rilevata...",
         bootReady: "Pronto",
         identifyHeading: "Identificazione manopole", identifyIntro: "L'attivita delle manopole viene rilevata automaticamente una volta configurata la porta seriale. Ruota o premi una manopola fisica. L'indicatore corrispondente lampeggia sotto.", debugHeading: "Console debug", startIdentify: "Avvia identificazione", stopIdentify: "Stop",
-        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", manageTemplates: "Gestisci template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackNone: "Nessun fallback", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", addKnob: "Aggiungi manopola", saveConfig: "Salva config", rollbackConfig: "Ripristina ultimo salvataggio", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", exportDiagnostics: "Esporta diagnostica", importConfig: "Importa config", selectorPick: "Scegli elemento rilevato", fallbackPick: "Scegli fallback", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).", nonWindowsTargetWarning: "Nota macOS/Linux: i controlli app/group dipendono dal backend sessioni audio disponibile. I controlli dispositivo e master restano disponibili.",
+        mappingsHeading: "Mappature", mappingTemplateLabel: "Template mappatura", applyTemplate: "Applica template", manageTemplates: "Gestisci template", headerKnob: "Manopola", headerTarget: "Target", headerName: "Nome / Selettore", headerSensitivity: "Sensibilita", headerStep: "Step (%)", headerFallback: "Fallback", sensitivitySlow: "Lenta", sensitivityNormal: "Normale", sensitivityFast: "Veloce", fallbackNone: "Nessun fallback", fallbackToMaster: "Fallback master", addMapping: "Aggiungi mappatura", addKnob: "Aggiungi manopola", saveConfig: "Salva config", rollbackConfig: "Ripristina ultimo salvataggio", backupConfig: "Backup snapshot", restoreConfig: "Ripristina snapshot", exportConfig: "Esporta config", exportDiagnostics: "Esporta diagnostica", importConfig: "Importa config", selectorPick: "Scegli elemento rilevato", fallbackPick: "Scegli fallback", windowsTargetWarning: "Nota Windows: i controlli app/group sono supportati quando l'app target sta riproducendo audio (sessione attiva).", macosTargetWarning: "Nota macOS: i controlli app/group sono supportati da macOS 14.2+ e possono richiedere il permesso Registrazione audio di sistema quando e presente un'app corrispondente.", linuxTargetWarning: "Nota Linux: i controlli app/group dipendono dal backend sessioni audio disponibile. I controlli dispositivo e master restano disponibili.", macosPermissionBanner: "I controlli app/group su macOS richiedono l'accesso a Registrazione audio di sistema. Apri Impostazioni di Sistema > Privacy e sicurezza > Registrazione audio di sistema, consenti MAMA, poi riprova mentre l'app target sta riproducendo audio.", macosUnsupportedBanner: "I controlli app/group su macOS richiedono macOS 14.2 o successivo. I controlli dispositivo e master restano disponibili su questa macchina.",
         headerActions: "Azioni",
         duplicateMapping: "Duplica mappatura",
         removeMapping: "Rimuovi mappatura",
@@ -1989,6 +2007,7 @@
       if (state.autoDetectPromise) {
         $("autoDetectPort").textContent = t("autoDetectBusy");
       }
+      updateMacOSAppControlBanner();
       if ($("groupEditorName")) {
         $("groupEditorName").placeholder = state.language === "it" ? "es. browser" : "e.g. browser";
       }
@@ -2158,8 +2177,38 @@
     }
 
     function updatePlatformWarnings() {
-      const isWindows = navigator.platform.toLowerCase().includes("win");
-      $("windowsTargetWarning").textContent = isWindows ? t("windowsTargetWarning") : t("nonWindowsTargetWarning");
+      let text = t("linuxTargetWarning");
+      if (isWindowsPlatform()) {
+        text = t("windowsTargetWarning");
+      } else if (isMacPlatform()) {
+        text = t("macosTargetWarning");
+      }
+      $("windowsTargetWarning").textContent = text;
+    }
+
+    function updateMacOSAppControlBanner(items = state.lastMappingStatus) {
+      const banner = $("macosAppControlBanner");
+      const message = $("macosAppControlBannerMessage");
+      if (!banner || !message) return;
+      if (!isMacPlatform()) {
+        banner.classList.add("hidden");
+        message.textContent = "";
+        return;
+      }
+
+      const relevant = Array.isArray(items)
+        ? items.filter((item) => item && (item.target === "app" || item.target === "group"))
+        : [];
+
+      let text = "";
+      if (relevant.some((item) => String(item.health || "").toLowerCase() === "permission")) {
+        text = t("macosPermissionBanner");
+      } else if (relevant.some((item) => String(item.health || "").toLowerCase() === "unsupported")) {
+        text = t("macosUnsupportedBanner");
+      }
+
+      message.textContent = text;
+      banner.classList.toggle("hidden", !text);
     }
 
     function setStatus(id, text, cls = "") {
@@ -2484,6 +2533,7 @@
           stateEl.removeAttribute("title");
         }
       }
+      updateMacOSAppControlBanner(list);
       refreshMappingRowHealthBadges();
     }
 
@@ -2508,7 +2558,14 @@
     }
 
     async function loadMappingStatus() {
-      if (state.mappingStatusInFlight) return;
+      if (state.mappingStatusRefreshTimer) {
+        clearTimeout(state.mappingStatusRefreshTimer);
+        state.mappingStatusRefreshTimer = null;
+      }
+      if (state.mappingStatusInFlight) {
+        state.mappingStatusQueued = true;
+        return;
+      }
       state.mappingStatusInFlight = true;
       try {
         const body = await fetchJSON("/api/mapping-status");
@@ -2517,10 +2574,29 @@
         appendDebugLine("ERR mapping status: " + (err && err.message ? err.message : String(err)));
       } finally {
         state.mappingStatusInFlight = false;
+        if (state.mappingStatusQueued) {
+          state.mappingStatusQueued = false;
+          scheduleMappingStatusRefresh(0);
+        }
       }
     }
 
+    function scheduleMappingStatusRefresh(delayMs = 80) {
+      const delay = Math.max(0, Number(delayMs) || 0);
+      if (state.mappingStatusRefreshTimer) {
+        clearTimeout(state.mappingStatusRefreshTimer);
+      }
+      state.mappingStatusRefreshTimer = setTimeout(() => {
+        state.mappingStatusRefreshTimer = null;
+        loadMappingStatus();
+      }, delay);
+    }
+
     function stopMappingStatusPolling() {
+      if (state.mappingStatusRefreshTimer) {
+        clearTimeout(state.mappingStatusRefreshTimer);
+        state.mappingStatusRefreshTimer = null;
+      }
       if (state.mappingStatusTimer) {
         clearInterval(state.mappingStatusTimer);
         state.mappingStatusTimer = null;
@@ -2530,7 +2606,9 @@
     function startMappingStatusPolling() {
       stopMappingStatusPolling();
       loadMappingStatus();
-      state.mappingStatusTimer = setInterval(loadMappingStatus, 900);
+      state.mappingStatusTimer = setInterval(() => {
+        scheduleMappingStatusRefresh(0);
+      }, 320);
     }
 
     function slugifyTemplateID(raw) {
@@ -4562,6 +4640,10 @@
       return navigator.platform.toLowerCase().includes("win");
     }
 
+    function isMacPlatform() {
+      return navigator.platform.toLowerCase().includes("mac");
+    }
+
     function applyConfigToForm(cfg, options = {}) {
       if (!cfg || typeof cfg !== "object") {
         throw new Error("Invalid config object");
@@ -5247,6 +5329,7 @@
               growKnobCount(knobID, "serial event knob " + knobID);
             }
             flashKnob(ev.knobId, ev.kind, ev.delta);
+            scheduleMappingStatusRefresh(ev.kind === "button_press" ? 40 : 65);
           } else if (ev.type === "raw" && ev.raw) {
             appendDebugLine("RX " + ev.raw);
           } else if (ev.type === "state") {

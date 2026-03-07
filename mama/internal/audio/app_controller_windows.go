@@ -12,7 +12,7 @@ import (
 	"unsafe"
 
 	"github.com/go-ole/go-ole"
-	"github.com/moutend/go-wca"
+	"github.com/moutend/go-wca/pkg/wca"
 	"golang.org/x/sys/windows"
 	"mama/internal/config"
 )

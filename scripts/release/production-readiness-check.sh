@@ -47,6 +47,26 @@ for target in "linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows
   run_check "cross_build_${goos}_${goarch}" bash -lc "cd \"${MAMA_DIR}\" && GOOS=${goos} GOARCH=${goarch} go build ./cmd/mama"
 done
 
+if [[ "$(uname -s)" == "Darwin" ]] && command -v lipo >/dev/null 2>&1; then
+  run_check "macos_package_metadata" bash -lc "
+    set -euo pipefail
+    tmp_dir=\"\$(mktemp -d)\"
+    trap 'rm -rf \"\${tmp_dir}\"' EXIT
+    bash \"${ROOT_DIR}/scripts/release/package-macos-universal.sh\" \"\${tmp_dir}/MAMA-macOS\"
+    app_dir=\"\${tmp_dir}/MAMA-macOS/MAMA.app\"
+    plist=\"\${app_dir}/Contents/Info.plist\"
+    [[ -d \"\${app_dir}\" ]]
+    grep -q '<key>LSMinimumSystemVersion</key>' \"\${plist}\"
+    grep -q '<string>14.2</string>' \"\${plist}\"
+    grep -q '<key>NSAudioCaptureUsageDescription</key>' \"\${plist}\"
+    grep -q '<key>CFBundleIconFile</key>' \"\${plist}\"
+    grep -q '<string>MAMA.icns</string>' \"\${plist}\"
+    [[ -f \"\${app_dir}/Contents/Resources/MAMA.icns\" ]]
+  "
+else
+  echo "check=macos_package_metadata status=SKIP reason=requires_darwin_host" | tee -a "${SUMMARY_FILE}"
+fi
+
 echo "end_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "${SUMMARY_FILE}"
 echo "result=PASS" >> "${SUMMARY_FILE}"
 echo "Production readiness checks completed successfully."

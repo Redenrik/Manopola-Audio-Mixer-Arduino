@@ -23,6 +23,14 @@ if ! command -v lipo >/dev/null 2>&1; then
   echo "lipo not found (required for universal2 packaging)" >&2
   exit 1
 fi
+if ! command -v sips >/dev/null 2>&1; then
+  echo "sips not found (required for macOS icon packaging)" >&2
+  exit 1
+fi
+if ! command -v iconutil >/dev/null 2>&1; then
+  echo "iconutil not found (required for macOS app icon packaging)" >&2
+  exit 1
+fi
 
 TMP_DIR="$(mktemp -d)"
 cleanup() {
@@ -43,16 +51,35 @@ cp "${MAMA_DIR}/internal/config/default.yaml" "${OUT_DIR}/config.yaml"
 cp "${MAMA_DIR}/assets/icons/mama-app.png" "${OUT_DIR}/mama-app.png"
 cp "${MAMA_DIR}/assets/icons/mama-tray.png" "${OUT_DIR}/mama-tray.png"
 
+ICONSET_DIR="${TMP_DIR}/MAMA.iconset"
+mkdir -p "${ICONSET_DIR}"
+for spec in \
+  "16 16 icon_16x16.png" \
+  "32 32 icon_16x16@2x.png" \
+  "32 32 icon_32x32.png" \
+  "64 64 icon_32x32@2x.png" \
+  "128 128 icon_128x128.png" \
+  "256 256 icon_128x128@2x.png" \
+  "256 256 icon_256x256.png" \
+  "512 512 icon_256x256@2x.png" \
+  "512 512 icon_512x512.png" \
+  "1024 1024 icon_512x512@2x.png"
+do
+  read -r width height name <<<"${spec}"
+  sips -z "${height}" "${width}" "${OUT_DIR}/mama-app.png" --out "${ICONSET_DIR}/${name}" >/dev/null
+done
+
 APP_DIR="${OUT_DIR}/MAMA.app"
 APP_CONTENTS="${APP_DIR}/Contents"
 APP_MACOS="${APP_CONTENTS}/MacOS"
 APP_RESOURCES="${APP_CONTENTS}/Resources"
+rm -rf "${APP_DIR}"
 mkdir -p "${APP_MACOS}" "${APP_RESOURCES}"
 
 cp "${OUT_DIR}/mama" "${APP_MACOS}/MAMA"
-cp "${OUT_DIR}/config.yaml" "${APP_MACOS}/config.yaml"
-cp "${OUT_DIR}/mama-app.png" "${APP_MACOS}/mama-app.png"
-cp "${OUT_DIR}/mama-tray.png" "${APP_MACOS}/mama-tray.png"
+cp "${OUT_DIR}/mama-app.png" "${APP_RESOURCES}/mama-app.png"
+cp "${OUT_DIR}/mama-tray.png" "${APP_RESOURCES}/mama-tray.png"
+iconutil -c icns "${ICONSET_DIR}" -o "${APP_RESOURCES}/MAMA.icns"
 
 cat > "${APP_CONTENTS}/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -72,10 +99,12 @@ cat > "${APP_CONTENTS}/Info.plist" <<'PLIST'
   <string>1.0.0</string>
   <key>CFBundleExecutable</key>
   <string>MAMA</string>
+  <key>CFBundleIconFile</key>
+  <string>MAMA.icns</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>LSMinimumSystemVersion</key>
-  <string>11.0</string>
+  <string>14.2</string>
   <key>NSAudioCaptureUsageDescription</key>
   <string>MAMA captures app audio to apply per-app volume and mute controls.</string>
   <key>NSHighResolutionCapable</key>
@@ -90,7 +119,8 @@ cat > "${OUT_DIR}/Open Setup UI.command" <<'LAUNCH_UI'
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
-exec open -a "./MAMA.app" --args "$@"
+config_path="$PWD/config.yaml"
+exec open -a "./MAMA.app" --args -config "$config_path" "$@"
 LAUNCH_UI
 
 cat > "${OUT_DIR}/Start Mixer.command" <<'LAUNCH_MIXER'
@@ -98,6 +128,7 @@ cat > "${OUT_DIR}/Start Mixer.command" <<'LAUNCH_MIXER'
 set -euo pipefail
 cd "$(dirname "$0")"
 app_bin="./MAMA.app/Contents/MacOS/MAMA"
+config_path="./config.yaml"
 if [[ ! -x "$app_bin" ]]; then
   echo "Missing app executable: $app_bin"
   exit 1
@@ -110,7 +141,7 @@ if [[ -f "$pid_file" ]]; then
     exit 0
   fi
 fi
-nohup "$app_bin" -open=false -start-hidden=true "$@" >/dev/null 2>&1 &
+nohup "$app_bin" -config "$config_path" -open=false -start-hidden=true "$@" >/dev/null 2>&1 &
 echo $! > "$pid_file"
 echo "MAMA started in background (PID $(cat "$pid_file"))."
 LAUNCH_MIXER

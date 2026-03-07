@@ -8,7 +8,7 @@
 |---|---|---|
 | OS families | Windows, macOS, Linux | CI validates all three OS families. |
 | Windows architectures | `amd64`, `386` | Official installers are published for both. |
-| macOS architectures | `amd64`, `arm64` | Recommended package is universal2. |
+| macOS architectures | `amd64`, `arm64` | Recommended package is universal2; official support floor is macOS `14.2+`. |
 | Linux architectures | `amd64`, `arm64` | Recommended user package is `amd64`; arm64 portable is advanced asset. |
 | Windows arm64 | Not officially supported natively | Use x64 compatibility path where available. |
 | Go baseline | `1.22+` | CI/release workflows currently use `1.24.x`. |
@@ -17,7 +17,7 @@
 
 | Capability | Windows | macOS | Linux |
 |---|---|---|---|
-| Desktop shell mode | Yes (embedded shell) | Yes (browser shell) | Yes (browser shell) |
+| Desktop shell mode | Yes (embedded shell) | Yes (embedded shell) | Yes (browser shell) |
 | Tray icon / close-to-tray UX | Yes | Yes (menu bar) | Yes (status tray; DE dependent) |
 | Browser-based local UI | Optional (`-desktop=false`) | Yes | Yes |
 | In-app startup integration | Yes | Yes | Yes (XDG autostart) |
@@ -38,8 +38,8 @@
 | `master_out` | Supported on all platforms |
 | `mic_in` | Supported when capture endpoint backend exists |
 | `line_in` | Supported when capture endpoint backend exists |
-| `app` | Supported when per-app session backend is available and session is active |
-| `group` | Supported when per-app session backend is available and matching sessions are active |
+| `app` | Windows: supported with active session. macOS: supported on `14.2+` with System Audio Recording permission and active app audio. Linux: supported when the session backend is available and the session is active. |
+| `group` | Windows: supported with active matching sessions. macOS: supported on `14.2+` with System Audio Recording permission and active matching app audio. Linux: supported when the session backend is available and matching sessions are active. |
 
 ## 2) Versioning Policy
 

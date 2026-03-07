@@ -44,19 +44,22 @@ func configureStartupForConfig(cfgPath string, enabled bool) (startupStatus, err
 		return startupStatus{Supported: true, Enabled: false, Message: "startup disabled"}, nil
 	}
 
-	runtimePath := filepath.Join(filepath.Dir(cfgPath), "mama")
+	runtimePath, err := os.Executable()
+	if err != nil {
+		return startupStatus{}, fmt.Errorf("resolve runtime executable: %w", err)
+	}
+	if resolved, resolveErr := filepath.EvalSymlinks(runtimePath); resolveErr == nil && strings.TrimSpace(resolved) != "" {
+		runtimePath = resolved
+	}
 	if _, err := os.Stat(runtimePath); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return startupStatus{}, fmt.Errorf("cannot enable startup: %s not found next to config", filepath.Base(runtimePath))
-		}
-		return startupStatus{}, err
+		return startupStatus{}, fmt.Errorf("cannot enable startup: runtime executable not found: %w", err)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(plistPath), 0o755); err != nil {
 		return startupStatus{}, err
 	}
 
-	plist, err := buildMacStartupPlist(runtimePath, filepath.Join(filepath.Dir(cfgPath), "config.yaml"))
+	plist, err := buildMacStartupPlist(runtimePath, cfgPath)
 	if err != nil {
 		return startupStatus{}, err
 	}

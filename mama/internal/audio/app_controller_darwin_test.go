@@ -4,6 +4,7 @@ package audio
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"mama/internal/config"
@@ -22,6 +23,7 @@ func (f *fakeCoreAudioBridge) ListProcesses() ([]coreAudioProcessInfo, error) {
 type fakeDarwinTapBridge struct {
 	supported bool
 	states    map[string]darwinTapState
+	ensureErr map[string]error
 
 	ensureCalls   []darwinTapTarget
 	setGainCalls  map[string]int
@@ -34,6 +36,13 @@ func (f *fakeDarwinTapBridge) Supported() bool {
 
 func (f *fakeDarwinTapBridge) EnsureTap(target darwinTapTarget) error {
 	f.ensureCalls = append(f.ensureCalls, target)
+	if err := f.ensureErr[target.Key]; err != nil {
+		state := f.ReadVirtualState(target.Key)
+		state.Wanted = true
+		state.Attached = false
+		f.saveState(target.Key, state)
+		return err
+	}
 	state := f.ReadVirtualState(target.Key)
 	state.Wanted = true
 	state.Attached = true
@@ -182,5 +191,59 @@ func TestDarwinAppControllerGroupDedupAndUnsupported(t *testing.T) {
 	}
 	if len(tap.ensureCalls) != 0 {
 		t.Fatalf("ensureCalls=%v want none", tap.ensureCalls)
+	}
+}
+
+func TestDarwinAppControllerReadStateEnsuresTap(t *testing.T) {
+	bridge := &fakeCoreAudioBridge{
+		processes: []coreAudioProcessInfo{{
+			ObjectID:       11,
+			PID:            101,
+			RunningOutput:  true,
+			BundleID:       "com.spotify.client",
+			ExecutablePath: "/Applications/Spotify.app/Contents/MacOS/Spotify",
+		}},
+	}
+	tap := &fakeDarwinTapBridge{
+		supported: true,
+		states: map[string]darwinTapState{
+			"bundle:com.spotify.client": {Volume: 57, Muted: true},
+		},
+	}
+	controller := newDarwinAppSessionController(bridge, tap)
+
+	state, err := controller.ReadState("exe:spotify")
+	if err != nil {
+		t.Fatalf("ReadState error: %v", err)
+	}
+	if len(tap.ensureCalls) != 1 {
+		t.Fatalf("ensureCalls=%d want 1", len(tap.ensureCalls))
+	}
+	if !state.Available || state.Volume != 57 || !state.Muted || state.SessionCount != 1 {
+		t.Fatalf("state=%+v want available=true volume=57 muted=true sessions=1", state)
+	}
+}
+
+func TestDarwinAppControllerReadStateReturnsPermissionError(t *testing.T) {
+	bridge := &fakeCoreAudioBridge{
+		processes: []coreAudioProcessInfo{{
+			ObjectID:       12,
+			PID:            202,
+			RunningOutput:  true,
+			BundleID:       "com.discord.Discord",
+			ExecutablePath: "/Applications/Discord.app/Contents/MacOS/Discord",
+		}},
+	}
+	tap := &fakeDarwinTapBridge{
+		supported: true,
+		ensureErr: map[string]error{
+			"bundle:com.discord.discord": fmt.Errorf("%w: create process tap", ErrPermissionDenied),
+		},
+	}
+	controller := newDarwinAppSessionController(bridge, tap)
+
+	_, err := controller.ReadState("exe:discord")
+	if !errors.Is(err, ErrPermissionDenied) {
+		t.Fatalf("expected permission denied error, got %v", err)
 	}
 }

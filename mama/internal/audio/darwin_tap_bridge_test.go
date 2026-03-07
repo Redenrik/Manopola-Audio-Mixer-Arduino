@@ -2,12 +2,20 @@
 
 package audio
 
-import "testing"
+import (
+	"errors"
+	"sync"
+	"testing"
+	"time"
+)
 
 type fakeDarwinTapRuntime struct {
-	supported       bool
-	outputDeviceUID string
-	restoreCapable  bool
+	supported        bool
+	outputDeviceUID  string
+	restoreCapable   bool
+	defaultOutputErr error
+	createErr        error
+	listener         *fakeDarwinTapOutputListener
 
 	createCalls []*fakeDarwinTapRuntimeSession
 }
@@ -21,15 +29,26 @@ type fakeDarwinTapRuntimeSession struct {
 	closed         bool
 }
 
+type fakeDarwinTapOutputListener struct {
+	mu         sync.Mutex
+	generation uint64
+}
+
 func (f *fakeDarwinTapRuntime) Supported() bool {
 	return f.supported
 }
 
 func (f *fakeDarwinTapRuntime) DefaultOutputDeviceUID() (string, error) {
+	if f.defaultOutputErr != nil {
+		return "", f.defaultOutputErr
+	}
 	return f.outputDeviceUID, nil
 }
 
 func (f *fakeDarwinTapRuntime) CreateSession(target darwinTapTarget, outputDeviceUID string, volume int, muted bool) (darwinTapRuntimeSession, error) {
+	if f.createErr != nil {
+		return nil, f.createErr
+	}
 	session := &fakeDarwinTapRuntimeSession{
 		target:         target,
 		outputDeviceID: outputDeviceUID,
@@ -39,6 +58,13 @@ func (f *fakeDarwinTapRuntime) CreateSession(target darwinTapTarget, outputDevic
 	}
 	f.createCalls = append(f.createCalls, session)
 	return session, nil
+}
+
+func (f *fakeDarwinTapRuntime) StartDefaultOutputListener() (darwinTapOutputListener, error) {
+	if f.listener == nil {
+		return nil, nil
+	}
+	return f.listener, nil
 }
 
 func (s *fakeDarwinTapRuntimeSession) SetGain(volume int) error {
@@ -62,6 +88,22 @@ func (s *fakeDarwinTapRuntimeSession) Close() error {
 
 func (s *fakeDarwinTapRuntimeSession) RestoreCapable() bool {
 	return s.restoreCapable
+}
+
+func (l *fakeDarwinTapOutputListener) Generation() uint64 {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.generation
+}
+
+func (l *fakeDarwinTapOutputListener) Close() error {
+	return nil
+}
+
+func (l *fakeDarwinTapOutputListener) Trigger() {
+	l.mu.Lock()
+	l.generation++
+	l.mu.Unlock()
 }
 
 func TestDarwinTapBridgeReconcileRestoresRestartedSession(t *testing.T) {
@@ -134,10 +176,12 @@ func TestDarwinTapBridgeReconcileRestoresRestartedSession(t *testing.T) {
 }
 
 func TestDarwinTapBridgeRebuildsOnOutputDeviceChange(t *testing.T) {
+	listener := &fakeDarwinTapOutputListener{}
 	runtime := &fakeDarwinTapRuntime{
 		supported:       true,
 		outputDeviceUID: "BuiltInSpeakerDevice",
 		restoreCapable:  true,
+		listener:        listener,
 	}
 	bridge := newDefaultDarwinTapBridge(runtime)
 
@@ -153,10 +197,20 @@ func TestDarwinTapBridgeRebuildsOnOutputDeviceChange(t *testing.T) {
 	if len(runtime.createCalls) != 1 {
 		t.Fatalf("createCalls=%d want 1", len(runtime.createCalls))
 	}
+	if err := bridge.SetGain(target.Key, 63); err != nil {
+		t.Fatalf("SetGain error: %v", err)
+	}
+	if err := bridge.SetMuted(target.Key, true); err != nil {
+		t.Fatalf("SetMuted error: %v", err)
+	}
 
+	time.Sleep(150 * time.Millisecond)
 	runtime.outputDeviceUID = "USBHeadset"
-	if err := bridge.Reconcile([]darwinTapTarget{target}); err != nil {
-		t.Fatalf("Reconcile error: %v", err)
+	listener.Trigger()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for len(runtime.createCalls) != 2 && time.Now().Before(deadline) {
+		time.Sleep(25 * time.Millisecond)
 	}
 	if len(runtime.createCalls) != 2 {
 		t.Fatalf("createCalls=%d want 2 after device switch", len(runtime.createCalls))
@@ -167,4 +221,46 @@ func TestDarwinTapBridgeRebuildsOnOutputDeviceChange(t *testing.T) {
 	if runtime.createCalls[1].outputDeviceID != "USBHeadset" {
 		t.Fatalf("output device=%q want USBHeadset", runtime.createCalls[1].outputDeviceID)
 	}
+	if runtime.createCalls[1].volume != 63 || !runtime.createCalls[1].muted {
+		t.Fatalf("recreated session volume=%d muted=%t want 63,true", runtime.createCalls[1].volume, runtime.createCalls[1].muted)
+	}
+
+	state := bridge.ReadVirtualState(target.Key)
+	if state.Volume != 63 || !state.Muted || !state.Attached {
+		t.Fatalf("state=%+v want volume=63 muted=true attached=true", state)
+	}
+}
+
+func TestDarwinTapBridgeClassifiesTypedErrors(t *testing.T) {
+	target := darwinTapTarget{
+		Key:           "bundle:com.spotify.client",
+		ProcessObject: 10,
+		BundleID:      "com.spotify.client",
+		Name:          "Spotify",
+	}
+
+	t.Run("permission", func(t *testing.T) {
+		runtime := &fakeDarwinTapRuntime{
+			supported:       true,
+			outputDeviceUID: "BuiltInSpeakerDevice",
+			createErr:       errors.New("permission denied: create process tap"),
+		}
+		bridge := newDefaultDarwinTapBridge(runtime)
+		err := bridge.EnsureTap(target)
+		if !errors.Is(err, ErrPermissionDenied) {
+			t.Fatalf("errors.Is(permission) = false, err=%v", err)
+		}
+	})
+
+	t.Run("output_device", func(t *testing.T) {
+		runtime := &fakeDarwinTapRuntime{
+			supported:        true,
+			defaultOutputErr: errors.New("output device unavailable: no default output"),
+		}
+		bridge := newDefaultDarwinTapBridge(runtime)
+		err := bridge.EnsureTap(target)
+		if !errors.Is(err, ErrOutputDeviceUnavailable) {
+			t.Fatalf("errors.Is(output device unavailable) = false, err=%v", err)
+		}
+	})
 }

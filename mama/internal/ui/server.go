@@ -298,6 +298,16 @@ func classifyMappingHealth(mapping config.Mapping, item mappingStatusItem, readE
 	}
 
 	msg := readErr.Error()
+	switch {
+	case errors.Is(readErr, audio.ErrPermissionDenied):
+		return "permission", msg
+	case errors.Is(readErr, audio.ErrUnsupported):
+		return "unsupported", msg
+	case errors.Is(readErr, audio.ErrOutputDeviceUnavailable):
+		return "unavailable", msg
+	case errors.Is(readErr, audio.ErrTransientTapFailure):
+		return "error", msg
+	}
 	if errors.Is(readErr, audio.ErrTargetUnavailable) {
 		if fallbackTarget, _, fallbackEnabled := mapping.EffectiveFallback(); fallbackEnabled && (mapping.Target == config.TargetApp || mapping.Target == config.TargetGroup) {
 			return "fallback", fmt.Sprintf("target unavailable, fallback to %s is enabled", fallbackTarget)

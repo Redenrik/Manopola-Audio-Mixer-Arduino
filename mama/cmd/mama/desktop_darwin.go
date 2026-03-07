@@ -10,12 +10,41 @@ package main
 #include <stdlib.h>
 #include <unistd.h>
 
+@interface MAMAWindowDelegate : NSObject<NSWindowDelegate>
+@property(nonatomic, assign) id<NSWindowDelegate> forwardDelegate;
+@end
+
 @interface MAMATrayDelegate : NSObject
 @end
 
 static NSStatusItem *mamaStatusItem = nil;
+static NSMenu *mamaStatusMenu = nil;
 static MAMATrayDelegate *mamaTrayDelegate = nil;
+static MAMAWindowDelegate *mamaWindowDelegate = nil;
 static NSWindow *mamaManagedWindow = nil;
+
+@implementation MAMAWindowDelegate
+- (BOOL)windowShouldClose:(id)sender {
+	if (mamaManagedWindow != nil) {
+		[mamaManagedWindow orderOut:nil];
+	}
+	return NO;
+}
+
+- (id)forwardingTargetForSelector:(SEL)aSelector {
+	if ([self.forwardDelegate respondsToSelector:aSelector]) {
+		return self.forwardDelegate;
+	}
+	return [super forwardingTargetForSelector:aSelector];
+}
+
+- (BOOL)respondsToSelector:(SEL)aSelector {
+	if (aSelector == @selector(windowShouldClose:)) {
+		return YES;
+	}
+	return [super respondsToSelector:aSelector] || [self.forwardDelegate respondsToSelector:aSelector];
+}
+@end
 
 @implementation MAMATrayDelegate
 - (void)onShow:(id)sender {
@@ -25,18 +54,52 @@ static NSWindow *mamaManagedWindow = nil;
 	}
 }
 
+- (void)onStatusItemClick:(id)sender {
+	NSEvent *event = [NSApp currentEvent];
+	if (event != nil && ([event type] == NSEventTypeRightMouseDown || [event type] == NSEventTypeRightMouseUp)) {
+		NSStatusBarButton *button = [mamaStatusItem button];
+		if (button != nil && mamaStatusMenu != nil) {
+			NSPoint menuPoint = NSMakePoint(0, NSHeight([button bounds]));
+			[mamaStatusMenu popUpMenuPositioningItem:nil atLocation:menuPoint inView:button];
+		}
+		return;
+	}
+	[self onShow:sender];
+}
+
 - (void)onQuit:(id)sender {
 	kill(getpid(), SIGTERM);
 }
 @end
 
+static void mamaInstallWindowDelegate(void *window) {
+	if (window == NULL) {
+		return;
+	}
+	NSWindow *w = (__bridge NSWindow *)window;
+	mamaManagedWindow = w;
+	if (mamaWindowDelegate == nil) {
+		mamaWindowDelegate = [[MAMAWindowDelegate alloc] init];
+	}
+	if (mamaWindowDelegate == nil) {
+		return;
+	}
+	if ([w delegate] != mamaWindowDelegate) {
+		mamaWindowDelegate.forwardDelegate = [w delegate];
+		[w setDelegate:mamaWindowDelegate];
+	}
+	[w setReleasedWhenClosed:NO];
+}
+
 static void mamaTrayCreate(const char *title, void *window) {
 	if (window != NULL) {
-		mamaManagedWindow = (__bridge NSWindow *)window;
+		mamaInstallWindowDelegate(window);
 	}
 	if (mamaStatusItem != nil) {
 		return;
 	}
+
+	[NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
 
 	NSString *itemTitle = @"MAMA";
 	if (title != NULL) {
@@ -50,8 +113,6 @@ static void mamaTrayCreate(const char *title, void *window) {
 	if (mamaStatusItem == nil) {
 		return;
 	}
-
-	[[mamaStatusItem button] setTitle:itemTitle];
 
 	mamaTrayDelegate = [[MAMATrayDelegate alloc] init];
 	if (mamaTrayDelegate == nil) {
@@ -73,7 +134,15 @@ static void mamaTrayCreate(const char *title, void *window) {
 	[quitItem setTarget:mamaTrayDelegate];
 	[menu addItem:quitItem];
 
-	[mamaStatusItem setMenu:menu];
+	mamaStatusMenu = menu;
+
+	NSStatusBarButton *button = [mamaStatusItem button];
+	if (button != nil) {
+		[button setTitle:itemTitle];
+		[button setTarget:mamaTrayDelegate];
+		[button setAction:@selector(onStatusItemClick:)];
+		[button sendActionOn:(NSEventMaskLeftMouseUp | NSEventMaskRightMouseUp)];
+	}
 }
 
 static void mamaTraySetIcon(const void *bytes, int length, int isTemplate) {
@@ -100,11 +169,16 @@ static void mamaTraySetIcon(const void *bytes, int length, int isTemplate) {
 }
 
 static void mamaTrayDestroy(void) {
+	if (mamaManagedWindow != nil && mamaWindowDelegate != nil && [mamaManagedWindow delegate] == mamaWindowDelegate) {
+		[mamaManagedWindow setDelegate:mamaWindowDelegate.forwardDelegate];
+	}
 	if (mamaStatusItem != nil) {
 		[[NSStatusBar systemStatusBar] removeStatusItem:mamaStatusItem];
 		mamaStatusItem = nil;
 	}
+	mamaStatusMenu = nil;
 	mamaTrayDelegate = nil;
+	mamaWindowDelegate = nil;
 	mamaManagedWindow = nil;
 }
 
@@ -149,6 +223,15 @@ static void mamaWindowHide(void *window) {
 	}
 	NSWindow *w = (__bridge NSWindow *)window;
 	[w orderOut:nil];
+}
+
+static void mamaWindowShow(void *window) {
+	if (window == NULL) {
+		return;
+	}
+	NSWindow *w = (__bridge NSWindow *)window;
+	[w makeKeyAndOrderFront:nil];
+	[NSApp activateIgnoringOtherApps:YES];
 }
 */
 import "C"
@@ -205,6 +288,8 @@ func runDesktopShell(ctx context.Context, cancel context.CancelFunc, url string,
 			C.mamaWindowHide(window)
 		}
 		fmt.Println("Desktop shell started hidden in tray on macOS.")
+	} else if window != nil {
+		C.mamaWindowShow(window)
 	}
 
 	go func() {
@@ -223,14 +308,18 @@ func setDarwinTrayIconIfAvailable() {
 		return
 	}
 	baseDir := filepath.Dir(exePath)
+	resourceDir := filepath.Clean(filepath.Join(baseDir, "..", "Resources"))
+	searchDirs := []string{resourceDir, baseDir}
 	candidates := []string{"mama-tray.png", "mama-app.png"}
-	for _, name := range candidates {
-		iconPath := filepath.Join(baseDir, name)
-		icon, err := os.ReadFile(iconPath)
-		if err != nil || len(icon) == 0 {
-			continue
+	for _, dir := range searchDirs {
+		for _, name := range candidates {
+			iconPath := filepath.Join(dir, name)
+			icon, err := os.ReadFile(iconPath)
+			if err != nil || len(icon) == 0 {
+				continue
+			}
+			C.mamaTraySetIcon(unsafe.Pointer(&icon[0]), C.int(len(icon)), 0)
+			return
 		}
-		C.mamaTraySetIcon(unsafe.Pointer(&icon[0]), C.int(len(icon)), 0)
-		return
 	}
 }
