@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +16,7 @@ import (
 
 type darwinAppSession struct {
 	id            string
+	runtimeKey    string
 	stateKey      string
 	processObject uint32
 	pid           int
@@ -25,6 +27,20 @@ type darwinAppSession struct {
 	execPath      string
 	aliases       []string
 	exeAliases    []string
+	volume        int
+	isMuted       bool
+	volumeCapable bool
+	muteCapable   bool
+}
+
+type darwinLogicalApp struct {
+	id            string
+	stateKey      string
+	name          string
+	bundleID      string
+	aliases       []string
+	exeAliases    []string
+	sessions      []darwinAppSession
 	volume        int
 	isMuted       bool
 	volumeCapable bool
@@ -64,22 +80,22 @@ func newDarwinAppSessionController(bridge coreAudioBridge, tap darwinTapBridge) 
 }
 
 func (d *darwinAppSessionController) Adjust(selectorToken string, step float64, deltaSteps int) error {
-	target, err := d.selectSession(selectorToken)
+	target, err := d.selectLogicalApp(selectorToken)
 	if err != nil {
 		return err
 	}
 	if !target.volumeCapable {
 		return Unsupported(config.TargetApp)
 	}
-	if err := d.tap.EnsureTap(target.tapTarget()); err != nil {
-		return d.mapWriteError(target.id, err)
+	for _, session := range target.sessions {
+		if err := d.tap.EnsureTap(session.tapTarget()); err != nil {
+			return d.mapWriteError(target.stateKey, err)
+		}
 	}
 
-	next := target.volume + int(step*100*float64(deltaSteps))
-	next = clampPercent(next)
-
+	next := clampPercent(target.volume + int(step*100*float64(deltaSteps)))
 	if err := d.tap.SetGain(target.stateKey, next); err != nil {
-		return d.mapWriteError(target.id, err)
+		return d.mapWriteError(target.stateKey, err)
 	}
 
 	updatedMuted := target.isMuted
@@ -94,20 +110,22 @@ func (d *darwinAppSessionController) Adjust(selectorToken string, step float64, 
 }
 
 func (d *darwinAppSessionController) ToggleMute(selectorToken string) error {
-	target, err := d.selectSession(selectorToken)
+	target, err := d.selectLogicalApp(selectorToken)
 	if err != nil {
 		return err
 	}
 	if !target.muteCapable {
 		return Unsupported(config.TargetApp)
 	}
-	if err := d.tap.EnsureTap(target.tapTarget()); err != nil {
-		return d.mapWriteError(target.id, err)
+	for _, session := range target.sessions {
+		if err := d.tap.EnsureTap(session.tapTarget()); err != nil {
+			return d.mapWriteError(target.stateKey, err)
+		}
 	}
 
 	next := !target.isMuted
 	if err := d.tap.SetMuted(target.stateKey, next); err != nil {
-		return d.mapWriteError(target.id, err)
+		return d.mapWriteError(target.stateKey, err)
 	}
 
 	d.rememberWriteState(target.stateKey, nil, &next)
@@ -115,7 +133,7 @@ func (d *darwinAppSessionController) ToggleMute(selectorToken string) error {
 }
 
 func (d *darwinAppSessionController) AdjustGroup(selectors []config.Selector, step float64, deltaSteps int) error {
-	targets, err := d.selectSessions(selectors)
+	targets, err := d.selectLogicalApps(selectors)
 	if err != nil {
 		return err
 	}
@@ -123,13 +141,15 @@ func (d *darwinAppSessionController) AdjustGroup(selectors []config.Selector, st
 		if !target.volumeCapable {
 			return Unsupported(config.TargetGroup)
 		}
-		if err := d.tap.EnsureTap(target.tapTarget()); err != nil {
-			return d.mapWriteError(target.id, err)
+		for _, session := range target.sessions {
+			if err := d.tap.EnsureTap(session.tapTarget()); err != nil {
+				return d.mapWriteError(target.stateKey, err)
+			}
 		}
 
 		next := clampPercent(target.volume + int(step*100*float64(deltaSteps)))
 		if err := d.tap.SetGain(target.stateKey, next); err != nil {
-			return d.mapWriteError(target.id, err)
+			return d.mapWriteError(target.stateKey, err)
 		}
 
 		updatedMuted := target.isMuted
@@ -144,7 +164,7 @@ func (d *darwinAppSessionController) AdjustGroup(selectors []config.Selector, st
 }
 
 func (d *darwinAppSessionController) ToggleMuteGroup(selectors []config.Selector) error {
-	targets, err := d.selectSessions(selectors)
+	targets, err := d.selectLogicalApps(selectors)
 	if err != nil {
 		return err
 	}
@@ -152,13 +172,15 @@ func (d *darwinAppSessionController) ToggleMuteGroup(selectors []config.Selector
 		if !target.muteCapable {
 			return Unsupported(config.TargetGroup)
 		}
-		if err := d.tap.EnsureTap(target.tapTarget()); err != nil {
-			return d.mapWriteError(target.id, err)
+		for _, session := range target.sessions {
+			if err := d.tap.EnsureTap(session.tapTarget()); err != nil {
+				return d.mapWriteError(target.stateKey, err)
+			}
 		}
 
 		next := !target.isMuted
 		if err := d.tap.SetMuted(target.stateKey, next); err != nil {
-			return d.mapWriteError(target.id, err)
+			return d.mapWriteError(target.stateKey, err)
 		}
 		d.rememberWriteState(target.stateKey, nil, &next)
 	}
@@ -169,12 +191,14 @@ func (d *darwinAppSessionController) ReadState(selectorToken string) (TargetStat
 	if d.tap == nil || !d.tap.Supported() {
 		return TargetState{}, Unsupported(config.TargetApp)
 	}
-	target, err := d.selectSession(selectorToken)
+	target, err := d.selectLogicalApp(selectorToken)
 	if err != nil {
 		return TargetState{}, err
 	}
-	if err := d.tap.EnsureTap(target.tapTarget()); err != nil {
-		return TargetState{}, d.mapWriteError(target.id, err)
+	for _, session := range target.sessions {
+		if err := d.tap.EnsureTap(session.tapTarget()); err != nil {
+			return TargetState{}, d.mapWriteError(target.stateKey, err)
+		}
 	}
 	state := d.tap.ReadVirtualState(target.stateKey)
 	return TargetState{
@@ -189,7 +213,7 @@ func (d *darwinAppSessionController) ReadGroupState(selectors []config.Selector)
 	if d.tap == nil || !d.tap.Supported() {
 		return TargetState{}, Unsupported(config.TargetGroup)
 	}
-	targets, err := d.selectSessions(selectors)
+	targets, err := d.selectLogicalApps(selectors)
 	if err != nil {
 		return TargetState{}, err
 	}
@@ -198,8 +222,10 @@ func (d *darwinAppSessionController) ReadGroupState(selectors []config.Selector)
 	allMuted := true
 	allAttached := true
 	for _, target := range targets {
-		if err := d.tap.EnsureTap(target.tapTarget()); err != nil {
-			return TargetState{}, d.mapWriteError(target.id, err)
+		for _, session := range target.sessions {
+			if err := d.tap.EnsureTap(session.tapTarget()); err != nil {
+				return TargetState{}, d.mapWriteError(target.stateKey, err)
+			}
 		}
 		state := d.tap.ReadVirtualState(target.stateKey)
 		totalVolume += clampPercent(state.Volume)
@@ -223,67 +249,67 @@ func (d *darwinAppSessionController) ReadGroupState(selectors []config.Selector)
 }
 
 func (d *darwinAppSessionController) ListTargets() ([]DiscoveredTarget, error) {
-	sessions, err := d.listSessions(false)
+	apps, err := d.listLogicalApps(false)
 	if err != nil {
 		return nil, err
 	}
 
-	targets := make([]DiscoveredTarget, 0, len(sessions))
-	for _, session := range sessions {
-		name := strings.TrimSpace(session.name)
-		if name == "" {
-			name = strings.TrimSpace(session.exe)
+	targets := make([]DiscoveredTarget, 0, len(apps))
+	for _, app := range apps {
+		name := strings.TrimSpace(app.name)
+		if name == "" && len(app.sessions) > 0 {
+			name = strings.TrimSpace(app.sessions[0].name)
 		}
 		if name == "" {
-			name = strings.TrimSpace(session.bundleID)
+			name = strings.TrimSpace(app.bundleID)
 		}
 		selector := name
 		if selector == "" {
-			selector = session.id
+			selector = app.id
 		}
 
 		target := DiscoveredTarget{
-			ID:       "app:" + session.id,
+			ID:       "app:" + app.id,
 			Type:     config.TargetApp,
 			Name:     name,
 			Selector: selector,
 			Capabilities: &TargetCapabilities{
-				Volume: boolPtr(session.volumeCapable),
-				Mute:   boolPtr(session.muteCapable),
+				Volume: boolPtr(app.volumeCapable),
+				Mute:   boolPtr(app.muteCapable),
 			},
 		}
-		if len(session.aliases) > 0 {
-			target.Aliases = append(target.Aliases, session.aliases...)
+		if len(app.aliases) > 0 {
+			target.Aliases = append(target.Aliases, app.aliases...)
 		}
 		targets = append(targets, target)
 	}
 	return targets, nil
 }
 
-func (d *darwinAppSessionController) selectSession(selectorToken string) (darwinAppSession, error) {
+func (d *darwinAppSessionController) selectLogicalApp(selectorToken string) (darwinLogicalApp, error) {
 	sel := parseSelectorToken(selectorToken)
-	if session, ok, err := d.findSession(sel, false); err != nil {
-		return darwinAppSession{}, err
+	if app, ok, err := d.findLogicalApp(sel, false); err != nil {
+		return darwinLogicalApp{}, err
 	} else if ok {
-		return session, nil
+		return app, nil
 	}
-	if session, ok, err := d.findSession(sel, true); err != nil {
-		return darwinAppSession{}, err
+	if app, ok, err := d.findLogicalApp(sel, true); err != nil {
+		return darwinLogicalApp{}, err
 	} else if ok {
-		return session, nil
+		return app, nil
 	}
-	return darwinAppSession{}, fmt.Errorf("%w: no app session matched selector %q", ErrTargetUnavailable, selectorToken)
+	return darwinLogicalApp{}, fmt.Errorf("%w: no app session matched selector %q", ErrTargetUnavailable, selectorToken)
 }
 
-func (d *darwinAppSessionController) selectSessions(selectors []config.Selector) ([]darwinAppSession, error) {
-	matched, err := d.findSessions(selectors, false)
+func (d *darwinAppSessionController) selectLogicalApps(selectors []config.Selector) ([]darwinLogicalApp, error) {
+	matched, err := d.findLogicalApps(selectors, false)
 	if err != nil {
 		return nil, err
 	}
 	if len(matched) > 0 {
 		return matched, nil
 	}
-	matched, err = d.findSessions(selectors, true)
+	matched, err = d.findLogicalApps(selectors, true)
 	if err != nil {
 		return nil, err
 	}
@@ -291,6 +317,14 @@ func (d *darwinAppSessionController) selectSessions(selectors []config.Selector)
 		return nil, fmt.Errorf("%w: no app sessions matched group selectors", ErrTargetUnavailable)
 	}
 	return matched, nil
+}
+
+func (d *darwinAppSessionController) listLogicalApps(forceRefresh bool) ([]darwinLogicalApp, error) {
+	sessions, err := d.listSessions(forceRefresh)
+	if err != nil {
+		return nil, err
+	}
+	return buildDarwinLogicalApps(sessions, d.tap), nil
 }
 
 func (d *darwinAppSessionController) listSessions(forceRefresh bool) ([]darwinAppSession, error) {
@@ -358,17 +392,17 @@ func (d *darwinAppSessionController) invalidateCache() {
 	d.mu.Unlock()
 }
 
-func (d *darwinAppSessionController) mapWriteError(sessionID string, err error) error {
-	sessions, listErr := d.listSessions(true)
+func (d *darwinAppSessionController) mapWriteError(stateKey string, err error) error {
+	apps, listErr := d.listLogicalApps(true)
 	if listErr != nil {
 		return err
 	}
-	for _, session := range sessions {
-		if session.id == sessionID {
+	for _, app := range apps {
+		if app.stateKey == stateKey {
 			return err
 		}
 	}
-	return fmt.Errorf("%w: app session %q no longer available", ErrTargetUnavailable, sessionID)
+	return fmt.Errorf("%w: app session %q no longer available", ErrTargetUnavailable, stateKey)
 }
 
 func (d *darwinAppSessionController) rememberWriteState(stateKey string, volume *int, muted *bool) {
@@ -396,36 +430,36 @@ func (d *darwinAppSessionController) rememberWriteState(stateKey string, volume 
 	}
 }
 
-func (d *darwinAppSessionController) findSession(selector config.Selector, forceRefresh bool) (darwinAppSession, bool, error) {
-	sessions, err := d.listSessions(forceRefresh)
+func (d *darwinAppSessionController) findLogicalApp(selector config.Selector, forceRefresh bool) (darwinLogicalApp, bool, error) {
+	apps, err := d.listLogicalApps(forceRefresh)
 	if err != nil {
-		return darwinAppSession{}, false, err
+		return darwinLogicalApp{}, false, err
 	}
-	for _, session := range sessions {
-		if darwinSessionMatchesSelector(session, selector) {
-			return session, true, nil
+	for _, app := range apps {
+		if darwinLogicalAppMatchesSelector(app, selector) {
+			return app, true, nil
 		}
 	}
-	return darwinAppSession{}, false, nil
+	return darwinLogicalApp{}, false, nil
 }
 
-func (d *darwinAppSessionController) findSessions(selectors []config.Selector, forceRefresh bool) ([]darwinAppSession, error) {
-	sessions, err := d.listSessions(forceRefresh)
+func (d *darwinAppSessionController) findLogicalApps(selectors []config.Selector, forceRefresh bool) ([]darwinLogicalApp, error) {
+	apps, err := d.listLogicalApps(forceRefresh)
 	if err != nil {
 		return nil, err
 	}
-	matched := make([]darwinAppSession, 0, len(sessions))
-	seen := make(map[string]struct{}, len(sessions))
+	matched := make([]darwinLogicalApp, 0, len(apps))
+	seen := make(map[string]struct{}, len(apps))
 	for _, selector := range selectors {
-		for _, session := range sessions {
-			if !darwinSessionMatchesSelector(session, selector) {
+		for _, app := range apps {
+			if !darwinLogicalAppMatchesSelector(app, selector) {
 				continue
 			}
-			if _, exists := seen[session.id]; exists {
+			if _, exists := seen[app.stateKey]; exists {
 				continue
 			}
-			seen[session.id] = struct{}{}
-			matched = append(matched, session)
+			seen[app.stateKey] = struct{}{}
+			matched = append(matched, app)
 		}
 	}
 	return matched, nil
@@ -449,6 +483,7 @@ func buildDarwinSession(process coreAudioProcessInfo) (darwinAppSession, bool) {
 
 	return darwinAppSession{
 		id:            fmt.Sprintf("%d", process.ObjectID),
+		runtimeKey:    darwinTapRuntimeKey(process.ObjectID),
 		stateKey:      darwinTapStateKey(bundleID, execPath, exeNoExt, name, process.ObjectID),
 		processObject: process.ObjectID,
 		pid:           process.PID,
@@ -464,11 +499,16 @@ func buildDarwinSession(process coreAudioProcessInfo) (darwinAppSession, bool) {
 
 func (s darwinAppSession) tapTarget() darwinTapTarget {
 	return darwinTapTarget{
-		Key:           s.stateKey,
+		StateKey:      s.stateKey,
+		RuntimeKey:    s.runtimeKey,
 		ProcessObject: s.processObject,
 		BundleID:      s.bundleID,
 		Name:          s.name,
 	}
+}
+
+func darwinTapRuntimeKey(processObject uint32) string {
+	return fmt.Sprintf("process:%d", processObject)
 }
 
 func darwinTapStateKey(bundleID, execPath, exeNoExt, name string, processObject uint32) string {
@@ -521,9 +561,82 @@ func cloneDarwinSessions(in []darwinAppSession) []darwinAppSession {
 	return out
 }
 
-func darwinSessionMatchesSelector(session darwinAppSession, selector config.Selector) bool {
-	if selector.Kind == config.SelectorExe {
-		return selectorMatchesAnyValue(selector, session.exeAliases)
+func buildDarwinLogicalApps(sessions []darwinAppSession, tap darwinTapBridge) []darwinLogicalApp {
+	if len(sessions) == 0 {
+		return nil
 	}
-	return selectorMatchesAnyValue(selector, session.aliases)
+	byKey := make(map[string]*darwinLogicalApp, len(sessions))
+	order := make([]string, 0, len(sessions))
+	for _, session := range sessions {
+		app := byKey[session.stateKey]
+		if app == nil {
+			app = &darwinLogicalApp{
+				id:         session.stateKey,
+				stateKey:   session.stateKey,
+				name:       session.name,
+				bundleID:   session.bundleID,
+				aliases:    append([]string(nil), session.aliases...),
+				exeAliases: append([]string(nil), session.exeAliases...),
+			}
+			byKey[session.stateKey] = app
+			order = append(order, session.stateKey)
+		} else {
+			if app.name == "" {
+				app.name = session.name
+			}
+			if app.bundleID == "" {
+				app.bundleID = session.bundleID
+			}
+			app.aliases = appendUniqueStrings(app.aliases, session.aliases...)
+			app.exeAliases = appendUniqueStrings(app.exeAliases, session.exeAliases...)
+		}
+		app.sessions = append(app.sessions, session)
+	}
+
+	apps := make([]darwinLogicalApp, 0, len(order))
+	for _, key := range order {
+		app := *byKey[key]
+		sort.Slice(app.sessions, func(i, j int) bool {
+			return app.sessions[i].processObject < app.sessions[j].processObject
+		})
+		supported := tap != nil && tap.Supported()
+		state := darwinTapState{Volume: 100}
+		if supported {
+			state = tap.ReadVirtualState(app.stateKey)
+		}
+		app.volume = clampPercent(state.Volume)
+		app.isMuted = state.Muted
+		app.volumeCapable = supported
+		app.muteCapable = supported
+		apps = append(apps, app)
+	}
+	return apps
+}
+
+func appendUniqueStrings(base []string, values ...string) []string {
+	if len(values) == 0 {
+		return base
+	}
+	seen := make(map[string]struct{}, len(base))
+	for _, value := range base {
+		seen[value] = struct{}{}
+	}
+	for _, value := range values {
+		if strings.TrimSpace(value) == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		base = append(base, value)
+	}
+	return base
+}
+
+func darwinLogicalAppMatchesSelector(app darwinLogicalApp, selector config.Selector) bool {
+	if selector.Kind == config.SelectorExe {
+		return selectorMatchesAnyValue(selector, app.exeAliases)
+	}
+	return selectorMatchesAnyValue(selector, app.aliases)
 }
